@@ -1,0 +1,60 @@
+.custom-cms-card {
+    background-color: unset !important;
+    border: unset !important;
+    border-radius: unset !important;
+    box-shadow: unset !important;
+    margin-top: 30px;
+}
+
+.custom-cms-card .heading {
+    background-color: var(--common-theme-color);
+    padding: 10px 0px 10px 10px;
+    border-top-left-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-top-right-radius: 5px;
+}
+
+.custom-cms-card .heading h3 {
+    color: white;
+}
+
+.custom-cms-card .content {
+    padding: 0px !important;
+}
+
+.property-faq {
+    border: 2px solid var(--common-theme-color);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.property-faq .delete-button {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    cursor: pointer;
+    padding: 1px 7px;
+    color: red;
+    border-left: 2px solid var(--common-theme-color);
+    border-bottom: 2px solid var(--common-theme-color);
+    border-top: none;
+    border-right: none;
+    border-bottom-left-radius: 5px;
+}
+
+.custom-delete-button {
+   cursor: pointer;
+   height: 40px;
+}
+
+.custom-delete-button:hover {
+    background-color: rgba(255, 0, 0, 0.053);
+}
+
+.custom-cursor-pointer{
+  cursor: pointer;
+}
+
+.discount-input::placeholder {
+    font-size: 12px;
+}

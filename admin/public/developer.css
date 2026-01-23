@@ -1,0 +1,191 @@
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  display: none;
+}
+ table > tbody > tr > td:nth-child(1),
+ table > thead > tr:nth-child(1) > th:nth-child(1) {
+/* background-color: $background-color; */
+/* position: sticky; */
+/* position: -webkit-sticky; */
+left:0;
+z-index:2;
+}
+table > tbody > tr > td:nth-child(2),
+ table > thead > tr th:nth-child(2) {
+background-color: white;
+/* position: sticky; */
+/* position: -webkit-sticky; */
+left:0px;
+z-index:2;
+}
+table > tbody > tr > td:last-child ,
+ table > thead > tr th:last-child  {
+background-color: white;
+/* position: sticky;
+-webkit-position: -webkit-sticky;
+right:0px;
+z-index:1; */
+}
+
+/* li.page-item {
+
+  display: none;
+}
+
+.page-item:first-child,
+.page-item:nth-child(2) ,
+.page-item:nth-child(3) ,
+.page-item:nth-last-child(2),
+.page-item:last-child,
+.page-item.active,
+.page-item.disabled {
+
+  display: block!important;
+} */
+
+a[data-kt-users-table-filter=delete_row] {
+  background-color: yellow;
+  display: none!important;
+
+}
+div#kt_table_users_paginate {
+  z-index: 0;
+}
+
+
+
+
+
+
+/* ————————————————————–
+  Tree core styles
+*/
+.tree { margin: 1em; }
+
+.tree input {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  }
+
+.tree input ~ ul { display: none; }
+
+.tree input:checked ~ ul { display: block; }
+
+/* ————————————————————–
+  Tree rows
+*/
+.tree li {
+  line-height: 1.2;
+  position: relative;
+  padding: 0 0 1em 1em;
+  }
+
+.tree ul li { padding: 1em 0 0 1em; }
+
+.tree > li:last-child { padding-bottom: 0; }
+
+/* ————————————————————–
+  Tree labels
+*/
+.tree_label {
+  position: relative;
+  display: inline-block;
+  background: #fff;
+  }
+
+label.tree_label { cursor: pointer; }
+
+label.tree_label:hover { color: #666; }
+
+/* ————————————————————–
+  Tree expanded icon
+*/
+label.tree_label:before {
+  background: #000;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+  float: left;
+  margin: 0 1em 0 -2em;
+  width: 1em;
+  height: 1em;
+  border-radius: 1em;
+  content: '+';
+  text-align: center;
+  line-height: .9em;
+  }
+
+:checked ~ label.tree_label:before { content: '–'; }
+
+/* ————————————————————–
+  Tree branches
+*/
+.tree li:before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -.5em;
+  display: block;
+  width: 0;
+  border-left: 1px solid #777;
+  content: "";
+  }
+
+.tree_label:after {
+  position: absolute;
+  top: 0;
+  left: -1.5em;
+  display: block;
+  height: 0.5em;
+  width: 1em;
+  border-bottom: 1px solid #777;
+  border-left: 1px solid #777;
+  border-radius: 0 0 0 .3em;
+  content: '';
+  }
+
+label.tree_label:after { border-bottom: 0; }
+
+:checked ~ label.tree_label:after {
+  /* border-radius: 0 .3em 0 0; */
+  border-top: 1px solid #777;
+  border-right: 1px solid #777;
+  border-bottom: 0;
+  border-left: 0;
+  bottom: 0;
+  top: 0.5em;
+  height: 0px;
+  }
+
+.tree li:last-child:before {
+  height: 1em;
+  bottom: auto;
+  }
+
+.tree > li:last-child:before { display: none; }
+
+.tree_custom {
+  display: block;
+  background: #eee;
+  padding: 1em;
+  border-radius: 0.3em;
+}
+
+.centered-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.slider-logo .image-input [data-kt-image-input-action=change]{
+  left: 0%;
+}
+
+.slider-logo .image-input.image-input-empty [data-kt-image-input-action=remove] {
+  display: block;
+}
+
+.slider-logo .image-input [data-kt-image-input-action=remove] {
+  top: 0%;
+}

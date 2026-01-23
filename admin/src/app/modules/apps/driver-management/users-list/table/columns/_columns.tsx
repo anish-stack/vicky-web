@@ -1,0 +1,45 @@
+import {Column} from 'react-table'
+import {UserInfoCell} from './UserInfoCell'
+import {UserLastLoginCell} from './UserLastLoginCell'
+import {UserTwoStepsCell} from './UserTwoStepsCell'
+import {UserActionsCell} from './UserActionsCell'
+import {UserSelectionCell} from './UserSelectionCell'
+import {UserCustomHeader} from './UserCustomHeader'
+import {UserSelectionHeader} from './UserSelectionHeader'
+import {User} from '../../core/_models'
+import { ColumnCell } from './ColumnCell'
+import { InfoCell } from './InfoCell'
+
+
+const usersColumns: ReadonlyArray<Column<User>> = [
+  {
+    Header: (props) => <UserSelectionHeader tableProps={props} />,
+    id: 'selection',
+    Cell: ({...props}) => <UserSelectionCell id={props.data[props.row.index].id} />,
+  },
+  {
+    Header: (props) => (
+      <UserCustomHeader tableProps={props} title='Name' className='min-w-125px' />
+    ),
+    id: 'name',
+    Cell: ({...props}) => <ColumnCell  column_field={props.data[props.row.index].name} />,
+  },
+
+  {
+    Header: (props) => (
+      <UserCustomHeader tableProps={props} title='Phone Number' className='min-w-125px' />
+    ),
+    id: 'phone_number',
+    Cell: ({...props}) => <ColumnCell  column_field={props.data[props.row.index].phone_number} />,
+  },
+  {
+    Header: (props) => (
+      <UserCustomHeader tableProps={props} title='Actions' className='text-end min-w-150px' />
+    ),
+    id: 'actions',
+    Cell: ({...props}) => <UserActionsCell id={props.data[props.row.index].id} />,
+    
+  },
+]
+
+export {usersColumns}

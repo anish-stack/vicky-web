@@ -1,0 +1,77 @@
+.custom-cms-card {
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 30px;
+}
+
+.custom-cms-card .heading {
+    background-color: var(--common-theme-color);
+    padding: 10px 0px 10px 10px;
+    border-top-left-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-top-right-radius: 5px;
+}
+
+.custom-cms-card .heading h3 {
+    color: white;
+}
+
+.custom-cms-card .content {
+    padding: 10px 20px 10px 20px;
+}
+
+.property-faq {
+    border: 2px solid var(--common-theme-color);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.property-faq .delete-button {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    cursor: pointer;
+    padding: 1px 7px;
+    color: red;
+    border-left: 2px solid var(--common-theme-color);
+    border-bottom: 2px solid var(--common-theme-color);
+    border-top: none;
+    border-right: none;
+    border-bottom-left-radius: 5px;
+}
+
+.place-tag {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+    border-radius: 0;
+    font-size: 12px;
+    font-weight: 400;
+    padding: .5rem 18px;
+    line-height: 1.75;
+    cursor: pointer;
+    text-transform: unset;
+    background-color: #fdb813;
+    border-color: #fdb813;
+    color: #000;
+    opacity: 1;
+    border-radius: 20px;
+    /* margin-left: 1px; */
+    display: inline-block;
+    /* display: inline-block; */
+  }
+  
+  .place-tag:hover {
+    background-color: #000;
+    color: white;
+    border-color: #000;
+  }
+
+  .place-tag {
+    padding: 0.2rem 18px;
+  }
