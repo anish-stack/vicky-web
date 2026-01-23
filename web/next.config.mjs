@@ -3,8 +3,8 @@ const nextConfig = {
 	reactStrictMode: true,
 
 	env: {
-		API_URL: "http://webapi.taxisafar.com",
-		// API_URL: "http://webapi.taxisafar.com",
+		API_URL: "https://webapi.taxisafar.com",
+		// API_URL: "https://webapi.taxisafar.com",
 
 		// RAZORPAY_KEY_ID: "rzp_test_wPADsslOGY4zIb",
 		// RAZORPAY_KEY_SECRET: "7XteXj17HF1GQhnxA8duPvCX",
