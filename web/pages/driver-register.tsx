@@ -76,7 +76,7 @@ export default function DriverRegister() {
     const fetchCities = async () => {
       setIsLoadingCities(true);
       try {
-        const response = await fetch("https://webapi.taxisafar.com/api/cities");
+        const response = await fetch("https://www.webapi.taxisafar.com/api/cities");
         const data = await response.json();
         setCities(data.data);
       } catch (error) {
