@@ -1,1 +1,14 @@
-{}
+{
+  "pages/themes/ThemeRenderer.tsx -> ./theme-1/Theme": {
+    "id": "pages/themes/ThemeRenderer.tsx -> ./theme-1/Theme",
+    "files": [
+      "static/chunks/pages_themes_theme-1_Theme_tsx.js"
+    ]
+  },
+  "pages/themes/ThemeRenderer.tsx -> ./theme-2/ThemeTwo": {
+    "id": "pages/themes/ThemeRenderer.tsx -> ./theme-2/ThemeTwo",
+    "files": [
+      "static/chunks/pages_themes_theme-2_ThemeTwo_tsx.js"
+    ]
+  }
+}

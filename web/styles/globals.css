@@ -31,6 +31,11 @@ body {
     text-wrap: balance;
   }
 } */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @font-face {
   font-family: "SF Pro Display";
   src: url("/fonts/SF-Pro-Display-Regular.ttf") format("truetype");

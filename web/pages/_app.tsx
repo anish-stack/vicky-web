@@ -1,123 +1,37 @@
-// import HeaderOne from "@/components/headers/One";
 import type { AppProps } from "next/app";
-import Router from "next/router";
-// import FooterOne from "@/components/footers/One";
+import Router, { useRouter } from "next/router";
 import HeaderWithoutMenu from "@/components/headers/headerWithoutMenu";
-// import { TripProvider } from "@/context/TripContext";
-// import 'bootstrap/dist/css/bootstrap.min.css';
+
 import { Col, Container, Row } from "react-bootstrap";
 
 import { CustomerProvider } from "@/context/userContext";
-// import { BsFillChatDotsFill } from "react-icons";
 
-// import useAuth from "@/hooks/useAuth";
-// import { useRouter } from "next/router";
 import Link from "next/link";
 import "@/styles/globals.css";
 import { useEffect, useState } from "react";
+import { useWebsite } from "@/context/WebsiteContext";
 
 export default function App({ Component, pageProps }: AppProps) {
-  // const menu = [
-  //   {
-  //     title: "Home",
-  //     href: "/"
-  //   },
-  //   {
-  //     title: "About Us",
-  //     href: "/about",
-  //   },
-  //   {
-  //     title: "Our Services",
-  //     href: "/services"
-  //   },
-  //   {
-  //     title: "Contact Us",
-  //     href: "/contact",
-  //   }
-  // ];
 
-  // const mobileMenu = [
-  //   {
-  //     title: "Home",
-  //     href: "/"
-  //   },
-  //   {
-  //     title: "About Us",
-  //     href: "/about",
-  //   },
-  //   {
-  //     title: "Our Services",
-  //     href: "/services"
-  //   },
-  //   {
-  //     title: "Contact Us",
-  //     href: "/contact",
-  //   }
-  // ];
+   const router = useRouter();
 
-  // const headersocialLinks = [
-  //   { iconClass: "fab fa-facebook", href: "#" },
-  //   { iconClass: "fab fa-twitter", href: "#" },
-  //   { iconClass: "fab fa-linkedin", href: "#" },
-  //   { iconClass: "fab fa-instagram", href: "#" },
-  // ];
+  // driver theme route detect
+  const isDriverThemeRoute =
+    router.pathname === "/[driverId]/[themeId]";
 
-  // const footerlinks = [
-  //   { name: "Home", link: "/" },
-  //   { name: "About", link: "/about" },
-  //   { name: "Services", link: "#" },
-  //   { name: "Contact", link: "/contact" },
-  // ];
-
-  // const footersocialLinks = [
-  //   { name: "Facebook", icon: "fab fa-facebook" },
-  //   { name: "Twitter", icon: "fab fa-twitter" },
-  //   { name: "Linkedin", icon: "fab fa-linkedin" }
-  // ];
-  // const [toastShow, setToastShow] = useState(true);
 
   return (
     <>
       <CustomerProvider>
-        {/* <HeaderOne
-        menu={menu}
-        mobileMenu={mobileMenu}
-        logoSrc={"/images/car-logo.png"}
-        buttonName={'Book a Taxi'}
-        buttonLink={'#'}
-        phoneNo="+9412222322"
-        phoneNoLink="tel:9412222322"
-        phoneNoTitle="Call Now"
-        emailId="vickycabsservice@gmail.com"
-        emailLink="mailto:vickycabsservice@gmail.com"
-        emailTitle="Send Email"
-        addressTitle="Address"
-        address="66 Broklyant, New York India 3269"
-        socialLinks={headersocialLinks}
-      /> */}
-        <HeaderWithoutMenu />
+     
+        {!isDriverThemeRoute && <HeaderWithoutMenu />}
+
         <div style={{ minHeight: "100vh" }}>
           <Component {...pageProps} />
         </div>
 
-        {/* <FooterOne
-          links={footerlinks}
-          imgURL={`/images/car-logo.png`}
-          description={`Our professional drivers ensure safe and punctual rides, making your travel experience seamless and stress-free.`}
-          phoneNoTitle={'call for taxi'}
-          phoneNo={'+9412222322'}
-          phoneNoLink={'tel:9412222322'}
-          aboutUsTitle={`Cab Services`}
-          aboutUsDescription={'We provide reliable and comfortable cab services tailored to your travel needs. Whether you need an Airport Transfer for a hassle-free journey, a Local Rental for city travel, a Round Trip for a convenient return journey, or a One Way Trip for a smooth ride to your destination, we`ve got you covered. '}
-          linkTitle={'Useful Links'}
-          NewsletterTitle={`Newsletter`}
-          NewsletterSubTitle={`Signup for our weekly newsletter or updates.`}
-          ButtonName={`Subscribe`}
-          CopyRight={'© TaxiSafar Service, All Right Reserved.'}
-          socialLinks={footersocialLinks}
-        /> */}
-
-        <div>
+    {!isDriverThemeRoute && (
+  <div>
           <Container className="position-relative subscribe-section">
             <div className="subscribe-footer">
               <Row>
@@ -352,6 +266,8 @@ export default function App({ Component, pageProps }: AppProps) {
             </Container>
           </div>
         </div>
+    )}
+      
       </CustomerProvider>
     </>
   );
