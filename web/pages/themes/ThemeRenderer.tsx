@@ -2,8 +2,8 @@ import dynamic from "next/dynamic"
 import { useWebsite } from "@/context/WebsiteContext"
 
 const themes: any = {
-  "theme-1": dynamic(() => import("./theme-1/Theme"), { ssr: false }),
-  "theme-2": dynamic(() => import("./theme-2/ThemeTwo"), { ssr: false }),
+  "driver-classic": dynamic(() => import("./driver-classic/Theme"), { ssr: false }),
+  "driver-modern": dynamic(() => import("./driver-modern/ThemeTwo"), { ssr: false }),
 }
 
 export default function ThemeRenderer() {

@@ -9,7 +9,7 @@ export const WebsiteProvider = ({ driverId, themeId, children }: any) => {
   useEffect(() => {
     async function fetchWebsite() {
       const res = await axios.get(
-        `http://localhost:3500/api/website/${driverId}`
+        `https://www.driverwebiste.taxisafar.com/api/website/${driverId}`
       )
      
       setWebsite(res.data.data)

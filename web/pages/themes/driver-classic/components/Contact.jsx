@@ -2,19 +2,19 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, MessageCircle, Mail, MapPin, Send, Clock, CheckCircle2 } from 'lucide-react';
 import { useWebsite } from '@/context/WebsiteContext';
-
+import axios from 'axios';
 export default function Contact() {
   const { website } = useWebsite();
-  
-  // Safely access basicInfo with fallback values
+
+
   const basicInfo = website?.basicInfo || {};
-  const companyName   = basicInfo.name || "Taxi Safar";
-  const phone         = basicInfo.phone || "9876543210";
-  const whatsapp      = basicInfo.whatsapp || phone; // fallback to phone if no whatsapp
-  const email         = basicInfo.email || `support@${(companyName.toLowerCase().replace(/\s+/g, ''))}.in`;
-  const city          = basicInfo.city || "Delhi";
-  const serviceArea   = basicInfo.serviceArea || "Delhi NCR";
-  const officeHours   = basicInfo.officeHours || "24/7 Available";
+  const companyName = basicInfo.name || "Taxi Safar";
+  const phone = basicInfo.phone || "9876543210";
+  const whatsapp = basicInfo.whatsapp || phone; // fallback to phone if no whatsapp
+  const email = basicInfo.email || `support@${(companyName.toLowerCase().replace(/\s+/g, ''))}.in`;
+  const city = basicInfo.city || "Delhi";
+  const serviceArea = basicInfo.serviceArea || "Delhi NCR";
+  const officeHours = basicInfo.officeHours || "24/7 Available";
 
   const contactMethods = [
     {
@@ -50,25 +50,36 @@ export default function Contact() {
     tripType: 'one-way',
     message: '',
   });
-  
+
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
- 
+
     console.log("Enquiry submitted:", formData);
-    
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        name: '', phone: '', email: '', tripType: 'one-way', message: ''
-      });
-    }, 3200);
+
+    try {
+
+      const response = await axios.post(`https://www.driverwebiste.taxisafar.com/api/contact`, { ...formData, website })
+      setIsSubmitted(true);
+
+      if (response.data.success) {
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({
+            name: '', phone: '', email: '', tripType: 'one-way', message: ''
+          });
+        }, 3200);
+      }
+
+    } catch (error) {
+      console.log(error?.response.data)
+
+    }
   };
 
   return (

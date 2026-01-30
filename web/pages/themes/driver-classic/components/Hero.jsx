@@ -4,16 +4,26 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import { MapPin, Calendar, ArrowRight, Plus, X } from "lucide-react"
 import heroImage from './hero.jpg'
+import axios from "axios"
+import { useWebsite } from "@/context/WebsiteContext"
 /* ================= HERO ================= */
+const API_URL = "https://www.driverwebiste.taxisafar.com/api"
 
 export default function Hero() {
+  const { website } = useWebsite()
   const [serviceType, setServiceType] = useState("outstation")
   const [tripType, setTripType] = useState("one-way")
   const [pickup, setPickup] = useState("")
   const [drop, setDrop] = useState("")
-
-  // one-way = no stop, round-trip = one stop
   const [breaks, setBreaks] = useState([])
+
+  // ── new logic states ────────────────────────────────────────
+  const [pickupDate, setPickupDate] = useState("")
+  const [returnDate, setReturnDate] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [submitted, setSubmitted] = useState(false)
+  // ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (tripType === "round-trip") {
@@ -26,6 +36,53 @@ export default function Hero() {
 
   const addBreak = () => setBreaks(prev => [...prev, ""])
   const removeBreak = i => setBreaks(prev => prev.filter((_, idx) => idx !== i))
+
+  const handleSubmit = async () => {
+    setError("")
+
+    // basic required field validation
+    if (!pickup.trim()) {
+      setError("Please enter pickup location")
+      return
+    }
+    if (tripType !== "round-trip" && !drop.trim()) {
+      setError("Please enter drop location")
+      return
+    }
+    if (!pickupDate) {
+      setError("Please select pickup date & time")
+      return
+    }
+    if (tripType === "round-trip" && !returnDate) {
+      setError("Please select return date & time")
+      return
+    }
+    setLoading(true)
+
+    try {
+      const payload = {
+        trip: serviceType,
+        trip_type: tripType === "one-way" ? "one_way" : "round_trip",
+        pickup,
+        drop,
+        stops: breaks.filter(Boolean),           // remove empty strings
+        pickupDateAndTime: pickupDate,
+        returnDateAndTime: tripType === "round-trip" ? returnDate : null,
+        website
+      }
+      await axios.post(`${API_URL}/trip`, payload)
+      setSubmitted(true)
+      alert("Thanks For Enquiry We Will Connect You Soon Thankyou")
+      setError("")
+    } catch (err) {
+      console.error(err)
+      setError("Failed to submit enquiry. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
 
   return (
     <section id="home" className="relative bg-white overflow-hidden">
@@ -45,6 +102,7 @@ export default function Hero() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* FORM */}
           <div className="bg-white rounded-2xl shadow-xl p-5 md:p-6 w-full lg:max-w-md">
+
             {/* SERVICE TYPE */}
             <div className="flex bg-gray-200 rounded-xl p-1 mb-4">
               {[
@@ -55,8 +113,8 @@ export default function Hero() {
                   key={item.key}
                   onClick={() => setServiceType(item.key)}
                   className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${serviceType === item.key
-                      ? "bg-white text-red-600 shadow"
-                      : "text-gray-600"
+                    ? "bg-white text-red-600 shadow"
+                    : "text-gray-600"
                     }`}
                 >
                   {item.label}
@@ -130,17 +188,34 @@ export default function Hero() {
             />
 
             {/* PICKUP DATE */}
-            <DateInput label="Pickup Date & Time" />
+            <DateInput
+              label="Pickup Date & Time"
+              value={pickupDate}
+              onChange={setPickupDate}
+            />
 
             {/* RETURN DATE */}
             {tripType === "round-trip" && (
-              <DateInput label="Return Date & Time" />
+              <DateInput
+                label="Return Date & Time"
+                value={returnDate}
+                onChange={setReturnDate}
+              />
+            )}
+
+            {error && (
+              <p className="mt-4 text-red-600 text-center text-sm">{error}</p>
             )}
 
             {/* CTA */}
-            <button className="mt-6 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
-              Enquiry <ArrowRight size={18} />
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className={`mt-6 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-60 ${loading ? 'cursor-wait' : ''}`}
+            >
+              {loading ? "Submitting..." : "Enquiry"} <ArrowRight size={18} />
             </button>
+
           </div>
         </div>
       </div>
@@ -186,7 +261,7 @@ function Input({
 
 /* ================= DATE INPUT ================= */
 
-function DateInput({ label }) {
+function DateInput({ label, value, onChange }) {
   return (
     <div className="mt-4">
       <label className="text-xs text-gray-500 mb-1 block">{label}</label>
@@ -194,6 +269,8 @@ function DateInput({ label }) {
         <Calendar size={18} className="text-gray-400" />
         <input
           type="datetime-local"
+          value={value}
+          onChange={e => onChange(e.target.value)}
           className="bg-transparent outline-none text-sm flex-1"
         />
       </div>
