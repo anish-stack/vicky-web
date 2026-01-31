@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[4663],{4663:function(e,s,u){u.r(s);var c=u(85893);u(67294),s.default=()=>(0,c.jsx)("div",{children:"Theme Two"})}}]);
