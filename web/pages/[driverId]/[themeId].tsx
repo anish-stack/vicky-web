@@ -1,6 +1,6 @@
 import { GetServerSideProps } from "next"
 import { WebsiteProvider } from "@/context/WebsiteContext"
-import ThemeRenderer from "@/pages/themes/ThemeRenderer"
+import ThemeRenderer from "@/src/themes/ThemeRenderer"
 
 type Props = {
   driverId: string
