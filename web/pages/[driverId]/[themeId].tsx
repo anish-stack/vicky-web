@@ -16,10 +16,14 @@ export default function DriverThemePage({ driverId, themeId }: Props) {
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  if (!params?.driverId || !params?.themeId) {
+    return { notFound: true }
+  }
+
   return {
     props: {
-      driverId: params?.driverId,
-      themeId: params?.themeId,
+      driverId: params.driverId,
+      themeId: params.themeId,
     },
   }
 }
