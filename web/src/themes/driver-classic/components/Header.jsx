@@ -26,7 +26,7 @@ export default function Header() {
               src={website?.basicInfo?.logoUrl || "https://www.taxisafar.com/images/logo/taxisafar-logo.png"}
               alt={website?.basicInfo?.name || "TaxiSafar Logo"}
 
-              className="h-6 w-auto object-contain"
+              className="h-12 w-auto object-contain"
             />
           </a>
 
@@ -46,8 +46,9 @@ export default function Header() {
 
           {/* ✅ Desktop CTA (Download QR only) */}
           <div className="hidden md:block">
+          
             <button className="px-6 py-3 rounded-full bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition active:scale-95 shadow-sm">
-              Download QR
+            Contact Us
             </button>
           </div>
 

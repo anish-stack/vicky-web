@@ -6,7 +6,7 @@ import { MapPin, Calendar, ArrowRight, Plus, X } from "lucide-react"
 import heroImage from './hero.jpg'
 import axios from "axios"
 import { useWebsite } from "@/context/WebsiteContext"
-/* ================= HERO ================= */
+
 const API_URL = "https://www.driverwebiste.taxisafar.com/api"
 
 export default function Hero() {
@@ -17,13 +17,11 @@ export default function Hero() {
   const [drop, setDrop] = useState("")
   const [breaks, setBreaks] = useState([])
 
-  // ── new logic states ────────────────────────────────────────
   const [pickupDate, setPickupDate] = useState("")
   const [returnDate, setReturnDate] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [submitted, setSubmitted] = useState(false)
-  // ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (tripType === "round-trip") {
@@ -40,7 +38,6 @@ export default function Hero() {
   const handleSubmit = async () => {
     setError("")
 
-    // basic required field validation
     if (!pickup.trim()) {
       setError("Please enter pickup location")
       return
@@ -65,7 +62,7 @@ export default function Hero() {
         trip_type: tripType === "one-way" ? "one_way" : "round_trip",
         pickup,
         drop,
-        stops: breaks.filter(Boolean),           // remove empty strings
+        stops: breaks.filter(Boolean),
         pickupDateAndTime: pickupDate,
         returnDateAndTime: tripType === "round-trip" ? returnDate : null,
         website
@@ -82,8 +79,6 @@ export default function Hero() {
     }
   }
 
-
-
   return (
     <section id="home" className="relative bg-white overflow-hidden">
       {/* DESKTOP BG */}
@@ -98,13 +93,24 @@ export default function Hero() {
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* FORM */}
-          <div className="bg-white rounded-2xl shadow-xl p-5 md:p-6 w-full lg:max-w-md">
+      {/* MOBILE IMAGE - shown first on small screens */}
+      <div className="lg:hidden w-full">
+        <Image
+          src={heroImage}
+          alt="Taxi booking"
+          width={1200}
+          height={400}
+          className="w-full h-[220px] sm:h-[260px] md:h-[300px] object-cover"
+          priority
+        />
+      </div>
 
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-5 md:px-6 py-6 sm:py-8 lg:py-10">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* FORM - centered on mobile */}
+          <div className="bg-white rounded-2xl shadow-xl p-3 sm:p-6 md:p-7 w-full mx-auto lg:max-w-md lg:ml-auto">
             {/* SERVICE TYPE */}
-            <div className="flex bg-gray-200 rounded-xl p-1 mb-4">
+            <div className="flex bg-gray-200 rounded-xl p-1 mb-4 sm:mb-5">
               {[
                 { key: "outstation", label: "Outstation" },
                 { key: "local", label: "Local / Airport" }
@@ -112,7 +118,7 @@ export default function Hero() {
                 <button
                   key={item.key}
                   onClick={() => setServiceType(item.key)}
-                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition ${serviceType === item.key
+                  className={`flex-1 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition ${serviceType === item.key
                     ? "bg-white text-red-600 shadow"
                     : "text-gray-600"
                     }`}
@@ -123,7 +129,7 @@ export default function Hero() {
             </div>
 
             {/* TRIP TYPE */}
-            <div className="flex gap-6 text-sm mb-5">
+            <div className="flex gap-6 sm:gap-8 text-sm sm:text-base mb-5 sm:mb-6">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
@@ -153,7 +159,7 @@ export default function Hero() {
 
             {/* STOPS */}
             {breaks.map((b, i) => (
-              <div key={i} className="flex gap-2 mt-3">
+              <div key={i} className="flex gap-2 mt-3 sm:mt-4">
                 <input
                   value={b}
                   onChange={e => {
@@ -162,9 +168,12 @@ export default function Hero() {
                     setBreaks(copy)
                   }}
                   placeholder={`Stop ${i + 1} (optional)`}
-                  className="flex-1 px-4 py-3 rounded-xl bg-gray-200 outline-none"
+                  className="flex-1 px-4 py-3 rounded-xl bg-gray-200 outline-none text-sm sm:text-base"
                 />
-                <button onClick={() => removeBreak(i)}>
+                <button 
+                  onClick={() => removeBreak(i)}
+                  className="p-2 sm:p-3 hover:bg-gray-100 rounded-lg transition"
+                >
                   <X className="text-red-500" size={18} />
                 </button>
               </div>
@@ -172,7 +181,7 @@ export default function Hero() {
 
             <button
               onClick={addBreak}
-              className="mt-3 text-sm text-red-600 font-medium flex items-center gap-1"
+              className="mt-3 sm:mt-4 text-sm sm:text-base text-red-600 font-medium flex items-center gap-1 hover:underline"
             >
               <Plus size={16} /> Add stop
             </button>
@@ -204,31 +213,19 @@ export default function Hero() {
             )}
 
             {error && (
-              <p className="mt-4 text-red-600 text-center text-sm">{error}</p>
+              <p className="mt-4 sm:mt-5 text-red-600 text-center text-sm sm:text-base">{error}</p>
             )}
 
             {/* CTA */}
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className={`mt-6 w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-60 ${loading ? 'cursor-wait' : ''}`}
+              className={`mt-6 sm:mt-7 w-full bg-red-600 hover:bg-red-700 text-white py-3 sm:py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors ${loading ? 'cursor-wait' : ''}`}
             >
               {loading ? "Submitting..." : "Enquiry"} <ArrowRight size={18} />
             </button>
-
           </div>
         </div>
-      </div>
-
-      {/* MOBILE IMAGE */}
-      <div className="lg:hidden w-full">
-        <Image
-          src="/images/hero.jpg"
-          alt="Taxi booking"
-          width={1200}
-          height={300}
-          className="w-full h-[250px] object-cover"
-        />
       </div>
     </section>
   )
@@ -245,15 +242,14 @@ function Input({
   disabledStyle
 }) {
   return (
-    <div className="mt-4 flex items-center gap-2 bg-gray-200 px-4 py-3 rounded-xl">
-      <Icon size={18} className="text-gray-400" />
+    <div className="mt-4 sm:mt-5 flex items-center gap-2 sm:gap-3 bg-gray-200 px-4 py-3 sm:py-3.5 rounded-xl">
+      <Icon size={18} className="text-gray-400 flex-shrink-0" />
       <input
         value={value}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`flex-1 bg-transparent outline-none text-sm ${disabledStyle ? "cursor-not-allowed text-gray-400" : ""
-          }`}
+        className={`flex-1 bg-transparent outline-none text-sm sm:text-base ${disabledStyle ? "cursor-not-allowed text-gray-400" : ""}`}
       />
     </div>
   )
@@ -263,15 +259,15 @@ function Input({
 
 function DateInput({ label, value, onChange }) {
   return (
-    <div className="mt-4">
-      <label className="text-xs text-gray-500 mb-1 block">{label}</label>
-      <div className="flex items-center gap-2 bg-gray-200 px-4 py-3 rounded-xl">
-        <Calendar size={18} className="text-gray-400" />
+    <div className="mt-4 sm:mt-5">
+      <label className="text-xs sm:text-sm text-gray-500 mb-1 block">{label}</label>
+      <div className="flex items-center gap-2 sm:gap-3 bg-gray-200 px-4 py-3 sm:py-3.5 rounded-xl">
+        <Calendar size={18} className="text-gray-400 flex-shrink-0" />
         <input
           type="datetime-local"
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="bg-transparent outline-none text-sm flex-1"
+          className="bg-transparent outline-none text-sm sm:text-base flex-1"
         />
       </div>
     </div>
