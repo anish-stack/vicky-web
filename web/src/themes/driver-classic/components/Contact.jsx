@@ -317,7 +317,7 @@ export default function Contact() {
                   className="text-center py-16 sm:py-24 md:py-32"
                 >
                   <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 shadow-md">
-                    <CheckCircle2 className="text-green-600" size={40} className="sm:size-48" />
+                    <CheckCircle2 className="text-green-600" size={40} />
                   </div>
                   <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">Thank You!</h3>
                   <p className="text-lg sm:text-xl text-gray-600">Your enquiry has been sent successfully.</p>
