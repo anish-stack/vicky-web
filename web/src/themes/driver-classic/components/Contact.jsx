@@ -57,37 +57,77 @@ export default function Contact() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axios.post(
-        `https://www.driverwebiste.taxisafar.com/api/contact`,
-        { ...formData, website }
-      );
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const response = await axios.post(
+  //       `https://www.driverwebiste.taxisafar.com/api/contact`,
+  //       { ...formData, website }
+  //     );
 
-      setIsSubmitted(true);
+  //     setIsSubmitted(true);
 
-      if (response.data.success) {
-        setTimeout(() => {
-          setIsSubmitted(false);
-          setFormData({
-            name: '',
-            phone: '',
-            email: '',
-            tripType: 'one-way',
-            message: '',
-          });
-        }, 3200);
-      }
-    } catch (error) {
-      console.error("Submission error:", error?.response?.data || error);
-    }
-  };
+  //     if (response.data.success) {
+  //       setTimeout(() => {
+  //         setIsSubmitted(false);
+  //         setFormData({
+  //           name: '',
+  //           phone: '',
+  //           email: '',
+  //           tripType: 'one-way',
+  //           message: '',
+  //         });
+  //       }, 3200);
+  //     }
+  //   } catch (error) {
+  //     console.error("Submission error:", error?.response?.data || error);
+  //   }
+  // };
+
+  const handleSubmit = (e) => {
+  e.preventDefault();
+
+  const whatsappNumber = whatsapp; // already defined above
+
+  const text = `
+📩 *New Enquiry - ${companyName}*
+
+👤 *Name:* ${formData.name}
+📞 *Phone:* ${formData.phone}
+📧 *Email:* ${formData.email}
+🚖 *Trip Type:* ${formData.tripType}
+
+📝 *Message:*
+${formData.message}
+
+🌐 *Website:* ${website || 'N/A'}
+  `;
+
+  const whatsappURL = `https://wa.me/91${whatsappNumber}?text=${encodeURIComponent(text)}`;
+
+  // redirect to WhatsApp
+  window.open(whatsappURL, "_blank");
+
+  // success UI (same as before)
+  setIsSubmitted(true);
+
+  setTimeout(() => {
+    setIsSubmitted(false);
+    setFormData({
+      name: '',
+      phone: '',
+      email: '',
+      tripType: 'one-way',
+      message: '',
+    });
+  }, 3200);
+};
+
 
   return (
     <section
       id="contact"
-      className="relative py-12 sm:py-16 md:py-20 bg-gradient-to-br from-gray-50 via-white to-red-50/30 overflow-hidden"
+      className="relative  py-6 md:py-10 bg-gradient-to-br from-gray-50 via-white to-red-50/30 overflow-hidden"
     >
       {/* Decorative blobs - smaller on mobile */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -107,10 +147,10 @@ export default function Contact() {
           <span className="inline-flex items-center gap-2 px-5 sm:px-6 py-1.5 sm:py-2 rounded-full bg-red-100 text-red-700 font-semibold text-sm sm:text-base">
             Contact {companyName}
           </span>
-          <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+          <h2 className="mt-4 sm:mt-5 text-2xl md:text-3xl lg:text-4xl  font-bold text-gray-900 leading-tight">
             Let's Start Your <span className="text-red-600">Journey</span>
           </h2>
-          <p className="mt-3 sm:mt-4 text-base sm:text-lg md:text-xl text-gray-600 max-w-xl mx-auto px-2 sm:px-0">
+          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-lg text-gray-600 max-w-xl mx-auto px-2 sm:px-0">
             Questions? Booking? Quote? We're here for you — usually reply in <strong>under 2 hours</strong>.
           </p>
         </motion.div>
@@ -299,7 +339,7 @@ export default function Contact() {
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
                       type="submit"
-                      className="w-full bg-red-600 hover:bg-red-700 text-white py-3.5 sm:py-4 rounded-xl font-semibold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-red-200/50 transition-all mt-2"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-semibold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-red-200/50 transition-all mt-2"
                     >
                       <Send size={20} className="sm:size-22" />
                       Send Enquiry

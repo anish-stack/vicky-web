@@ -93,24 +93,13 @@ export default function Hero() {
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
-      {/* MOBILE IMAGE - shown first on small screens */}
-      <div className="lg:hidden w-full">
-        <Image
-          src={heroImage}
-          alt="Taxi booking"
-          width={1200}
-          height={400}
-          className="w-full h-[220px] sm:h-[260px] md:h-[300px] object-cover"
-          priority
-        />
-      </div>
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-0 sm:px-4 !py-0 lg:!py-6">
+        <div className="flex flex-col-reverse lg:grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-5 md:px-6 py-6 sm:py-8 lg:py-10">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* FORM - centered on mobile */}
-          <div className="bg-white rounded-2xl shadow-xl p-3 sm:p-6 md:p-7 w-full mx-auto lg:max-w-md lg:ml-auto">
+          <div className="bg-white rounded-2xl shadow-xl p-3 sm:p-6 md:p-5 w-full lg:max-w-md order-1">
             {/* SERVICE TYPE */}
-            <div className="flex bg-gray-200 rounded-xl p-1 mb-4 sm:mb-5">
+            <div className="flex bg-gray-200 rounded-xl p-1 mb-3 sm:mb-3">
               {[
                 { key: "outstation", label: "Outstation" },
                 { key: "local", label: "Local / Airport" }
@@ -118,7 +107,7 @@ export default function Hero() {
                 <button
                   key={item.key}
                   onClick={() => setServiceType(item.key)}
-                  className={`flex-1 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-semibold transition ${serviceType === item.key
+                  className={`flex-1 py-1.5 rounded-lg text-sm sm:text-base font-semibold transition ${serviceType === item.key
                     ? "bg-white text-red-600 shadow"
                     : "text-gray-600"
                     }`}
@@ -129,7 +118,7 @@ export default function Hero() {
             </div>
 
             {/* TRIP TYPE */}
-            <div className="flex gap-6 sm:gap-8 text-sm sm:text-base mb-5 sm:mb-6">
+            <div className="flex gap-6 sm:gap-8 text-sm sm:text-base mb-3 sm:mb-3">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
@@ -170,7 +159,7 @@ export default function Hero() {
                   placeholder={`Stop ${i + 1} (optional)`}
                   className="flex-1 px-4 py-3 rounded-xl bg-gray-200 outline-none text-sm sm:text-base"
                 />
-                <button 
+                <button
                   onClick={() => removeBreak(i)}
                   className="p-2 sm:p-3 hover:bg-gray-100 rounded-lg transition"
                 >
@@ -181,7 +170,7 @@ export default function Hero() {
 
             <button
               onClick={addBreak}
-              className="mt-3 sm:mt-4 text-sm sm:text-base text-red-600 font-medium flex items-center gap-1 hover:underline"
+              className="mt-3 sm:mt-3 text-sm sm:text-base text-red-600 font-medium flex items-center gap-1 hover:underline"
             >
               <Plus size={16} /> Add stop
             </button>
@@ -220,12 +209,26 @@ export default function Hero() {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className={`mt-6 sm:mt-7 w-full bg-red-600 hover:bg-red-700 text-white py-3 sm:py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors ${loading ? 'cursor-wait' : ''}`}
+              className={`mt-6 sm:mt-7 w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-colors ${loading ? 'cursor-wait' : ''}`}
             >
               {loading ? "Submitting..." : "Enquiry"} <ArrowRight size={18} />
             </button>
           </div>
         </div>
+      </div>
+
+      
+
+      {/* MOBILE IMAGE - shown first on small screens */}
+      <div className="lg:hidden w-full order-2">
+        <Image
+          src={heroImage}
+          alt="Taxi booking"
+          width={1200}
+          height={400}
+          className="w-full h-[220px] sm:h-[260px] md:h-[300px] object-cover"
+          priority
+        />
       </div>
     </section>
   )
@@ -242,7 +245,7 @@ function Input({
   disabledStyle
 }) {
   return (
-    <div className="mt-4 sm:mt-5 flex items-center gap-2 sm:gap-3 bg-gray-200 px-4 py-3 sm:py-3.5 rounded-xl">
+    <div className="mt-3 sm:mt-3 flex items-center gap-2 sm:gap-3 bg-gray-200 px-4 py-2.5 rounded-xl">
       <Icon size={18} className="text-gray-400 flex-shrink-0" />
       <input
         value={value}
@@ -259,9 +262,9 @@ function Input({
 
 function DateInput({ label, value, onChange }) {
   return (
-    <div className="mt-4 sm:mt-5">
+    <div className="mt-3 sm:mt-3">
       <label className="text-xs sm:text-sm text-gray-500 mb-1 block">{label}</label>
-      <div className="flex items-center gap-2 sm:gap-3 bg-gray-200 px-4 py-3 sm:py-3.5 rounded-xl">
+      <div className="flex items-center gap-2 sm:gap-3 bg-gray-200 px-4 py-2.5 rounded-xl">
         <Calendar size={18} className="text-gray-400 flex-shrink-0" />
         <input
           type="datetime-local"

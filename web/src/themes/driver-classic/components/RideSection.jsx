@@ -161,7 +161,7 @@ export default function RideSection() {
             Popular Tours
           </span>
           <h2 className="mt-4 md:mt-6 text-2xl md:text-3xl lg:text-4xl font-extrabold tracking-tight">
-            Explore with <span className="text-primary">{website?.basicInfo?.name}</span>
+            Explore with <span className="text-[#B91C1C]">{website?.basicInfo?.name}</span>
           </h2>
           <p className="mt-2 md:mt-3 text-lg text-zinc-600 max-w-2xl mx-auto">
             Comfortable AC cabs, experienced drivers, and best routes for your
@@ -191,7 +191,7 @@ export default function RideSection() {
                     alt={tour.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute top-4 right-4 bg-primary text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md">
+                  <div className="absolute top-4 right-4 bg-[#B91C1C] text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md">
                     {tour.duration}
                   </div>
                 </div>
@@ -205,7 +205,7 @@ export default function RideSection() {
                   </p>
 
                   <div className="flex items-center justify-between mt-auto">
-                    <div className="flex items-center gap-2 text-primary font-bold text-xl">
+                    <div className="flex items-center gap-2 text-[#B91C1C] font-bold text-xl">
                       {/* <IndianRupee size={20} /> */}
                       {tour.price}
                     </div>
@@ -213,7 +213,7 @@ export default function RideSection() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.97 }}
-                      className="bg-primary bg-red-600 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-md hover:bg-primary-dark transition-colors"
+                      className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-md hover:bg-primary-dark transition-colors"
                     >
                       Enquiry Now
                       <ArrowRight size={18} />

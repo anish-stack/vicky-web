@@ -64,7 +64,7 @@ export default function Footer() {
             Powered by{" "}
             <Link
               href="/"
-              className="text-primary font-semibold hover:underline"
+              className="!text-[#DC2626] font-semibold hover:underline"
             >
               TaxiSafar
             </Link>

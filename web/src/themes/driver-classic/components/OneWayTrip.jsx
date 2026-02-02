@@ -121,7 +121,7 @@ const OneWayTrip = () => {
                 ))}
               </ul>
 
-              <button className="mt-4 w-full px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition">
+              <button className="mt-4 w-full px-4 py-2.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition">
                 Enquiry
               </button>
             </div>
