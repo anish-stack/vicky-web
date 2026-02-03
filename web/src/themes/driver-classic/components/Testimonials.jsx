@@ -2,6 +2,9 @@ import { motion } from "framer-motion"
 import { Star } from "lucide-react"
 import { useWebsite } from "@/context/WebsiteContext"
 import { useState, useEffect } from "react"
+import Image from "next/image"
+import man from "./man.png" 
+import woman from "./woman.png"
 
 const staticTestimonials = [
   {
@@ -44,6 +47,16 @@ const avatarPool = [
   "https://img.freepik.com/free-photo/happy-indian-man-smiling_23-2148990150.jpg",
   "https://img.freepik.com/free-photo/confident-indian-woman-portrait_23-2148990150.jpg"
 ]
+
+const getAvatarByName = name => {
+  const femaleNames = ["priya", "anjali", "pooja", "neha", "kavita", "sunita"]
+  return femaleNames.some(f =>
+    name?.toLowerCase().includes(f)
+  )
+    ? woman
+    : man
+}
+
 
 const TestimonialsSwiperLight = () => {
   const { website } = useWebsite()
@@ -136,8 +149,8 @@ const TestimonialsSwiperLight = () => {
                       className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm hover:shadow-lg transition h-full"
                     >
                       <div className="flex items-center gap-4 mb-4">
-                        <img
-                          src={item.avatar}
+                        <Image
+                          src={getAvatarByName(item.name)}
                           alt={item.name}
                           className="w-14 h-14 rounded-full object-cover ring-2 ring-red-300"
                         />

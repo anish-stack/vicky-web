@@ -17,8 +17,8 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50">
-      <div className="bg-white/80 backdrop-blur-lg border-b border-red-100">
-        <div className="max-w-7xl mx-auto px-4 h-14 md:h-20 flex items-center justify-between">
+      <div className="bg-white border-b border-red-100">
+        <div className="max-w-7xl mx-auto px-3 h-14 md:h-20 flex items-center justify-between">
 
           {/* Logo */}
           <a href="#home" className="flex items-center">

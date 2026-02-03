@@ -89,7 +89,7 @@ const OneWayTrip = () => {
   const routes = transformedRoutes.length > 0 ? transformedRoutes : staticRoutes;
 
   return (
-    <section className="bg-gradient-to-b from-white to-red-50 py-6 md:py-10 px-4">
+    <section className="bg-gradient-to-b from-white to-red-50 py-6 md:py-10 px-3">
       <div className="max-w-7xl mx-auto">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
           Popular One Way Drop Routes Price
@@ -100,13 +100,13 @@ const OneWayTrip = () => {
           {(showMore ? routes : routes.slice(0, 3)).map((item, index) => (
             <div
               key={index}
-              className="bg-white shadow-lg border border-gray-200 rounded-xl p-5 hover:shadow-2xl transition"
+              className="bg-white shadow-lg border border-gray-200 rounded-xl p-3.5 hover:shadow-2xl transition"
             >
-              <h3 className="font-semibold text-lg text-red-600 mb-3">
+              <h3 className="font-semibold text-sm md:text-lg text-red-600 mb-3">
                 {item.route}
               </h3>
 
-              <ul className="space-y-2 text-sm text-gray-700">
+              <ul className="space-y-2 text-xs md:text-sm text-gray-700">
                 {item.prices.map((p, i) => (
                   <li
                     key={i}

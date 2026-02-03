@@ -155,7 +155,7 @@ export default function RideSection() {
 
   return (
     <section id="rides" className="py-6 md:py-10 bg-zinc-50">
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-3 md:px-3">
         <div className="text-center mb-6 md:mb-16">
           <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-red-100 text-red-600 text-m font-bold">
             Popular Tours
@@ -196,11 +196,11 @@ export default function RideSection() {
                   </div>
                 </div>
 
-                <div className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
+                <div className="p-2.5 md:p-4 flex flex-col flex-grow">
+                  <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
                     {tour.title}
                   </h3>
-                  <p className="text-zinc-600 mb-6 flex-grow">
+                  <p className="text-zinc-600 mb-3 flex-grow">
                     {tour.description}
                   </p>
 
@@ -213,7 +213,7 @@ export default function RideSection() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.97 }}
-                      className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-md hover:bg-primary-dark transition-colors"
+                      className="bg-red-600 text-white px-3 md:px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-md hover:bg-primary-dark transition-colors"
                     >
                       Enquiry Now
                       <ArrowRight size={18} />

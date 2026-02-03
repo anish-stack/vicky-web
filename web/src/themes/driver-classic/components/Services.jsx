@@ -20,7 +20,7 @@ const services = [
 
 const Services = () => {
   return (
-    <section className="bg-gradient-to-b from-white to-red-50 py-6 md:py-10 px-4">
+    <section className="bg-gradient-to-b from-white to-red-50 py-6 md:py-10 px-3">
       <div className="max-w-7xl mx-auto text-center">
         {/* Heading */}
         <p className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-red-100 text-red-600 text-m font-bold">Latest Services</p>
@@ -33,7 +33,7 @@ const Services = () => {
           {services.map((item, index) => (
             <div
               key={index}
-              className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-4"
+              className="bg-white/90 backdrop-blur rounded-2xl shadow-lg p-3"
             >
               <img
                 src={item.image}

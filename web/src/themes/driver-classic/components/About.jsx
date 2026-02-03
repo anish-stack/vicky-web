@@ -43,7 +43,7 @@ export default function AboutModernLight() {
         <div className="absolute bottom-[-10%] left-[-10%] w-[520px] h-[520px] bg-red-100/60 blur-[160px] rounded-full" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-12">
+      <div className="max-w-7xl mx-auto px-3 lg:px-12">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -88,7 +88,7 @@ export default function AboutModernLight() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
 
-              <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur border border-red-200 rounded-2xl p-5">
+              <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur border border-red-200 rounded-2xl p-3">
                 <div className="flex items-center gap-4">
                   <div className="p-3 rounded-xl bg-red-100">
                     <ShieldCheck size={26} className="text-red-600" />
@@ -115,10 +115,10 @@ export default function AboutModernLight() {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.15 }}
-                className="group rounded-2xl p-6 bg-white border border-gray-200 hover:border-red-400 hover:shadow-lg transition"
+                className="group rounded-2xl p-3 bg-white border border-gray-200 hover:border-red-400 hover:shadow-lg transition"
               >
-                <div className="flex items-start gap-5">
-                  <div className="p-4 rounded-xl bg-red-100 group-hover:bg-red-200 transition">
+                <div className="flex items-start gap-3">
+                  <div className="p-3 rounded-xl bg-red-100 group-hover:bg-red-200 transition">
                     <item.icon className="text-red-600" size={28} />
                   </div>
 

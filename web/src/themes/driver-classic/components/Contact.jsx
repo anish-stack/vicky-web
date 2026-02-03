@@ -127,7 +127,7 @@ ${formData.message}
   return (
     <section
       id="contact"
-      className="relative  py-6 md:py-10 bg-gradient-to-br from-gray-50 via-white to-red-50/30 overflow-hidden"
+      className="relative py-6 md:py-10 bg-gradient-to-br from-gray-50 via-white to-red-50/30 overflow-hidden overflow-x-hidden"
     >
       {/* Decorative blobs - smaller on mobile */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -135,14 +135,14 @@ ${formData.message}
         <div className="absolute -bottom-20 -right-20 sm:bottom-10 sm:right-10 w-80 h-80 sm:w-[500px] sm:h-[500px] bg-red-100/20 rounded-full blur-3xl" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
-          className="text-center mb-10 sm:mb-14 md:mb-16"
+          className="text-center mb-8 sm:mb-8 md:mb-8"
         >
           <span className="inline-flex items-center gap-2 px-5 sm:px-6 py-1.5 sm:py-2 rounded-full bg-red-100 text-red-700 font-semibold text-sm sm:text-base">
             Contact {companyName}

@@ -15,49 +15,20 @@ export default function Footer() {
 
   const socialLinks = website?.socialLinks || {};
 
-  // 🔗 Icon mapping
   const socials = [
-    {
-      key: "facebook",
-      url: socialLinks.facebook,
-      Icon: Facebook,
-    },
-    {
-      key: "instagram",
-      url: socialLinks.instagram,
-      Icon: Instagram,
-    },
-    {
-      key: "twitter",
-      url: socialLinks.twitter,
-      Icon: Twitter,
-    },
-    {
-      key: "linkedin",
-      url: socialLinks.linkedin,
-      Icon: Linkedin,
-    },
-    {
-      key: "youtube",
-      url: socialLinks.youtube,
-      Icon: Youtube,
-    },
-    {
-      key: "website",
-      url: socialLinks.website,
-      Icon: Globe,
-    },
-    {
-      key: "whatsapp",
-      url: socialLinks.whatsapp,
-      Icon: MessageCircle,
-    },
+    { key: "facebook", url: socialLinks.facebook, Icon: Facebook },
+    { key: "instagram", url: socialLinks.instagram, Icon: Instagram },
+    { key: "twitter", url: socialLinks.twitter, Icon: Twitter },
+    { key: "linkedin", url: socialLinks.linkedin, Icon: Linkedin },
+    { key: "youtube", url: socialLinks.youtube, Icon: Youtube },
+    { key: "website", url: socialLinks.website, Icon: Globe },
+    { key: "whatsapp", url: socialLinks.whatsapp, Icon: MessageCircle },
   ];
 
   return (
     <footer className="w-full py-3 md:py-5 bg-zinc-950 border-t border-zinc-800">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-zinc-400">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-2 text-sm text-zinc-400">
 
           {/* Left */}
           <div className="text-center md:text-left">
@@ -76,8 +47,16 @@ export default function Footer() {
             {website?.basicInfo?.name || "TaxiSafar"}. All rights reserved.
           </div>
 
-          {/* Right - Dynamic Social Icons */}
-          <div className="flex items-center gap-4">
+          {/* Right - Mobile background row */}
+          <div
+            className="
+              flex items-center gap-4
+              px-4 py-2
+              rounded-xl
+              bg-zinc-900/80
+              md:bg-transparent md:p-0
+            "
+          >
             {socials.map(({ key, url, Icon }) =>
               url ? (
                 <a
@@ -86,7 +65,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={key}
-                  className="hover:text-primary transition-colors"
+                  className="hover:text-white transition-colors"
                 >
                   <Icon size={18} />
                 </a>
