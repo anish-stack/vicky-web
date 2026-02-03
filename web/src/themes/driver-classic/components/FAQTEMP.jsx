@@ -6,7 +6,7 @@ export default function FAQTEMP() {
   const [openOneWay, setOpenOneWay] = useState(null);
   return (
     <section className="py-12 bg-gradient-to-b from-gray-50 to-white">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-3">
         <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
           Frequently Asked <span className="text-red-600">Questions</span>
         </h2>

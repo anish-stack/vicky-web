@@ -7,6 +7,7 @@ import axios from 'axios';
 export default function Contact() {
   const { website } = useWebsite();
 
+  
   const basicInfo = website?.basicInfo || {};
   const companyName = basicInfo.name || "Taxi Safar";
   const phone = basicInfo.phone || "9876543210";
@@ -15,6 +16,7 @@ export default function Contact() {
   const city = basicInfo.city || "Delhi";
   const serviceArea = basicInfo.serviceArea || "Delhi NCR";
   const officeHours = basicInfo.officeHours || "24/7 Available";
+  // console.log("basicInfo.whatsapp",basicInfo.whatsapp)
 
   const contactMethods = [
     {
@@ -178,7 +180,7 @@ ${formData.message}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: idx * 0.1 }}
-                    whileHover={{ scale: 1.03, translateX: 4 }}
+                    whileHover={{ scale: 1.03 }}
                     className="flex items-center gap-3 sm:gap-4 p-4 rounded-xl bg-gray-50/70 border border-gray-200 hover:border-red-400 hover:bg-red-50/60 transition-all group touch-manipulation"
                   >
                     <div className={`${method.color} p-3 rounded-xl group-hover:scale-110 transition-transform shadow-sm flex-shrink-0`}>
