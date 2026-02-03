@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { Plus, Minus } from "lucide-react";
 
-const FAQ = () => {
+export default function FAQTEMP() {
   const [openTour, setOpenTour] = useState(null);
   const [openOneWay, setOpenOneWay] = useState(null);
-
   return (
     <section className="py-12 bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-7xl mx-auto px-4">
@@ -30,11 +29,15 @@ const FAQ = () => {
                 },
                 {
                   q: "Q2. Tour package minimum kitne din ka hota hai?",
-                  a: ["👉 Tour package minimum 1 day ke liye available hota hai."],
+                  a: [
+                    "👉 Tour package minimum 1 day ke liye available hota hai.",
+                  ],
                 },
                 {
                   q: "Q3. Kya tour package mein hotel booking included hoti hai?",
-                  a: ["👉 Nahi, hotel booking included nahi hoti, jab tak clearly mention na ho."],
+                  a: [
+                    "👉 Nahi, hotel booking included nahi hoti, jab tak clearly mention na ho.",
+                  ],
                 },
                 {
                   q: "Q4. Extra charges kab lagte hain?",
@@ -156,6 +159,4 @@ const FAQ = () => {
       </div>
     </section>
   );
-};
-
-export default FAQ;
+}

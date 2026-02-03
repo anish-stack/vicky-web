@@ -8,7 +8,7 @@ import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import Services from "./components/Services";
 import OneWayTrip from "./components/OneWayTrip";
-import FAQ from "./components/faq";
+import FAQTEMP from './components/FAQTEMP'
 import { useWebsite } from "@/context/WebsiteContext";
 
 const ThemeOne = () => {
@@ -24,7 +24,7 @@ const ThemeOne = () => {
       <About />
       <Services />
       {website?.sections?.reviews && <Testimonials />}
-      <FAQ />
+      <FAQTEMP />
       {website?.sections?.contact && <Contact />}
 
       <Footer />
