@@ -31,6 +31,7 @@ coverage/
 web/node_modules/
 web/dist/
 web/build/
+web/.next
 
 admin/node_modules/
 admin/dist/
