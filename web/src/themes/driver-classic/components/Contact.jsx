@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, MessageCircle, Mail, MapPin, Send, Clock, CheckCircle2 } from 'lucide-react';
 import { useWebsite } from '@/context/WebsiteContext';
-import axios from 'axios';
 
 export default function Contact() {
   const { website } = useWebsite();
 
-  
   const basicInfo = website?.basicInfo || {};
   const companyName = basicInfo.name || "Taxi Safar";
   const phone = basicInfo.phone || "9876543210";
@@ -16,41 +14,15 @@ export default function Contact() {
   const city = basicInfo.city || "Delhi";
   const serviceArea = basicInfo.serviceArea || "Delhi NCR";
   const officeHours = basicInfo.officeHours || "24/7 Available";
-  // console.log("basicInfo.whatsapp",basicInfo.whatsapp)
 
   const contactMethods = [
-    {
-      icon: <Phone size={28} />,
-      title: "Call Us",
-      value: `+91 ${phone}`,
-      link: `tel:+91${phone}`,
-      description: "24/7 Customer Support",
-      color: "bg-blue-500",
-    },
-    {
-      icon: <MessageCircle size={28} />,
-      title: "WhatsApp",
-      value: `+91 ${whatsapp}`,
-      link: `https://wa.me/91${whatsapp}`,
-      description: "Quick Response",
-      color: "bg-green-500",
-    },
-    {
-      icon: <Mail size={28} />,
-      title: "Email",
-      value: email,
-      link: `mailto:${email}`,
-      description: "Reply within 2 hours",
-      color: "bg-red-500",
-    },
+    { icon: <Phone size={22} />, title: "Call Us", value: `+91 ${phone}`, link: `tel:+91${phone}`, description: "24/7 Support", color: "bg-blue-500" },
+    { icon: <MessageCircle size={22} />, title: "WhatsApp", value: `+91 ${whatsapp}`, link: `https://wa.me/91${whatsapp}`, description: "Instant Reply", color: "bg-green-500" },
+    { icon: <Mail size={22} />, title: "Email", value: email, link: `mailto:${email}`, description: "Quick Response", color: "bg-red-500" },
   ];
 
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    tripType: 'one-way',
-    message: '',
+    name: '', phone: '', email: '', tripType: 'one-way', message: '',
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -59,39 +31,9 @@ export default function Contact() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   try {
-  //     const response = await axios.post(
-  //       `https://www.driverwebiste.taxisafar.com/api/contact`,
-  //       { ...formData, website }
-  //     );
-
-  //     setIsSubmitted(true);
-
-  //     if (response.data.success) {
-  //       setTimeout(() => {
-  //         setIsSubmitted(false);
-  //         setFormData({
-  //           name: '',
-  //           phone: '',
-  //           email: '',
-  //           tripType: 'one-way',
-  //           message: '',
-  //         });
-  //       }, 3200);
-  //     }
-  //   } catch (error) {
-  //     console.error("Submission error:", error?.response?.data || error);
-  //   }
-  // };
-
   const handleSubmit = (e) => {
-  e.preventDefault();
-
-  const whatsappNumber = whatsapp; // already defined above
-
-  const text = `
+    e.preventDefault();
+    const text = `
 📩 *New Enquiry - ${companyName}*
 
 👤 *Name:* ${formData.name}
@@ -103,117 +45,97 @@ export default function Contact() {
 ${formData.message}
 
 🌐 *Website:* ${website || 'N/A'}
-  `;
+    `.trim();
 
-  const whatsappURL = `https://wa.me/91${whatsappNumber}?text=${encodeURIComponent(text)}`;
-
-  // redirect to WhatsApp
-  window.open(whatsappURL, "_blank");
-
-  // success UI (same as before)
-  setIsSubmitted(true);
-
-  setTimeout(() => {
-    setIsSubmitted(false);
-    setFormData({
-      name: '',
-      phone: '',
-      email: '',
-      tripType: 'one-way',
-      message: '',
-    });
-  }, 3200);
-};
-
+    window.open(`https://wa.me/91${whatsapp}?text=${encodeURIComponent(text)}`, "_blank");
+    setIsSubmitted(true);
+    setTimeout(() => {
+      setIsSubmitted(false);
+      setFormData({ name: '', phone: '', email: '', tripType: 'one-way', message: '' });
+    }, 3000);
+  };
 
   return (
     <section
       id="contact"
-      className="relative py-6 md:py-10 bg-gradient-to-br from-gray-50 via-white to-red-50/30 overflow-hidden overflow-x-hidden"
+      className="relative py-8 md:py-14 bg-gradient-to-br from-gray-50 via-white to-red-50/20 overflow-x-hidden"
     >
-      {/* Decorative blobs - smaller on mobile */}
+      {/* Subtle blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-16 -left-16 sm:-top-20 sm:-left-20 w-64 h-64 sm:w-96 sm:h-96 bg-red-100/30 rounded-full blur-3xl" />
-        <div className="absolute -bottom-20 -right-20 sm:bottom-10 sm:right-10 w-80 h-80 sm:w-[500px] sm:h-[500px] bg-red-100/20 rounded-full blur-3xl" />
+        <div className="absolute -top-20 -left-20 w-56 h-56 bg-red-100/20 rounded-full blur-2xl" />
+        <div className="absolute -bottom-24 -right-16 w-64 h-64 bg-red-100/15 rounded-full blur-2xl" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-          className="text-center mb-8 sm:mb-8 md:mb-8"
+          viewport={{ once: true, margin: "-50px" }} // helps trigger earlier on mobile
+          transition={{ duration: 0.6 }}
+          className="text-center mb-8 sm:mb-10"
         >
-          <span className="inline-flex items-center gap-2 px-5 sm:px-6 py-1.5 sm:py-2 rounded-full bg-red-100 text-red-700 font-semibold text-sm sm:text-base">
+          <span className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-red-50 text-red-700 text-xs sm:text-sm font-medium">
             Contact {companyName}
           </span>
-          <h2 className="mt-4 sm:mt-5 text-2xl md:text-3xl lg:text-4xl  font-bold text-gray-900 leading-tight">
+          <h2 className="mt-3 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">
             Let's Start Your <span className="text-red-600">Journey</span>
           </h2>
-          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-lg text-gray-600 max-w-xl mx-auto px-2 sm:px-0">
-            Questions? Booking? Quote? We're here for you — usually reply in <strong>under 2 hours</strong>.
+          <p className="mt-2 text-gray-600 text-xs sm:text-sm md:text-base max-w-md mx-auto px-2">
+            Questions? Bookings? Quotes? — Usually reply in <strong>under 2 hours</strong>.
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
-          {/* Left column - Contact cards + Office info */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-8">
+          {/* Left column */}
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -16 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="lg:col-span-1 space-y-6 sm:space-y-7"
+            transition={{ duration: 0.6 }}
+            className="space-y-5 lg:col-span-1"
           >
-            {/* Contact Methods */}
-            <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-7 md:p-8 shadow-lg sm:shadow-xl border border-gray-100/80">
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-5 sm:mb-6">Get in Touch</h3>
-              <div className="space-y-4 sm:space-y-5">
+            {/* Contact cards */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-5 shadow-sm border border-gray-100">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Get in Touch</h3>
+              <div className="space-y-3.5">
                 {contactMethods.map((method, idx) => (
                   <motion.a
                     key={idx}
                     href={method.link}
                     target={method.title === "WhatsApp" ? "_blank" : undefined}
                     rel={method.title === "WhatsApp" ? "noopener noreferrer" : undefined}
-                    initial={{ opacity: 0, y: 15 }}
+                    initial={{ opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: idx * 0.1 }}
-                    whileHover={{ scale: 1.03 }}
-                    className="flex items-center gap-3 sm:gap-4 p-4 rounded-xl bg-gray-50/70 border border-gray-200 hover:border-red-400 hover:bg-red-50/60 transition-all group touch-manipulation"
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 hover:border-red-300 hover:bg-red-50/30 transition-all group"
                   >
-                    <div className={`${method.color} p-3 rounded-xl group-hover:scale-110 transition-transform shadow-sm flex-shrink-0`}>
+                    <div className={`${method.color} p-2.5 rounded-md group-hover:scale-105 transition-transform flex-shrink-0`}>
                       <div className="text-white">{method.icon}</div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm sm:text-base text-gray-600 font-medium">{method.title}</div>
-                      <div className="font-semibold text-gray-900 group-hover:text-red-700 transition-colors text-base sm:text-lg truncate">
+                    <div className="min-w-0">
+                      <div className="text-xs sm:text-sm font-medium text-gray-600">{method.title}</div>
+                      <div className="font-semibold text-gray-900 group-hover:text-red-600 text-sm sm:text-base truncate">
                         {method.value}
                       </div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-0.5">{method.description}</div>
+                      <div className="text-xs text-gray-500">{method.description}</div>
                     </div>
                   </motion.a>
                 ))}
               </div>
             </div>
 
-            {/* Office Info */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.25 }}
-              className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-7 md:p-8 shadow-lg sm:shadow-xl border border-gray-100/80"
-            >
-              <div className="space-y-6">
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <div className="bg-red-50 p-3 rounded-xl flex-shrink-0">
-                    <MapPin className="text-red-600" size={26} />
+            {/* Office info */}
+            <div className="bg-white rounded-xl sm:rounded-2xl p-1 ">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-red-50 p-2.5 rounded-md flex-shrink-0">
+                    <MapPin className="text-red-600" size={20} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-base sm:text-lg">Our Office</h4>
-                    <p className="text-gray-700 mt-1.5 leading-relaxed text-sm sm:text-base">
+                    <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Our Office</h4>
+                    <p className="text-gray-700 text-xs sm:text-sm mt-1 leading-relaxed">
                       {companyName}<br />
                       {city}, {serviceArea.split(',')[0]}<br />
                       India
@@ -221,43 +143,43 @@ ${formData.message}
                   </div>
                 </div>
 
-                <div className="flex items-start gap-3 sm:gap-4 pt-5 border-t border-gray-100">
-                  <div className="bg-red-50 p-3 rounded-xl flex-shrink-0">
-                    <Clock className="text-red-600" size={26} />
+                <div className="flex items-start gap-3 pt-3 border-t border-gray-100">
+                  <div className="bg-red-50 p-2.5 rounded-md flex-shrink-0">
+                    <Clock className="text-red-600" size={20} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-base sm:text-lg">Availability</h4>
-                    <p className="text-gray-700 mt-1.5 text-sm sm:text-base">{officeHours}</p>
+                    <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Availability</h4>
+                    <p className="text-gray-700 text-xs sm:text-sm mt-1">{officeHours}</p>
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
 
-          {/* Right column - Form */}
+          {/* Form column */}
           <motion.div
-            initial={{ opacity: 0, y: 25 }}
+            initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.15 }}
+            transition={{ duration: 0.7 }}
             className="lg:col-span-2"
           >
-            <div className="bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 xl:p-12 shadow-xl sm:shadow-2xl border border-gray-100/80">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-2 sm:p-6 lg:p-8 ">
               {!isSubmitted ? (
                 <>
-                  <div className="mb-6 sm:mb-8">
-                    <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3">
+                  <div className="mb-5">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1.5">
                       Send Your Enquiry
                     </h3>
-                    <p className="text-gray-600 text-base sm:text-lg">
-                      Fill in your details — we'll get back to you very soon.
+                    <p className="text-gray-600 text-xs sm:text-sm">
+                      Fill details — we'll reply quickly.
                     </p>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-7">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           Full Name *
                         </label>
                         <input
@@ -266,13 +188,12 @@ ${formData.message}
                           name="name"
                           value={formData.name}
                           onChange={handleChange}
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none transition-all bg-gray-50 hover:bg-white text-gray-900 placeholder-gray-400 text-base"
+                          className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition text-sm bg-gray-50/70 placeholder-gray-500"
                           placeholder="Your name"
                         />
                       </div>
-
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           Phone Number *
                         </label>
                         <input
@@ -281,15 +202,15 @@ ${formData.message}
                           name="phone"
                           value={formData.phone}
                           onChange={handleChange}
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none transition-all bg-gray-50 hover:bg-white text-gray-900 placeholder-gray-400 text-base"
+                          className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition text-sm bg-gray-50/70 placeholder-gray-500"
                           placeholder="+91 98765 43210"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           Email Address *
                         </label>
                         <input
@@ -298,20 +219,19 @@ ${formData.message}
                           name="email"
                           value={formData.email}
                           onChange={handleChange}
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none transition-all bg-gray-50 hover:bg-white text-gray-900 placeholder-gray-400 text-base"
+                          className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none transition text-sm bg-gray-50/70 placeholder-gray-500"
                           placeholder="your@email.com"
                         />
                       </div>
-
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           Trip Type *
                         </label>
                         <select
                           name="tripType"
                           value={formData.tripType}
                           onChange={handleChange}
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none bg-gray-50 hover:bg-white text-gray-900 text-base appearance-none"
+                          className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none bg-gray-50/70 text-sm appearance-none"
                         >
                           <option value="one-way">One Way Trip</option>
                           <option value="round-trip">Round Trip</option>
@@ -323,7 +243,7 @@ ${formData.message}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1.5 sm:mb-2">
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                         Message / Trip Details *
                       </label>
                       <textarea
@@ -331,39 +251,39 @@ ${formData.message}
                         name="message"
                         value={formData.message}
                         onChange={handleChange}
-                        rows={5}
-                        className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none resize-none bg-gray-50 hover:bg-white text-gray-900 placeholder-gray-400 text-base"
-                        placeholder="Pickup city • Drop city • Date • Passengers • Vehicle preference • Any special request..."
+                        rows={4}
+                        className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none resize-none text-sm bg-gray-50/70 placeholder-gray-500"
+                        placeholder="Pickup • Drop • Date • Passengers • Vehicle • Requests..."
                       />
                     </div>
 
                     <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       type="submit"
-                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl font-semibold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-3 shadow-lg shadow-red-200/50 transition-all mt-2"
+                      className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg font-medium text-sm sm:text-base flex items-center justify-center gap-2 shadow-sm transition-all"
                     >
-                      <Send size={20} className="sm:size-22" />
+                      <Send size={16} />
                       Send Enquiry
                     </motion.button>
 
-                    <p className="text-center text-xs sm:text-sm text-gray-500 pt-2">
-                      We usually respond within 2 hours during working hours
+                    <p className="text-center text-xs text-gray-500 mt-1.5">
+                      Usually respond within 2 hours
                     </p>
                   </form>
                 </>
               ) : (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.92 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-16 sm:py-24 md:py-32"
+                  className="text-center py-12 sm:py-16"
                 >
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 sm:mb-8 shadow-md">
-                    <CheckCircle2 className="text-green-600" size={40} />
+                  <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 className="text-green-600" size={28} />
                   </div>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">Thank You!</h3>
-                  <p className="text-lg sm:text-xl text-gray-600">Your enquiry has been sent successfully.</p>
-                  <p className="text-gray-500 mt-2 sm:mt-3 text-sm sm:text-base">We'll get in touch with you very soon.</p>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Thank You!</h3>
+                  <p className="text-gray-600 text-sm">Enquiry sent successfully.</p>
+                  <p className="text-gray-500 text-xs mt-1.5">We'll contact you soon.</p>
                 </motion.div>
               )}
             </div>

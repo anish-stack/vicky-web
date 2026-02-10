@@ -18,12 +18,12 @@ const ThemeOne = () => {
     <div className="bg-white text-zinc-900">
       <Header />
       <Hero />
-      {website?.sections?.packages && <RideSection />}
-      {website?.sections?.popularPrices && <OneWayTrip />}
+      {website?.packages.length > 0 && <RideSection />}
+      {website?.popularPrices.length > 0 && <OneWayTrip />}
 
       <About />
       <Services />
-      {website?.sections?.reviews && <Testimonials />}
+      {website?.reviews.length > 0 && <Testimonials />}
       <FAQTEMP />
       {website?.sections?.contact && <Contact />}
 

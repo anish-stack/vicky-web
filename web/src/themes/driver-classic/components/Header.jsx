@@ -21,14 +21,21 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-3 h-14 md:h-20 flex items-center justify-between">
 
           {/* Logo */}
-          <a href="#home" className="flex items-center">
+          <a href="#home" className="flex items-center gap-2">
             <img
-              src={website?.basicInfo?.logoUrl || "https://www.taxisafar.com/images/logo/taxisafar-logo.png"}
+              src={
+                website?.basicInfo?.logoUrl ||
+                "https://www.taxisafar.com/images/logo/taxisafar-logo.png"
+              }
               alt={website?.basicInfo?.name || "TaxiSafar Logo"}
-
               className="h-12 w-auto object-contain"
             />
+
+            <h4 className="text-red-600 font-extrabold italic text-3xl tracking-wide">
+              {website?.basicInfo?.logo_name}
+            </h4>
           </a>
+
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-10 text-sm font-semibold text-gray-700">
@@ -46,9 +53,9 @@ export default function Header() {
 
           {/* ✅ Desktop CTA (Download QR only) */}
           <div className="hidden md:block">
-          
+
             <button className="px-6 py-3 rounded-full bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition active:scale-95 shadow-sm">
-            Contact Us
+              Contact Us
             </button>
           </div>
 
