@@ -36,6 +36,14 @@ body {
 @tailwind components;
 @tailwind utilities;
 
+
+@font-face {
+  font-family: "RobotoBlack";
+  src: url("/fonts/Roboto-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+}
+
 @font-face {
   font-family: "SF Pro Display";
   src: url("/fonts/SF-Pro-Display-Regular.ttf") format("truetype");

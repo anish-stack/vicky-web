@@ -33,6 +33,12 @@ export default function Document() {
           href="/css/app-wa-fba26eda6a3fd6b4d0ce0def1e2ba1d7.css?vsn=d"
         /> */}
 
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap"
+          rel="stylesheet"
+        />
         <link
           rel="stylesheet"
           href="https://site-assets.fontawesome.com/releases/v6.5.2/css/all.css"

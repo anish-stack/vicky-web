@@ -31,9 +31,13 @@ export default function Header() {
               className="h-12 w-auto object-contain"
             />
 
-            <h4 className="text-red-600 font-extrabold italic text-3xl tracking-wide">
+            <h4
+              className="text-red-600 font-extrabold italic text-3xl tracking-wide"
+              style={{ fontFamily: "RobotoBlack" }}
+            >
               {website?.basicInfo?.logo_name}
             </h4>
+
           </a>
 
 
