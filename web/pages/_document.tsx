@@ -26,24 +26,8 @@ export default function Document() {
           href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
         />
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossOrigin="anonymous" />
-        {/* <link
-          rel="stylesheet"
-          data-purpose="Layout StyleSheet"
-          title="Web Awesome"
-          href="/css/app-wa-fba26eda6a3fd6b4d0ce0def1e2ba1d7.css?vsn=d"
-        /> */}
 
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          rel="stylesheet"
-          href="https://site-assets.fontawesome.com/releases/v6.5.2/css/all.css"
-        />
-        {/*
+
 
         <link
           rel="stylesheet"
@@ -63,7 +47,7 @@ export default function Document() {
         <link
           rel="stylesheet"
           href="https://site-assets.fontawesome.com/releases/v6.5.2/css/sharp-light.css"
-        /> */}
+        /> 
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
