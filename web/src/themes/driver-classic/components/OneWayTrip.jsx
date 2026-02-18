@@ -56,7 +56,7 @@ const OneWayTrip = () => {
 
     if (r.suv?.active) {
       prices.push({
-        car: "SUV (Ertiga)",
+        car: "SUV (Maruti Ertiga)",
         price: r.suv.price,
         type: r.suv.allExclusive ? "All Exclusive" : "All Inclusive",
       });
@@ -69,14 +69,7 @@ const OneWayTrip = () => {
         type: r.innova.allExclusive ? "All Exclusive" : "All Inclusive",
       });
     }
-
-    if (r.traveller?.active) {
-      prices.push({
-        car: "Traveller",
-        price: r.traveller.price,
-        type: r.traveller.allExclusive ? "All Exclusive" : "All Inclusive",
-      });
-    }
+    
 
     prices.sort((a, b) => a.price - b.price);
 

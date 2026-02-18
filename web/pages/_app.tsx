@@ -1,3 +1,4 @@
+"use client";
 import type { AppProps } from "next/app";
 import Router, { useRouter } from "next/router";
 import HeaderWithoutMenu from "@/components/headers/headerWithoutMenu";
@@ -9,13 +10,29 @@ import { CustomerProvider } from "@/context/userContext";
 import Link from "next/link";
 import "@/styles/globals.css";
 import { useEffect, useState } from "react";
-import { useWebsite } from "@/context/WebsiteContext";
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+  const [host, setHost] = useState<string>("");
+  useEffect(() => {
+    // Only runs on client → safe
+    const hostname = window.location.hostname.toLowerCase();
+    console.log("Host Name", hostname);
 
-const isDriverThemeRoute =
-  router.pathname === "/[driverId]/[themeId]" || router.pathname === "/[slug]";
+    setHost(hostname);
+  }, []);
+  const isTaxihero =
+    host.endsWith(".taxihero.local") || host.endsWith(".taxihero.co");
+  console.log(isTaxihero);
+  const isDriverThemeRoute =
+    isTaxihero ||
+    router.pathname === "/[driverId]/[themeId]" ||
+    router.pathname === "/[slug]";
+  console.log("Driver", isDriverThemeRoute);
+
+  // if (!host) {
+  //   return null; // or a minimal skeleton / loading spinner
+  // }
   return (
     <>
       <CustomerProvider>

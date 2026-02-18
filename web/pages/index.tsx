@@ -1,72 +1,117 @@
-// import { Inter } from "next/font/google";
-// import Link from "next/link";
-// import "swiper/swiper-bundle.css";
-// import HomeBannerSectionOne from "../components/banners/HomeBanner/One";
-// import HomeAboutUsSectionFour from "../components/about/Four";
-// import HomeServiceSectionTwo from "../components/services/Two";
-// import PricingSectionOne from "../components/priceSection/One";
-// import TestimonialSectionOne from "../components/testimonials/One";
-// import FaqSectionOne from "../components/FAQ/One";
-// import BookingForm from "@/components/form/One";
 import { useEffect } from "react";
-// import axios from 'axios';
-import BannerSectionTwo from "@/components/banners/HomeBanner/Two";
-// import HomeAboutUsSectionTwo from "@/components/about/Two";
-// import HomeAboutUsSectionThree from "@/components/about/Three";
-// import { Col, Row, Container } from "react-bootstrap";
+import { useRouter } from "next/router";
+import Head from "next/head";
+import { GetServerSideProps } from "next";
 
-// import { Swiper, SwiperSlide } from "swiper/react";
-// import { Pagination, Autoplay, Navigation } from "swiper/modules";
-// import "swiper/swiper-bundle.css";
+import BannerSectionTwo from "@/components/banners/HomeBanner/Two";
 import HomeDestination from "@/components/taxisafar/homeDestination";
 import HomeAbout from "@/components/taxisafar/homeAbout";
 import HomeOutstationService from "@/components/taxisafar/homeOutstationService";
 import HomeService from "@/components/taxisafar/homeService";
 import HomeJoinNetwork from "@/components/taxisafar/homeJoinNetwork";
 import HomeCustomerReview from "@/components/taxisafar/homeCustomerReview";
-import Head from "next/head";
-import { useRouter } from "next/router";
 
-export default function Home() {
-  const outstationServicesold = [
+import ThemeRenderer from "@/src/themes/ThemeRenderer";
+import { WebsiteProvider } from "@/context/WebsiteContext";
+
+// ────────────────────────────────────────────────
+// Types
+// ────────────────────────────────────────────────
+
+interface Destination {
+  imgSrc: string;
+  title: string;
+  tripsDays: string;
+}
+
+interface OutstationService {
+  id: number;
+  number: string;
+  title: string;
+  description: string;
+}
+
+interface Slide {
+  imageUrl: string;
+  videoUrl: string;
+}
+
+interface Service {
+  imgSrc: string;
+  title: string;
+  description: string;
+}
+
+interface NetworkItem {
+  imgSrc: string;
+  title: string;
+  description: string;
+  link?: string;
+  serviceType: string;
+}
+
+interface TestimonialUser {
+  name: string;
+  designation: string;
+  image: string;
+}
+
+interface Testimonial {
+  rating: number;
+  description: string;
+  user: TestimonialUser;
+}
+
+interface HomeProps {
+  isDriverWebsite: boolean;
+  driverId: string | null;
+  themeId: string | null;
+
+  blocked: boolean;
+  blockType: "not_live" | "payment_failed" | "expired" | null;
+  reason: string | null;
+}
+
+// ────────────────────────────────────────────────
+// Main Component
+// ────────────────────────────────────────────────
+
+export default function Home({
+  isDriverWebsite,
+  driverId,
+  themeId,
+  blocked,
+  blockType,
+  reason,
+}: HomeProps) {
+  const router = useRouter();
+
+  // ===== DATA (your existing) =====
+
+  const destinations: Destination[] = [
     {
-      id: 1,
-      number: "01",
-      title: "Transport Services",
-      description:
-        "No Unexpected Shortages  |  Vast Fleet of Vehicles  |  Cabs Available Year-Round, for Every Route",
+      imgSrc: "/images/destinations/rishikesh-place-to-visit.png",
+      title: "New Delhi To Haridwar, Rishikesh",
+      tripsDays: "Round Trip | 2 Days",
     },
     {
-      id: 2,
-      number: "02",
-      title: "Single Journey Fare",
-      description:
-        "No Return Charges  | No Excessive Pricing  |  No Hidden Fees | Low Initial Deposit",
+      imgSrc: "/images/destinations/mathura-and-vrindavan.jpg",
+      title: "New Delhi To Mathura Vrindavan UP",
+      tripsDays: "Round Trip | 2 Days",
     },
     {
-      id: 3,
-      number: "03",
-      title: "Pet-Friendly Ride",
-      description:
-        "Travel with Your Furry Companions | Pets Welcome: Dogs, Cats, Birds",
+      imgSrc: "/images/destinations/snow-manali.jpg",
+      title: "New Delhi To Shimla, Manali",
+      tripsDays: "Round Trip | 5 Days",
     },
     {
-      id: 4,
-      number: "04",
-      title: "Our Offerings",
-      description:
-        "Inter-City Travel | Local Car Hire Services | Airport Pickup and Drop-Off | Long-Distance | Ride Bookings",
-    },
-    {
-      id: 5,
-      number: "05",
-      title: "Guaranteed Luggage Room",
-      description:
-        "Ample Storage in Trunk or Carrier  | No Concerns with CNG Vehicle Storage",
+      imgSrc: "/images/destinations/jaipur.jpg",
+      title: "New Delhi To Jaipur, Rajasthan",
+      tripsDays: "Round Trip | 3 Days",
     },
   ];
 
-  const outstationServices = [
+  const outstationServices: OutstationService[] = [
     {
       id: 1,
       number: "01",
@@ -111,30 +156,7 @@ export default function Home() {
     },
   ];
 
-  const destinations = [
-    {
-      imgSrc: "/images/destinations/rishikesh-place-to-visit.png",
-      title: "New Delhi To Haridwar, Rishikesh",
-      tripsDays: "Round Trip | 2 Days",
-    },
-    {
-      imgSrc: "/images/destinations/mathura-and-vrindavan.jpg",
-      title: "New Delhi To Mathura Vrindavan UP",
-      tripsDays: "Round Trip | 2 Days",
-    },
-    {
-      imgSrc: "/images/destinations/snow-manali.jpg",
-      title: "New Delhi To Shimla, Manali",
-      tripsDays: "Round Trip | 5 Days",
-    },
-    {
-      imgSrc: "/images/destinations/jaipur.jpg",
-      title: "New Delhi To Jaipur, Rajasthan",
-      tripsDays: "Round Trip | 3 Days",
-    },
-  ];
-
-  const OutstationslidesData = [
+  const outstationSlides: Slide[] = [
     {
       imageUrl: "/images/resource/outstation.jpg",
       videoUrl: "https://youtu.be/18cjF9f5fT0",
@@ -145,7 +167,7 @@ export default function Home() {
     },
   ];
 
-  const latestServices = [
+  const latestServices: Service[] = [
     {
       imgSrc: "/images/services/airport-transfer.jpg",
       title: "Airport Transport",
@@ -166,7 +188,7 @@ export default function Home() {
     },
   ];
 
-  const networkItems = [
+  const networkItems: NetworkItem[] = [
     {
       imgSrc: "/images/our-network/driver.jpg",
       title: "Become a Driver or Attach Your Taxi",
@@ -191,7 +213,7 @@ export default function Home() {
     },
   ];
 
-  const testimonials = [
+  const testimonials: Testimonial[] = [
     {
       rating: 5,
       description:
@@ -214,28 +236,35 @@ export default function Home() {
     },
   ];
 
-  const router = useRouter();
+  // ────────────────────────────────────────────────
+  // Scroll Helpers
+  // ────────────────────────────────────────────────
 
-  const handleBookTaxi = () => {
+  const scrollToHash = (offset = 100): void => {
+    if (!window.location.hash) return;
+
+    const id = window.location.hash.replace("#", "");
+    const element = document.getElementById(id);
+
+    if (element) {
+      const top =
+        element.getBoundingClientRect().top + window.pageYOffset - offset;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  };
+
+  const handleBookTaxi = (): void => {
     router
       .push({
         pathname: "/",
-        // query: { taxisafar_category: 'outstation', taxisafar_triptype: 'oneWay' },
         hash: "navigate-to-top",
       })
       .then(() => {
-        setTimeout(() => {
-          const el = document.getElementById("navigate-to-top");
-          if (el) {
-            const top =
-              el.getBoundingClientRect().top + window.pageYOffset - 100;
-            window.scrollTo({ top, behavior: "smooth" });
-          }
-        }, 100);
+        setTimeout(() => scrollToHash(100), 100);
       });
   };
 
-  const handleOutstationTaxi = () => {
+  const handleOutstationTaxi = (): void => {
     router
       .push({
         pathname: "/",
@@ -246,52 +275,56 @@ export default function Home() {
         hash: "navigate-to-top",
       })
       .then(() => {
-        setTimeout(() => {
-          const el = document.getElementById("navigate-to-top");
-          if (el) {
-            const top =
-              el.getBoundingClientRect().top + window.pageYOffset - 100;
-            window.scrollTo({ top, behavior: "smooth" });
-          }
-        }, 100);
+        setTimeout(() => scrollToHash(100), 100);
       });
   };
 
-  const useHashScrollWithOffset = (offset = 100) => {
-    const router = useRouter();
+  useEffect(() => {
+    if (window.location.hash) {
+      window.scrollTo(0, 0);
+    }
 
-    useEffect(() => {
-      const hash = window.location.hash;
+    const timer = setTimeout(() => scrollToHash(100), 50);
 
-      if (hash) {
-        window.scrollTo(0, 0);
-      }
+    const handleHashChange = (): void => {
+      scrollToHash(100);
+    };
 
-      const handleScrollWithOffset = () => {
-        if (window.location.hash) {
-          const id = window.location.hash.replace("#", "");
-          const el = document.getElementById(id);
-          if (el) {
-            const top =
-              el.getBoundingClientRect().top + window.pageYOffset - offset;
-            window.scrollTo({ top, behavior: "smooth" });
-          }
-        }
-      };
+    router.events.on("hashChangeComplete", handleHashChange);
 
-      setTimeout(() => {
-        handleScrollWithOffset();
-      }, 50);
+    return () => {
+      router.events.off("hashChangeComplete", handleHashChange);
+      clearTimeout(timer);
+    };
+  }, [router]);
 
-      router.events.on("hashChangeComplete", handleScrollWithOffset);
+  // ────────────────────────────────────────────────
+  // DRIVER WEBSITE RENDER
+  // ────────────────────────────────────────────────
 
-      return () => {
-        router.events.off("hashChangeComplete", handleScrollWithOffset);
-      };
-    }, [router, offset]);
-  };
+  if (isDriverWebsite) {
+    if (blocked) {
+      return (
+        <div style={{ padding: 40 }}>
+          <h1>Website Blocked</h1>
+          <p>
+            <b>Type:</b> {blockType}
+          </p>
+          <p>{reason}</p>
+        </div>
+      );
+    }
 
-  useHashScrollWithOffset(100);
+    return (
+      <WebsiteProvider driverId={driverId} themeId={themeId}>
+        <ThemeRenderer />
+      </WebsiteProvider>
+    );
+  }
+
+  // ────────────────────────────────────────────────
+  // MAIN WEBSITE RENDER
+  // ────────────────────────────────────────────────
 
   return (
     <>
@@ -332,7 +365,7 @@ export default function Home() {
         <HomeOutstationService
           title="Best Outstation Taxi <br /> Services"
           outstationServices={outstationServices}
-          OutstationslidesData={OutstationslidesData}
+          OutstationslidesData={outstationSlides}
           buttonName="Book Outstation Cab"
           handleOutstationTaxi={handleOutstationTaxi}
         />
@@ -363,3 +396,145 @@ export default function Home() {
     </>
   );
 }
+
+// ────────────────────────────────────────────────
+// SSR (Subdomain based)
+// ────────────────────────────────────────────────
+
+export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+  try {
+    const host = (req.headers.host || "").toLowerCase();
+    const cleanHost = host.split(":")[0]; // remove port
+
+    const MAIN_DOMAINS = [
+      "taxisafar.com",
+      "www.taxisafar.com",
+      "taxisafar.local",
+      "www.taxisafar.local",
+    ];
+
+    // ✅ MAIN WEBSITE
+    if (MAIN_DOMAINS.includes(cleanHost)) {
+      return {
+        props: {
+          isDriverWebsite: false,
+          driverId: null,
+          themeId: null,
+          blocked: false,
+          blockType: null,
+          reason: null,
+        },
+      };
+    }
+
+    // ✅ DRIVER DOMAIN (PROD + LOCAL)
+    const isTaxiheroDomain =
+      cleanHost.endsWith(".taxihero.com") ||
+      cleanHost.endsWith(".taxihero.local");
+
+    if (!isTaxiheroDomain) {
+      return { notFound: true };
+    }
+
+    // Extract subdomain
+    const subdomain = cleanHost
+      .replace(".taxihero.co", "")
+      .replace(".taxihero.local", "");
+
+    // ignore www or root
+    if (!subdomain || subdomain === "www") {
+      return {
+        props: {
+          isDriverWebsite: false,
+          driverId: null,
+          themeId: null,
+          blocked: false,
+          blockType: null,
+          reason: null,
+        },
+      };
+    }
+
+    // Fetch driver website details
+    const res = await fetch(
+      `https://www.driverwebiste.taxisafar.com/api/website/detail/${subdomain}`,
+    );
+
+    if (!res.ok) return { notFound: true };
+
+    const json = await res.json();
+    if (!json?.success || !json?.data) return { notFound: true };
+
+    const website = json.data;
+
+    const driverId = website?.driverId || null;
+    const themeId = website?.themeId?.themeId || null;
+
+    if (!driverId || !themeId) return { notFound: true };
+
+    // ✅ checks
+    const paidTill = website?.paidTill ? new Date(website.paidTill) : null;
+    const now = new Date();
+
+    const isExpired = !paidTill || paidTill.getTime() < now.getTime();
+    const isPaid = website?.subscription?.status === "paid";
+    const isLive = website?.isLive === true;
+
+    // Priority 1: Live check
+    if (!isLive) {
+      return {
+        props: {
+          isDriverWebsite: true,
+          driverId,
+          themeId,
+          blocked: true,
+          blockType: "not_live",
+          reason: "This website is currently not live.",
+        },
+      };
+    }
+
+    // Priority 2: Payment check
+    if (!isPaid) {
+      return {
+        props: {
+          isDriverWebsite: true,
+          driverId,
+          themeId,
+          blocked: true,
+          blockType: "payment_failed",
+          reason: "Payment verification pending.",
+        },
+      };
+    }
+
+    // Priority 3: Expiry check
+    if (isExpired) {
+      return {
+        props: {
+          isDriverWebsite: true,
+          driverId,
+          themeId,
+          blocked: true,
+          blockType: "expired",
+          reason: `Subscription expired on ${paidTill?.toLocaleDateString()}. Please renew.`,
+        },
+      };
+    }
+
+    // ✅ All checks passed
+    return {
+      props: {
+        isDriverWebsite: true,
+        driverId,
+        themeId,
+        blocked: false,
+        blockType: null,
+        reason: null,
+      },
+    };
+  } catch (err) {
+    console.error("Index SSR error:", err);
+    return { notFound: true };
+  }
+};
