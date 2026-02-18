@@ -429,7 +429,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
 
     // ✅ DRIVER DOMAIN (PROD + LOCAL)
     const isTaxiheroDomain =
-      cleanHost.endsWith(".taxihero.com") ||
+      cleanHost.endsWith(".taxihero.in") ||
       cleanHost.endsWith(".taxihero.local");
 
     if (!isTaxiheroDomain) {
@@ -438,7 +438,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
 
     // Extract subdomain
     const subdomain = cleanHost
-      .replace(".taxihero.co", "")
+      .replace(".taxihero.in", "")
       .replace(".taxihero.local", "");
 
     // ignore www or root

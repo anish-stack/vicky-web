@@ -22,7 +22,7 @@ export default function App({ Component, pageProps }: AppProps) {
     setHost(hostname);
   }, []);
   const isTaxihero =
-    host.endsWith(".taxihero.local") || host.endsWith(".taxihero.co");
+    host.endsWith(".taxihero.local") || host.endsWith(".taxihero.in");
   console.log(isTaxihero);
   const isDriverThemeRoute =
     isTaxihero ||
