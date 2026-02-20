@@ -5,6 +5,7 @@ import { Loader2, AlertCircle, Globe } from "lucide-react";
 const themes: Record<string, any> = {
   "driver-classic": dynamic(() => import("./driver-classic/Theme"), { ssr: false }),
   "driver-modern": dynamic(() => import("./driver-modern/ThemeTwo"), { ssr: false }),
+  "driver-green": dynamic(() => import("./driver-green/GreenTheme"), { ssr: false }),
 };
 
 export default function ThemeRenderer() {

@@ -114,11 +114,11 @@ const Testimonials = () => {
 
         {/* HEADER */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
+          <div className="inline-flex items-center bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-medium mb-3">
             Customer Reviews
           </div>
 
-          <h2 className="text-4xl lg:text-5xl font-bold mb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold mb-2">
             Riders Love{" "}
             <span className="text-yellow-600">
               {website?.basicInfo?.name ||
@@ -126,7 +126,7 @@ const Testimonials = () => {
             </span>
           </h2>
 
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-l text-gray-600 max-w-3xl mx-auto">
             Real experiences from our happy customers.
           </p>
         </div>
@@ -160,7 +160,7 @@ const Testimonials = () => {
                 {group.map((t, index) => (
                   <div
                     key={index}
-                    className="group bg-gray-50 dark:bg-gray-800 p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all relative"
+                    className="group bg-gray-50 dark:bg-gray-800 p-8 rounded-2xl relative"
                   >
                     {/* Quote */}
                     <div className="absolute top-6 right-6 text-yellow-200">

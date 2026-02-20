@@ -85,6 +85,7 @@ export default function TourPackages() {
   /* ================= REAL PACKAGES ================= */
 
   const realPackages = website?.packages || [];
+  // console.log("realPackages",realPackages)
 
   const formattedRealPackages = realPackages.map(
     (pkg: any, index: number) => ({
@@ -130,12 +131,12 @@ export default function TourPackages() {
       <div className="max-w-7xl mx-auto px-4">
 
         {/* HEADER */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-medium mb-2">
             Popular Tours
           </div>
 
-          <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Explore with{" "}
             <span className="text-yellow-500">
               {website?.basicInfo?.name ||
@@ -217,7 +218,7 @@ export default function TourPackages() {
                   </div>
 
                   {/* CTA */}
-                  <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-black py-3 px-6 rounded-xl font-semibold flex items-center justify-center space-x-2">
+                  <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 px-6 rounded-xl font-semibold flex items-center justify-center space-x-2">
                     <span>Enquiry Now</span>
                     <ArrowRight className="h-4 w-4" />
                   </button>

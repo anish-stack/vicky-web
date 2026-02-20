@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
-import { Menu, X, Sun, Moon, MapPin, Phone, Mail } from 'lucide-react';
-// import { useWebsite } from "@/context/WebsiteContext";
+import React, { useState } from "react";
+import { Menu, X, Sun, Moon, MapPin, Phone, Mail } from "lucide-react";
+import { useWebsite } from "@/context/WebsiteContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // const { isDark, toggleTheme } = useTheme();
+  const { website } = useWebsite()
 
   const navItems = [
-    { name: 'Home', href: '#' },
-    { name: 'Tours', href: '#tours' },
-    { name: 'Routes', href: '#routes' },
-    { name: 'Services', href: '#services' },
-    { name: 'Contact', href: '#contact' },
+    { name: "Home", href: "#" },
+    { name: "Tours", href: "#tours" },
+    { name: "Routes", href: "#routes" },
+    { name: "Services", href: "#services" },
+    { name: "Contact", href: "#contact" },
   ];
 
   return (
@@ -41,13 +42,21 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
-              <div className="bg-yellow-500 text-black p-2 rounded-lg">
-                <MapPin className="h-6 w-6" />
-              </div>
-              <div className="ml-3">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Vicky Cab</h1>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Tour & Travels</p>
-              </div>
+               <img
+              src={
+                website?.basicInfo?.logoUrl ||
+                "https://www.taxisafar.com/images/logo/taxisafar-logo.png"
+              }
+              alt={website?.basicInfo?.name || "TaxiSafar Logo"}
+              className="h-12 w-auto object-contain"
+            />
+
+            <h4
+              className="text-[#EAB308] font-extrabold italic text-3xl tracking-wide"
+              style={{ fontFamily: "RobotoBlack" }}
+            >
+              {website?.basicInfo?.logo_name}
+            </h4>
             </div>
           </div>
 
@@ -67,13 +76,7 @@ const Header = () => {
           </nav>
 
           {/* Theme toggle and mobile menu */}
-          <div className="flex items-center space-x-4">
-            {/* <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button> */}
+          <div className="flex items-center space-x-4 md:hidden">
 
             {/* Mobile menu button */}
             <div className="md:hidden">
@@ -81,7 +84,11 @@ const Header = () => {
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
               >
-                {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {isMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
               </button>
             </div>
           </div>

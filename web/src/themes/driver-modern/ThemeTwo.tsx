@@ -9,9 +9,11 @@ import Services from "./components/Services";
 import Testimonials from "./components/Testimonials";
 import FAQ from "./components/FAQ";
 import Footer from "./components/Footer";
+import Contact from "./components/Contact";
 
 const ThemeTwo = () => {
   const { website } = useWebsite();
+  // console.log("website?.popularPrices",website?.popularPrices)
 
   return (
     <div className="bg-white text-zinc-900">
@@ -24,7 +26,7 @@ const ThemeTwo = () => {
       <Services />
       {website?.reviews.length > 0 && <Testimonials />}
       <FAQ />
-      {/* {website?.sections?.contact && <Contact />} */}
+      {website?.sections?.contact && <Contact />}
 
       <Footer />
     </div>

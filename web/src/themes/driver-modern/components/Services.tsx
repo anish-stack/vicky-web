@@ -30,14 +30,14 @@ const Services = () => {
     <section id="services" className="py-8 bg-gray-50 dark:bg-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-4 py-1 rounded-full text-sm font-medium mb-3">
             Our Services
           </div>
-          <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Explore Our Top-Rated Services
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-l text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
             Comprehensive travel solutions tailored to meet your specific journey requirements with excellence.
           </p>
         </div>
@@ -47,7 +47,7 @@ const Services = () => {
           {services.map((service, index) => (
             <div
               key={index}
-              className="group bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-200 dark:border-gray-700"
+              className="group bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-md hover:shadow-l transition-all duration-300 transform hover:-translate-y-2 border border-gray-200 dark:border-gray-700"
             >
               {/* Image */}
               <div className="relative h-48 overflow-hidden">
@@ -91,10 +91,10 @@ const Services = () => {
               Contact us today to discuss your travel needs and get a personalized quote for your next adventure.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black py-3 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl">
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl">
                 Book Service
               </button>
-              <button className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-3 px-8 rounded-xl font-semibold transition-all duration-200">
+              <button className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-2.5 px-8 rounded-xl font-semibold transition-all duration-200">
                 Get Quote
               </button>
             </div>

@@ -109,7 +109,7 @@ const FAQ = () => {
 
   return (
     <section className="py-8 bg-gray-50 dark:bg-gray-800">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
 
         {/* HEADER */}
         <div className="text-center mb-16">
@@ -117,25 +117,25 @@ const FAQ = () => {
             Need Help?
           </div>
 
-          <h2 className="text-4xl lg:text-5xl font-bold mb-4">
+          <h2 className="text-3xl lg:text-4xl font-bold mb-2">
             Frequently Asked Questions
           </h2>
 
-          <p className="text-xl text-gray-600">
+          <p className="text-l text-gray-600">
             Find answers to common taxi & travel queries.
           </p>
         </div>
 
         {/* SECTIONS */}
-        <div className="space-y-8">
+      <div className="flex flex-col md:flex-row justify-between items-center">
           {faqSections.map((section, sIndex) => (
             <div
               key={sIndex}
-              className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg border overflow-hidden"
+              className="bg-white w-[48%] dark:bg-gray-900 rounded-2xl shadow-lg border overflow-hidden"
             >
               {/* Section Header */}
               <div
-                className={`${section.color} text-white px-6 py-4 font-semibold`}
+                className={`${section.color} text-white px-6 py-3 font-semibold`}
               >
                 {section.title}
               </div>
@@ -150,9 +150,9 @@ const FAQ = () => {
                     <div key={id}>
                       <button
                         onClick={() => toggleFAQ(id)}
-                        className="w-full px-6 py-5 text-left flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                        className="w-full px-6 py-2.8 text-left flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                       >
-                        <span className="font-medium pr-4">
+                        <span className="font-medium py-2.5">
                           {faq.q}
                         </span>
 
@@ -164,7 +164,7 @@ const FAQ = () => {
                       </button>
 
                       {isOpen && (
-                        <div className="px-6 pb-6 border-t pt-4 text-gray-600 dark:text-gray-400 space-y-2">
+                        <div className="px-6 pb-2 border-t pt-2 text-gray-600 dark:text-gray-400 space-y-0">
                           {faq.a.map((line, i) => (
                             <p key={i}>{line}</p>
                           ))}

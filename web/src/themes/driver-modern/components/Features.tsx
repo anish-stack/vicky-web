@@ -30,17 +30,17 @@ const Features = () => {
           {/* Left content */}
           <div className="space-y-8">
             <div>
-              <div className="inline-flex items-center bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-4 py-2 rounded-full text-sm font-medium mb-4">
+              <div className="inline-flex items-center bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 px-4 py-2 rounded-full text-sm font-medium mb-3">
                 Why Choose Us
               </div>
-              <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-2 leading-tight">
                 Designed for{' '}
                 <span className="text-yellow-600 dark:text-yellow-400">
                   Safe & Smart
                 </span>{' '}
                 Journeys
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400 leading-relaxed">
+              <p className="text-l text-gray-600 dark:text-gray-400 leading-relaxed">
                 Experience top-notch travel services with quality, reliability, and trust. 
                 We prioritize your comfort and safety above everything else.
               </p>
@@ -67,11 +67,11 @@ const Features = () => {
 
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black py-3 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2">
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-black py-2.5 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2">
                 <Phone className="h-5 w-5" />
                 <span>Book Now</span>
               </button>
-              <button className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-3 px-8 rounded-xl font-semibold transition-all duration-200">
+              <button className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-2.5 px-8 rounded-xl font-semibold transition-all duration-200">
                 Learn More
               </button>
             </div>

@@ -279,8 +279,8 @@ ${
           {/* ================= RIGHT CONTENT ================= */}
           <div className="text-white space-y-6 order-2 flex flex-col justify-center h-full">
             <div className="space-y-4">
-              <h1 className="text-5xl lg:text-6xl font-bold leading-tight">
-                Explore with <span className="text-yellow-400">Vicky Cab</span>
+              <h1 className="text-3xl lg:text-5xl font-bold leading-tight">
+                Explore with <span className="text-yellow-400">{website?.basicInfo?.name}</span>
               </h1>
 
               <p className="text-xl text-gray-200 leading-relaxed max-w-lg">
