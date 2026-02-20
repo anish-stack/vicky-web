@@ -17,13 +17,10 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     // Only runs on client → safe
     const hostname = window.location.hostname.toLowerCase();
-    console.log("Host Name", hostname);
-
     setHost(hostname);
   }, []);
   const isTaxihero =
     host.endsWith(".taxihero.local") || host.endsWith(".taxihero.in");
-  console.log(isTaxihero);
   const isDriverThemeRoute =
     isTaxihero ||
     router.pathname === "/[driverId]/[themeId]" ||

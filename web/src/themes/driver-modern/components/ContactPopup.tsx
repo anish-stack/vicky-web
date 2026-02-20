@@ -58,17 +58,18 @@ const ContactPopup = ({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    const text = `
-📩 *New Enquiry - ${companyName}*
+ const text = `
+*New Enquiry*
+${basicInfo?.logo_name}
 
-👤 Name: ${formData.name}
-📞 Phone: ${formData.phone}
-📧 Email: ${formData.email}
-🚖 Trip: ${formData.tripType}
+Name: ${formData.name}
+Phone: ${formData.phone}
+Email: ${formData.email}
+Trip: ${formData.tripType}
 
-📝 Message:
+Message:
 ${formData.message}
-    `.trim();
+`.trim();
 
     window.open(
       `https://wa.me/91${whatsapp}?text=${encodeURIComponent(

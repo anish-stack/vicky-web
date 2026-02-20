@@ -12,6 +12,9 @@ type Props = {
 };
 
 export default function SlugThemePage({ driverId, themeId, blocked, reason, blockType }: Props) {
+if (typeof window !== "undefined") {
+    console.log("Client → window.location.search:", window.location.search);
+  }
   // ❌ Block UI with Tailwind
   if (blocked) {
     const getBlockIcon = () => {
@@ -175,7 +178,6 @@ export default function SlugThemePage({ driverId, themeId, blocked, reason, bloc
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
   try {
     const slug = params?.slug as string;
-
     if (!slug) {
       return { notFound: true };
     }

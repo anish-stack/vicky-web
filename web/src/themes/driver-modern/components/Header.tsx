@@ -52,8 +52,8 @@ const Header = () => {
             />
 
             <h4
-              className="text-[#EAB308] font-extrabold italic text-3xl tracking-wide"
-              style={{ fontFamily: "RobotoBlack" }}
+              className="text-[#EAB308] font-extrabold text-3xl tracking-wide"
+              style={{ fontFamily: "SF Pro Text,sans-serif" }}
             >
               {website?.basicInfo?.logo_name}
             </h4>

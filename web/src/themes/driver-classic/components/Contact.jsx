@@ -34,18 +34,17 @@ export default function Contact() {
   const handleSubmit = (e) => {
     e.preventDefault();
     const text = `
-📩 *New Enquiry - ${companyName}*
+New Enquiry - ${companyName}
+${basicInfo?.logo_name}
 
-👤 *Name:* ${formData.name}
-📞 *Phone:* ${formData.phone}
-📧 *Email:* ${formData.email}
-🚖 *Trip Type:* ${formData.tripType}
+Name: ${formData.name}
+Phone: ${formData.phone}
+Email: ${formData.email}
+Trip Type: ${formData.tripType}
 
-📝 *Message:*
+Message:
 ${formData.message}
-
-🌐 *Website:* ${website || 'N/A'}
-    `.trim();
+`.trim();
 
     window.open(`https://wa.me/91${whatsapp}?text=${encodeURIComponent(text)}`, "_blank");
     setIsSubmitted(true);

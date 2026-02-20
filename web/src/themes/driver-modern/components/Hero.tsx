@@ -105,30 +105,35 @@ export default function Hero() {
       website?.basicInfo?.phone ||
       "919876543210";
 
-    const message = `
-🚖 *New Trip Enquiry*
+    const message = `*New Trip Enquiry*
 
-🔹 *Service Type:* ${serviceType}
-🔹 *Trip Type:* ${tripType}
+*${website?.basicInfo?.logo_name || "Rahul Tour & Travels"}*
 
-📍 *Pickup:* ${pickup}
-📍 *Drop:* ${drop || pickup}
+*Pickup Date & Time:*  
+${formatDateTime(pickupDate)}
+${
+  tripType === "round-trip"
+    ? `*Return Date & Time:*  
+${formatDateTime(returnDate)}`
+    : ""
+}
 
-🛑 *Stops:* ${
+*Service Type:* ${serviceType}
+*Trip Type:* ${tripType === "round-trip" ? "Round Trip" : "One Way"}
+
+*Pickup:* ${pickup}
+*Drop:* ${drop || pickup}
+
+*Stops:* ${
       breaks.filter(Boolean).length
         ? breaks.filter(Boolean).join(", ")
         : "No stops"
     }
 
-📅 *Pickup Date & Time:* ${formatDateTime(pickupDate)}
+*Total Estimate Amount:*  
+*Rs ..... (All Including)*
 
-${
-  tripType === "round-trip"
-    ? `📅 *Return Date & Time:* ${formatDateTime(returnDate)}`
-    : ""
-}
-
-🌐 *Website:* ${website?.basicInfo?.name || "TaxiSafar"}
+*Extra Parking Charges Applicable*
 `;
 
     const whatsappURL = `https://wa.me/91${whatsappNumber}?text=${encodeURIComponent(
@@ -280,7 +285,10 @@ ${
           <div className="text-white space-y-6 order-2 flex flex-col justify-center h-full">
             <div className="space-y-4">
               <h1 className="text-3xl lg:text-5xl font-bold leading-tight">
-                Explore with <span className="text-yellow-400">{website?.basicInfo?.name}</span>
+                Explore with{" "}
+                <span className="text-yellow-400">
+                  {website?.basicInfo?.name}
+                </span>
               </h1>
 
               <p className="text-xl text-gray-200 leading-relaxed max-w-lg">

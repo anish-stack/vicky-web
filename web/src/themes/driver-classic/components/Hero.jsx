@@ -121,27 +121,37 @@ export default function Hero() {
       website?.basicInfo?.phone ||
       "919876543210";
 
-    const message = `
-🚖 *New Trip Enquiry*
+  const message = `*New Trip Enquiry*
 
-🔹 *Service Type:* ${serviceType}
-🔹 *Trip Type:* ${tripType}
+*${website?.basicInfo?.logo_name || "Rahul Tour & Travels"}*
 
-📍 *Pickup:* ${pickup}
-📍 *Drop:* ${drop || pickup}
+*Pickup Date & Time:*  
+${formatDateTime(pickupDate)}
 
-🛑 *Stops:* ${
-      breaks.filter(Boolean).length
-        ? breaks.filter(Boolean).join(", ")
-        : "No stops"
-    }
+${
+  tripType === "round-trip"
+    ? `*Return Date & Time:*  
+${formatDateTime(returnDate)}`
+    : ""
+}
+*Service Type:* ${serviceType}
+*Trip Type:* ${tripType === "round-trip" ? "Round Trip" : "One Way"}
 
-📅 *Pickup Date & Time:* ${formatDateTime(pickupDate)}
+*Pickup:* ${pickup}
+*Drop:* ${drop || pickup}
 
-${tripType === "round-trip" ? `📅 *Return Date & Time:* ${formatDateTime(returnDate)}` : ""}
+*Stops:* ${
+  breaks.filter(Boolean).length
+    ? breaks.filter(Boolean).join(", ")
+    : "No stops"
+}
 
-🌐 *Website:* ${website?.basicInfo?.name || "TaxiSafar"}
-  `;
+*Total Estimate Amount:*  
+*Rs ..... (All Including)*
+
+*Extra Parking Charges Applicable*
+`;
+
 
     const whatsappURL = `https://wa.me/91${whatsappNumber}?text=${encodeURIComponent(
       message,

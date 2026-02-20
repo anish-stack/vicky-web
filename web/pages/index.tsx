@@ -401,10 +401,12 @@ export default function Home({
 // SSR (Subdomain based)
 // ────────────────────────────────────────────────
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
   try {
     const host = (req.headers.host || "").toLowerCase();
-    const cleanHost = host.split(":")[0]; // remove port
+    const cleanHost = host.split(":")[0];
+
+    const isPreview = query?.preview === "true";
 
     const MAIN_DOMAINS = [
       "taxisafar.com",
@@ -427,7 +429,6 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
       };
     }
 
-    // ✅ DRIVER DOMAIN (PROD + LOCAL)
     const isTaxiheroDomain =
       cleanHost.endsWith(".taxihero.in") ||
       cleanHost.endsWith(".taxihero.local");
@@ -436,12 +437,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
       return { notFound: true };
     }
 
-    // Extract subdomain
     const subdomain = cleanHost
       .replace(".taxihero.in", "")
       .replace(".taxihero.local", "");
 
-    // ignore www or root
     if (!subdomain || subdomain === "www") {
       return {
         props: {
@@ -455,9 +454,8 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
       };
     }
 
-    // Fetch driver website details
     const res = await fetch(
-      `https://www.driverwebiste.taxisafar.com/api/website/detail/${subdomain}`,
+      `https://www.driverwebiste.taxisafar.com/api/website/detail/${subdomain}`
     );
 
     if (!res.ok) return { notFound: true };
@@ -472,7 +470,25 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
 
     if (!driverId || !themeId) return { notFound: true };
 
-    // ✅ checks
+    // 🚀 PREVIEW MODE → BYPASS ALL BLOCKING
+    if (isPreview) {
+      return {
+        props: {
+          isDriverWebsite: true,
+          driverId,
+          themeId,
+          blocked: false,
+          blockType: null,
+          reason: null,
+          previewMode: true,
+        },
+      };
+    }
+
+    // -------------------------------
+    // NORMAL CHECKS (Production Only)
+    // -------------------------------
+
     const paidTill = website?.paidTill ? new Date(website.paidTill) : null;
     const now = new Date();
 
@@ -480,7 +496,6 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
     const isPaid = website?.subscription?.status === "paid";
     const isLive = website?.isLive === true;
 
-    // Priority 1: Live check
     if (!isLive) {
       return {
         props: {
@@ -494,7 +509,6 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
       };
     }
 
-    // Priority 2: Payment check
     if (!isPaid) {
       return {
         props: {
@@ -508,7 +522,6 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
       };
     }
 
-    // Priority 3: Expiry check
     if (isExpired) {
       return {
         props: {
@@ -522,7 +535,6 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
       };
     }
 
-    // ✅ All checks passed
     return {
       props: {
         isDriverWebsite: true,

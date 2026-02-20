@@ -32,8 +32,8 @@ export default function Header() {
             />
 
             <h4
-              className="text-red-600 font-extrabold italic text-3xl tracking-wide"
-              style={{ fontFamily: "RobotoBlack" }}
+              className="text-red-600 font-extrabold  text-3xl tracking-wide"
+              style={{ fontFamily: "SF Pro Text,sans-serif" }}
             >
               {website?.basicInfo?.logo_name}
             </h4>
