@@ -157,7 +157,8 @@ const Testimonials = () => {
                 key={i}
                 className="flex-shrink-0 w-full grid md:grid-cols-2 gap-8"
               >
-                {group.map((t, index) => (
+                {group.map((t:any, index:number
+                ) => (
                   <div
                     key={index}
                     className="group bg-gray-50 dark:bg-gray-800 p-8 rounded-2xl relative"

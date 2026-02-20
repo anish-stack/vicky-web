@@ -31,6 +31,7 @@ const Hero: React.FC = () => {
     basicInfo: {
       name: "TaxiSafar",
       phone: "9876543210",
+      whatsapp: "9876543210",
     },
   };
 
