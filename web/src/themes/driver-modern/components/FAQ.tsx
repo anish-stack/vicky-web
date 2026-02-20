@@ -128,7 +128,7 @@ const FAQ = ({ onEnquiry }: Props) => {
           {faqSections.map((section, sIndex) => (
             <div
               key={sIndex}
-              className="bg-white w-[48%] dark:bg-gray-900 rounded-2xl border overflow-hidden"
+              className="bg-white w-full md:w-[49%] dark:bg-gray-900 rounded-2xl border overflow-hidden"
             >
               {/* Section Header */}
               <div
