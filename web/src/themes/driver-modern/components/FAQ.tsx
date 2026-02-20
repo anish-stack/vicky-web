@@ -2,16 +2,26 @@
 
 import React, { useState } from "react";
 import { Plus, Minus } from "lucide-react";
+import { useWebsite } from "@/context/WebsiteContext";
 
-const FAQ = () => {
+type Props = {
+  onEnquiry: () => void;
+};
+
+const FAQ = ({ onEnquiry }: Props) => {
+  const { website } = useWebsite();
   const [openIndex, setOpenIndex] = useState<string | null>(null);
+
+  const basicInfo = website?.basicInfo || {};
+  const phone = basicInfo.phone || "9876543210";
+  const whatsapp = basicInfo.whatsapp || phone;
 
   /* ================= FAQ DATA ================= */
 
   const faqSections = [
     {
       title: "Tour Package – Frequently Asked Questions",
-      color: "bg-red-600",
+      color: "bg-[#EAB308]",
       items: [
         {
           q: "Tour package mein kya-kya include hota hai?",
@@ -26,9 +36,7 @@ const FAQ = () => {
         },
         {
           q: "Kya tour package mein hotel booking included hoti hai?",
-          a: [
-            "Nahi, hotel booking included nahi hoti jab tak mention na ho.",
-          ],
+          a: ["Nahi, hotel booking included nahi hoti jab tak mention na ho."],
         },
         {
           q: "Extra charges kab lagte hain?",
@@ -60,15 +68,11 @@ const FAQ = () => {
       items: [
         {
           q: "One Way Drop service kya hoti hai?",
-          a: [
-            "Pickup se drop tak ka hi charge dena hota hai.",
-          ],
+          a: ["Pickup se drop tak ka hi charge dena hota hai."],
         },
         {
           q: "One Way Drop round trip se sasta hota hai?",
-          a: [
-            "Haan, yeh round trip se zyada economical hota hai.",
-          ],
+          a: ["Haan, yeh round trip se zyada economical hota hai."],
         },
         {
           q: "Rate mein kya include hota hai?",
@@ -79,21 +83,15 @@ const FAQ = () => {
         },
         {
           q: "Booking kaise karein?",
-          a: [
-            "Website, call ya WhatsApp se booking kar sakte hain.",
-          ],
+          a: ["Website, call ya WhatsApp se booking kar sakte hain."],
         },
         {
           q: "Advance payment deni hoti hai?",
-          a: [
-            "Kuch routes par advance required hoti hai.",
-          ],
+          a: ["Kuch routes par advance required hoti hai."],
         },
         {
           q: "Kaun-kaun si car available hoti hai?",
-          a: [
-            "Mini, Sedan, SUV aur Prime SUV cars available hoti hain.",
-          ],
+          a: ["Mini, Sedan, SUV aur Prime SUV cars available hoti hain."],
         },
       ],
     },
@@ -110,7 +108,6 @@ const FAQ = () => {
   return (
     <section className="py-8 bg-gray-50 dark:bg-gray-800">
       <div className="max-w-7xl mx-auto px-4">
-
         {/* HEADER */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
@@ -127,11 +124,11 @@ const FAQ = () => {
         </div>
 
         {/* SECTIONS */}
-      <div className="flex flex-col md:flex-row justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
           {faqSections.map((section, sIndex) => (
             <div
               key={sIndex}
-              className="bg-white w-[48%] dark:bg-gray-900 rounded-2xl shadow-lg border overflow-hidden"
+              className="bg-white w-[48%] dark:bg-gray-900 rounded-2xl border overflow-hidden"
             >
               {/* Section Header */}
               <div
@@ -152,9 +149,7 @@ const FAQ = () => {
                         onClick={() => toggleFAQ(id)}
                         className="w-full px-6 py-2.8 text-left flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                       >
-                        <span className="font-medium py-2.5">
-                          {faq.q}
-                        </span>
+                        <span className="font-medium py-2.5">{faq.q}</span>
 
                         {isOpen ? (
                           <Minus className="text-yellow-500" />
@@ -190,13 +185,16 @@ const FAQ = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black py-3 px-8 rounded-xl font-semibold">
+              <button
+                onClick={onEnquiry}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black py-3 px-8 rounded-xl font-semibold"
+              >
                 Contact Support
               </button>
 
-              <button className="border-2 py-3 px-8 rounded-xl font-semibold">
+              <a href={`tel:${whatsapp}`} className="border-2 py-3 px-8 rounded-xl font-semibold">
                 Call Now
-              </button>
+              </a>
             </div>
           </div>
         </div>

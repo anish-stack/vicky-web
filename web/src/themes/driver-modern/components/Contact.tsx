@@ -86,7 +86,7 @@ ${formData.message}
   };
 
   return (
-    <section className="min-h-screen bg-[white] py-8 px-4">
+    <section id="contact" className="min-h-screen bg-[white] py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* HEADER */}
         <div className="text-center mb-12">

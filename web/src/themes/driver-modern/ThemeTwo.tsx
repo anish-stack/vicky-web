@@ -1,4 +1,3 @@
-
 import { useWebsite } from "@/context/WebsiteContext";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -10,10 +9,13 @@ import Testimonials from "./components/Testimonials";
 import FAQ from "./components/FAQ";
 import Footer from "./components/Footer";
 import Contact from "./components/Contact";
+import ContactPopup from "./components/ContactPopup";
+import { useState } from "react";
 
 const ThemeTwo = () => {
   const { website } = useWebsite();
   // console.log("website?.popularPrices",website?.popularPrices)
+  const [openPopup, setOpenPopup] = useState(false);
 
   return (
     <div className="bg-white text-zinc-900">
@@ -23,10 +25,12 @@ const ThemeTwo = () => {
       {website?.popularPrices.length > 0 && <PopularRoutes />}
 
       <Features />
-      <Services />
+      <Services onEnquiry={() => setOpenPopup(true)} />
       {website?.reviews.length > 0 && <Testimonials />}
-      <FAQ />
+      <FAQ onEnquiry={() => setOpenPopup(true)} />
       {website?.sections?.contact && <Contact />}
+
+      <ContactPopup isOpen={openPopup} onClose={() => setOpenPopup(false)} />
 
       <Footer />
     </div>

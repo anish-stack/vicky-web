@@ -67,13 +67,13 @@ const Features = () => {
 
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black py-2.5 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2">
+              {/* <button className="bg-yellow-500 hover:bg-yellow-600 text-black py-2.5 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2">
                 <Phone className="h-5 w-5" />
                 <span>Book Now</span>
-              </button>
-              <button className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-2.5 px-8 rounded-xl font-semibold transition-all duration-200">
+              </button> */}
+              {/* <button className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-2.5 px-8 rounded-xl font-semibold transition-all duration-200">
                 Learn More
-              </button>
+              </button> */}
             </div>
           </div>
 

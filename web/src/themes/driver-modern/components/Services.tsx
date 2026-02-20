@@ -1,29 +1,39 @@
-import React from 'react';
-import { Car, Mountain, Building, ArrowRight } from 'lucide-react';
+import React from "react";
+import { Car, Mountain, Building, ArrowRight } from "lucide-react";
 
-const Services = () => {
+type Props = {
+  onEnquiry: () => void;
+};
+
+const Services = ({ onEnquiry }: Props) => {
   const services = [
     {
       icon: Car,
-      title: 'One Way Trip',
-      description: 'Convenient one-way travel to your destination with professional drivers.',
-      image: 'https://images.pexels.com/photos/1545743/pexels-photo-1545743.jpeg?auto=compress&cs=tinysrgb&w=800',
-      color: 'bg-yellow-500'
+      title: "One Way Trip",
+      description:
+        "Convenient one-way travel to your destination with professional drivers.",
+      image:
+        "https://images.pexels.com/photos/1545743/pexels-photo-1545743.jpeg?auto=compress&cs=tinysrgb&w=800",
+      color: "bg-yellow-500",
     },
     {
       icon: Mountain,
-      title: 'Round Trip',
-      description: 'Complete round trip packages with flexible scheduling and comfort.',
-      image: 'https://images.pexels.com/photos/1840624/pexels-photo-1840624.jpeg?auto=compress&cs=tinysrgb&w=800',
-      color: 'bg-gray-600'
+      title: "Round Trip",
+      description:
+        "Complete round trip packages with flexible scheduling and comfort.",
+      image:
+        "https://images.pexels.com/photos/1840624/pexels-photo-1840624.jpeg?auto=compress&cs=tinysrgb&w=800",
+      color: "bg-gray-600",
     },
     {
       icon: Building,
-      title: 'Popular City Visits',
-      description: 'Explore famous cities and landmarks with our guided tour services.',
-      image: 'https://images.pexels.com/photos/460621/pexels-photo-460621.jpeg?auto=compress&cs=tinysrgb&w=800',
-      color: 'bg-yellow-600'
-    }
+      title: "Popular City Visits",
+      description:
+        "Explore famous cities and landmarks with our guided tour services.",
+      image:
+        "https://images.pexels.com/photos/460621/pexels-photo-460621.jpeg?auto=compress&cs=tinysrgb&w=800",
+      color: "bg-yellow-600",
+    },
   ];
 
   return (
@@ -38,7 +48,8 @@ const Services = () => {
             Explore Our Top-Rated Services
           </h2>
           <p className="text-l text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
-            Comprehensive travel solutions tailored to meet your specific journey requirements with excellence.
+            Comprehensive travel solutions tailored to meet your specific
+            journey requirements with excellence.
           </p>
         </div>
 
@@ -72,10 +83,10 @@ const Services = () => {
                 <p className="text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
                   {service.description}
                 </p>
-                <button className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 font-semibold transition-colors group-hover:translate-x-2 duration-200">
+                {/* <button className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 font-semibold transition-colors group-hover:translate-x-2 duration-200">
                   <span>Learn More</span>
                   <ArrowRight className="h-4 w-4" />
-                </button>
+                </button> */}
               </div>
             </div>
           ))}
@@ -88,13 +99,20 @@ const Services = () => {
               Ready to Start Your Journey?
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-2xl mx-auto">
-              Contact us today to discuss your travel needs and get a personalized quote for your next adventure.
+              Contact us today to discuss your travel needs and get a
+              personalized quote for your next adventure.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl">
+              <button
+                onClick={onEnquiry}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 px-8 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+              >
                 Book Service
               </button>
-              <button className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-2.5 px-8 rounded-xl font-semibold transition-all duration-200">
+              <button
+                onClick={onEnquiry}
+                className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-2 border-gray-200 dark:border-gray-700 hover:border-yellow-500 dark:hover:border-yellow-400 py-2.5 px-8 rounded-xl font-semibold transition-all duration-200"
+              >
                 Get Quote
               </button>
             </div>

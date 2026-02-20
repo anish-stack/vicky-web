@@ -5,7 +5,7 @@ const GreenTheme = () => {
     const { website } = useWebsite();
   return (
     <div className="bg-white text-zinc-900">
-        <Header />
+        {/* <Header /> */}
       
     </div>
   )
