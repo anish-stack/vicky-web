@@ -29,6 +29,7 @@ function getCountryCodeAndNumber(phone) {
 const SECRET_KEY = process.env.JWT_SECRET || "mysecretkey";
 
 const { Op } = require("sequelize");
+const sendDltMessage = require("../utils/dlt");
 
 // exports.getAllUsers = async (req, res) => {
 //     try {
@@ -834,133 +835,129 @@ exports.createCustomer = async (req, res) => {
 };
 
 exports.sendOTP = async (req, res) => {
-  const { phone_number } = req.body;
-  const Schema = Joi.object({
-    phone_number: Joi.string().required().min(5).max(15).messages({
-      "any.required": "Phone number is required",
-      "string.min": "Phone number must be at least 5 characters long",
-      "string.max": "Phone number cannot be more than 15 characters long",
-    }),
-  }).unknown(true);
+  try {
+    const { phone_number } = req.body;
 
-  const { error } = Schema.validate(req.body, { abortEarly: false });
-  if (error) {
-    return res.json({
-      status: false,
-      message: error?.details[0]?.message,
+    // ---------------- Validation ----------------
+    const schema = Joi.object({
+      phone_number: Joi.string().required().min(10).max(15).messages({
+        "any.required": "Phone number is required",
+        "string.min": "Phone number must be at least 10 digits",
+        "string.max": "Phone number cannot exceed 15 digits",
+      }),
     });
-  }
 
-  const OTP = Math.floor(1000 + Math.random() * 9000).toString();
-  const expires_at = new Date(Date.now() + 10 * 60 * 1000);
-  const phoneNumber = await getCountryCodeAndNumber(phone_number);
-  console.log("Before");
-  if (phoneNumber?.countryCode && phoneNumber?.number) {
-    try {
-      const fast2smsApiKey = process.env.FAST2SMS_API_KEY;
-      const fast2smsUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${fast2smsApiKey}&route=dlt&sender_id=TAXISF&message=181787&variables_values=${OTP}&flash=0&numbers=${phoneNumber?.number}`;
-      // console.log("after");
-      // console.log(fast2smsUrl);
-      await axios.get(fast2smsUrl);
-      const existingOTP = await otp.findOne({
-        where: { phone_number: phone_number, otp_type: "login" },
+    const { error } = schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        status: false,
+        message: error.details[0].message,
       });
-      console.log(JSON.stringify(existingOTP, null, 2));
-      console.log(OTP, expires_at);
-      if (existingOTP) {
-        await existingOTP.update({ otp: OTP, expires_at });
-      } else {
-        console.log("Login otp create");
-        await otp.create({
-          phone_number: phone_number,
-          otp: OTP,
-          otp_type: "login",
-          expires_at,
-        });
-      }
-
-      return res.json({ status: true, message: "OTP sent successfully!" });
-    } catch (error) {
-      console.error("Error sending OTP:", error);
-      return res
-        .status(500)
-        .json({ status: false, message: "Failed to send OTP" });
     }
-  } else {
-    return res.json({
+
+    // ---------------- Generate OTP ----------------
+    const OTP = Math.floor(1000 + Math.random() * 9000).toString();
+    const expires_at = new Date(Date.now() + 10 * 60 * 1000);
+
+    // ---------------- Send via WhatsApp (MyOperator) ----------------
+    await sendDltMessage(phone_number, OTP);
+
+    // ---------------- Save / Update OTP ----------------
+    const existingOTP = await otp.findOne({
+      where: { phone_number, otp_type: "login" },
+    });
+
+    if (existingOTP) {
+      await existingOTP.update({ otp: OTP, expires_at });
+    } else {
+      await otp.create({
+        phone_number,
+        otp: OTP,
+        otp_type: "login",
+        expires_at,
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "OTP sent successfully via WhatsApp",
+    });
+
+  } catch (error) {
+    console.error("sendOTP Error:", error);
+    return res.status(500).json({
       status: false,
-      message: "Something went wrong",
+      message: "Failed to send OTP",
+      error: error.message,
     });
   }
 };
 
 exports.sendOTPForLogin = async (req, res) => {
-  const { phone_number } = req.body;
-  const Schema = Joi.object({
-    phone_number: Joi.string().required().min(5).max(15).messages({
-      "any.required": "Phone number is required",
-      "string.min": "Phone number must be at least 5 characters long",
-      "string.max": "Phone number cannot be more than 15 characters long",
-    }),
-  }).unknown(true);
+  try {
+    const { phone_number } = req.body;
 
-  const { error } = Schema.validate(req.body, { abortEarly: false });
-  if (error) {
-    return res.json({
-      status: false,
-      message: error?.details[0]?.message,
+    // ---------------- Validation ----------------
+    const schema = Joi.object({
+      phone_number: Joi.string().required().min(10).max(15).messages({
+        "any.required": "Phone number is required",
+        "string.min": "Phone number must be at least 10 digits",
+        "string.max": "Phone number cannot exceed 15 digits",
+      }),
     });
-  }
 
-  const user = await User.findOne({ where: { phone_number } });
-  console.log("user", user);
-  if (user) {
-    const OTP = Math.floor(1000 + Math.random() * 9000).toString();
-    const expires_at = new Date(Date.now() + 10 * 60 * 1000);
-    const phoneNumber = await getCountryCodeAndNumber(phone_number);
-
-    if (phoneNumber?.countryCode && phoneNumber?.number) {
-      try {
-        const fast2smsApiKey = process.env.FAST2SMS_API_KEY;
-        const fast2smsUrl = `https://www.fast2sms.com/dev/bulkV2?authorization=${fast2smsApiKey}&route=dlt&sender_id=TAXISF&message=181787&variables_values=${OTP}&flash=0&numbers=${phoneNumber?.number}`;
-
-        await axios.get(fast2smsUrl);
-
-        // const existingOTP = await otp.findOne({
-        //   where: { phone_number: phone_number, otp_type: "login" },
-        // });
-        console.log(phone_number);
-        const existingOTP = await otp.findOne({
-          where: { phone_number: phone_number, otp_type: "login" },
-        });
-        console.log(JSON.stringify(existingOTP, null, 2));
-        if (existingOTP) {
-          await existingOTP.update({ otp: OTP, expires_at });
-        } else {
-          await otp.create({
-            phone_number: phone_number,
-            otp: OTP,
-            expires_at,
-          });
-        }
-
-        return res.json({ status: true, message: "OTP sent successfully!" });
-      } catch (error) {
-        console.error("Error sending OTP:", error);
-        return res
-          .status(500)
-          .json({ status: false, message: "Failed to send OTP" });
-      }
-    } else {
-      return res.json({
+    const { error } = schema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
         status: false,
-        message: "Something went wrong",
+        message: error.details[0].message,
       });
     }
-  } else {
-    return res.json({
+
+    // ---------------- Check User ----------------
+    const user = await User.findOne({ where: { phone_number } });
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "Customer is not registered!",
+      });
+    }
+
+    // ---------------- Generate OTP ----------------
+    const OTP = Math.floor(1000 + Math.random() * 9000).toString();
+    const expires_at = new Date(Date.now() + 10 * 60 * 1000);
+
+    // ---------------- Send OTP via WhatsApp ----------------
+    await sendDltMessage(phone_number, OTP);
+
+    // ---------------- Save / Update OTP ----------------
+    const existingOTP = await otp.findOne({
+      where: { phone_number, otp_type: "login" },
+    });
+
+    if (existingOTP) {
+      await existingOTP.update({ otp: OTP, expires_at });
+    } else {
+      await otp.create({
+        phone_number,
+        otp: OTP,
+        otp_type: "login",
+        expires_at,
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "OTP sent successfully via WhatsApp",
+    });
+
+  } catch (error) {
+    console.error("sendOTPForLogin Error:", error);
+    return res.status(500).json({
       status: false,
-      message: "Customer is not registered!!",
+      message: "Failed to send OTP",
+      error: error.message,
     });
   }
 };
