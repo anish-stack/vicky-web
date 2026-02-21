@@ -63,8 +63,8 @@ pm2.log
 # =========================
 # Uploads / Public Generated
 # =========================
-uploads/
-public/uploads/
+# uploads/
+# public/uploads/
 tmp/
 
 # =========================
