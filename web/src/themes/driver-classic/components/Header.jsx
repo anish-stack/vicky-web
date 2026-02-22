@@ -107,17 +107,6 @@ export default function Header() {
                 </a>
               ))}
 
-              {/* ✅ Mobile Download QR Button */}
-              <button className="mt-4 px-8 py-3 rounded-full bg-red-600 text-white font-semibold shadow-md active:scale-95">
-                Download QR
-              </button>
-
-              {/* ✅ QR IMAGE ONLY ON MOBILE MENU */}
-              <img
-                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://taxisafar.com"
-                alt="TaxiSafar QR"
-                className="mt-4 w-40 h-40 object-contain border rounded-xl p-2"
-              />
             </div>
           </motion.div>
         )}
