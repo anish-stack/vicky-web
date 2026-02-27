@@ -25,7 +25,6 @@ export default function App({ Component, pageProps }: AppProps) {
     isTaxihero ||
     router.pathname === "/[driverId]/[themeId]" ||
     router.pathname === "/[slug]";
-  console.log("Driver", isDriverThemeRoute);
 
   // if (!host) {
   //   return null; // or a minimal skeleton / loading spinner

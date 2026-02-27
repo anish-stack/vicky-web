@@ -5,7 +5,15 @@ import { useWebsite } from "@/context/WebsiteContext";
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // const { isDark, toggleTheme } = useTheme();
-  const { website } = useWebsite()
+  const { website } = useWebsite();
+
+  const basicInfo = website?.basicInfo || {};
+  const companyName = basicInfo.name || "Taxi Safar";
+  const phone = basicInfo.phone || "9876543210";
+  const whatsapp = basicInfo.whatsapp || phone;
+  const email =
+    basicInfo.email ||
+    `support@${companyName.toLowerCase().replace(/\s+/g, "")}.in`;
 
   const navItems = [
     { name: "Home", href: "#" },
@@ -23,11 +31,11 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1">
               <Phone className="h-3 w-3" />
-              <span>+91 98765 43210</span>
+              <span>{whatsapp}</span>
             </div>
             <div className="flex items-center space-x-1">
               <Mail className="h-3 w-3" />
-              <span>info@vickycab.com</span>
+              <span>{email}</span>
             </div>
           </div>
           <div className="flex items-center space-x-1">
@@ -42,21 +50,21 @@ const Header = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
-               <img
-              src={
-                website?.basicInfo?.logoUrl ||
-                "https://www.taxisafar.com/images/logo/taxisafar-logo.png"
-              }
-              alt={website?.basicInfo?.name || "TaxiSafar Logo"}
-              className="h-12 w-auto object-contain"
-            />
+              <img
+                src={
+                  website?.basicInfo?.logoUrl ||
+                  "https://www.taxisafar.com/images/logo/taxisafar-logo.png"
+                }
+                alt={website?.basicInfo?.name || "TaxiSafar Logo"}
+                className="h-12 w-auto object-contain"
+              />
 
-            <h4
-              className="text-[#EAB308] font-extrabold text-3xl tracking-wide"
-              style={{ fontFamily: "SF Pro Text,sans-serif" }}
-            >
-              {website?.basicInfo?.logo_name}
-            </h4>
+              <h4
+                className="text-[#EAB308] font-extrabold text-3xl tracking-wide"
+                style={{ fontFamily: "SF Pro Text,sans-serif" }}
+              >
+                {website?.basicInfo?.logo_name}
+              </h4>
             </div>
           </div>
 
@@ -77,7 +85,6 @@ const Header = () => {
 
           {/* Theme toggle and mobile menu */}
           <div className="flex items-center space-x-4 md:hidden">
-
             {/* Mobile menu button */}
             <div className="md:hidden">
               <button
