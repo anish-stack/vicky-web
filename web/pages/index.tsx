@@ -429,7 +429,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
       };
     }
 
+
     const isTaxiheroDomain =
+      cleanHost.startsWith("localhost") ||
+
       cleanHost.endsWith(".taxihero.in") ||
       cleanHost.endsWith(".taxihero.local");
 
@@ -439,7 +442,9 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
 
     const subdomain = cleanHost
       .replace(".taxihero.in", "")
-      .replace(".taxihero.local", "");
+      .replace(".taxihero.local", "")
+      .replace("localhost", "");
+
 
     if (!subdomain || subdomain === "www") {
       return {
