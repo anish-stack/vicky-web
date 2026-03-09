@@ -36,7 +36,6 @@ body {
 @tailwind components;
 @tailwind utilities;
 
-
 @font-face {
   font-family: "RobotoBlack";
   src: url("/fonts/Roboto-Black.ttf") format("truetype");
@@ -203,6 +202,10 @@ a {
   bottom: 0;
   right: 0;
   z-index: 1;
+}
+
+.input {
+  @apply w-full border border-gray-300 px-4 py-3 rounded-lg outline-none focus:border-[#E52710] transition;
 }
 
 @media (max-width: 1399.98px) {
@@ -720,7 +723,11 @@ a {
   margin-bottom: 16px;
 }
 
-.booking-section .outer-box .booking-form .select2-container--default .select2-selection--single,
+.booking-section
+  .outer-box
+  .booking-form
+  .select2-container--default
+  .select2-selection--single,
 .booking-section .outer-box .booking-form input:not([type="submit"]),
 .booking-section .outer-box .booking-form textarea,
 .booking-section .outer-box .booking-form select {
@@ -735,8 +742,17 @@ a {
   font-weight: 400;
 }
 
-.booking-section .outer-box .booking-form .select2-container--default .select2-selection--single ::-webkit-input-placeholder,
-.booking-section .outer-box .booking-form input:not([type="submit"]) ::-webkit-input-placeholder,
+.booking-section
+  .outer-box
+  .booking-form
+  .select2-container--default
+  .select2-selection--single
+  ::-webkit-input-placeholder,
+.booking-section
+  .outer-box
+  .booking-form
+  input:not([type="submit"])
+  ::-webkit-input-placeholder,
 .booking-section .outer-box .booking-form textarea ::-webkit-input-placeholder,
 .booking-section .outer-box .booking-form select ::-webkit-input-placeholder {
   color: var(--theme-color-light);
@@ -814,7 +830,7 @@ a {
   display: none;
 }
 
-.booking-form .boxed-outer-box input[type="radio"]:checked+label {
+.booking-form .boxed-outer-box input[type="radio"]:checked + label {
   background-color: var(--theme-color-dark);
   color: var(--theme-color-light);
 }
@@ -1072,7 +1088,13 @@ a {
   transform: translate(-50%, -50%);
 }
 
-.about-section .content-column .inner-column .bottom-box .video-box .play-btn .icon-triangle {
+.about-section
+  .content-column
+  .inner-column
+  .bottom-box
+  .video-box
+  .play-btn
+  .icon-triangle {
   border-width: 3px;
   height: 70px;
   width: 70px;
@@ -1090,7 +1112,12 @@ a {
   }
 }
 
-.about-section .content-column .inner-column .bottom-box .features-outer .theme-btn {
+.about-section
+  .content-column
+  .inner-column
+  .bottom-box
+  .features-outer
+  .theme-btn {
   margin-top: 16px;
 }
 
@@ -2607,7 +2634,12 @@ a:hover {
   }
 }
 
-.testimonial-block-three .inner-box .content .author-box .author-info .designation {
+.testimonial-block-three
+  .inner-box
+  .content
+  .author-box
+  .author-info
+  .designation {
   position: relative;
   display: block;
 }
@@ -3292,7 +3324,7 @@ a:hover {
   list-style-type: none;
 }
 
-.main-menu .navigation>li {
+.main-menu .navigation > li {
   position: relative;
   float: left;
   padding: 14px 0px;
@@ -3301,11 +3333,11 @@ a:hover {
   transition: all 300ms ease;
 }
 
-.main-menu .navigation>li:last-child {
+.main-menu .navigation > li:last-child {
   margin-right: 0;
 }
 
-.main-menu .navigation>li:before {
+.main-menu .navigation > li:before {
   content: "";
   position: absolute;
   left: 50%;
@@ -3319,13 +3351,13 @@ a:hover {
   z-index: 3;
 }
 
-.main-menu .navigation>li:hover:before,
-.main-menu .navigation>li.current:before {
+.main-menu .navigation > li:hover:before,
+.main-menu .navigation > li.current:before {
   left: 0;
   width: 100%;
 }
 
-.main-menu .navigation>li>a {
+.main-menu .navigation > li > a {
   position: relative;
   display: block;
   text-align: center;
@@ -3342,27 +3374,27 @@ a:hover {
   transition: all 300ms ease;
 }
 
-.main-menu .navigation>li>a .icon {
+.main-menu .navigation > li > a .icon {
   position: relative;
   font-size: 22px;
   line-height: 24px;
   margin-left: 10px;
 }
 
-.main-menu .navigation>li>a:hover {
+.main-menu .navigation > li > a:hover {
   color: var(--theme-color1);
 }
 
-.main-menu .navigation>li.current>a {
+.main-menu .navigation > li.current > a {
   color: var(--theme-color1);
 }
 
-.main-menu .navigation>li.dropdown>a {
+.main-menu .navigation > li.dropdown > a {
   padding-right: 14px;
   margin-right: -14px;
 }
 
-.main-menu .navigation>li.dropdown>a:after {
+.main-menu .navigation > li.dropdown > a:after {
   content: "\f107";
   position: absolute;
   right: 0;
@@ -3380,7 +3412,7 @@ a:hover {
   transform: translateY(-50%);
 }
 
-.main-menu .navigation>li.dropdown:hover>ul {
+.main-menu .navigation > li.dropdown:hover > ul {
   visibility: visible;
   opacity: 1;
   top: 100%;
@@ -3390,7 +3422,7 @@ a:hover {
   list-style-type: none;
 }
 
-.main-menu .navigation>li>ul {
+.main-menu .navigation > li > ul {
   position: absolute;
   left: 0px;
   top: 100%;
@@ -3403,28 +3435,30 @@ a:hover {
   /* display: none; */
   -webkit-box-shadow: 0 0 3px rgba(0, 0, 0, 0.1);
   box-shadow: 0 0 3px rgba(0, 0, 0, 0.1);
-  -webkit-box-shadow: 2px 2px 5px 1px rgba(0, 0, 0, 0.05),
+  -webkit-box-shadow:
+    2px 2px 5px 1px rgba(0, 0, 0, 0.05),
     -2px 0px 5px 1px rgba(0, 0, 0, 0.05);
-  box-shadow: 2px 2px 5px 1px rgba(0, 0, 0, 0.05),
+  box-shadow:
+    2px 2px 5px 1px rgba(0, 0, 0, 0.05),
     -2px 0px 5px 1px rgba(0, 0, 0, 0.05);
 }
 
-.main-menu .navigation>li>ul.from-right {
+.main-menu .navigation > li > ul.from-right {
   left: auto;
   right: 0px;
 }
 
-.main-menu .navigation>li>ul>li {
+.main-menu .navigation > li > ul > li {
   position: relative;
   width: 100%;
   border-bottom: 1px solid #ebf1f5;
 }
 
-.main-menu .navigation>li>ul>li:last-child {
+.main-menu .navigation > li > ul > li:last-child {
   border-bottom: none;
 }
 
-.main-menu .navigation>li>ul>li>a {
+.main-menu .navigation > li > ul > li > a {
   position: relative;
   display: block;
   padding: 10px 0px;
@@ -3439,11 +3473,11 @@ a:hover {
   transition: all 200ms ease;
 }
 
-.main-menu .navigation>li>ul>li:hover>a {
+.main-menu .navigation > li > ul > li:hover > a {
   color: var(--theme-colo-dark);
 }
 
-.main-menu .navigation>li>ul>li.dropdown>a:after {
+.main-menu .navigation > li > ul > li.dropdown > a:after {
   font-family: "Font Awesome 6 Pro";
   content: "\f105";
   position: absolute;
@@ -3456,7 +3490,7 @@ a:hover {
   z-index: 5;
 }
 
-.main-menu .navigation>li>ul>li.dropdown:hover>ul {
+.main-menu .navigation > li > ul > li.dropdown:hover > ul {
   visibility: visible;
   opacity: 1;
   top: 0px;
@@ -3465,7 +3499,7 @@ a:hover {
   transition: all 300ms ease;
 }
 
-.main-menu .navigation>li>ul>li>ul {
+.main-menu .navigation > li > ul > li > ul {
   position: absolute;
   left: 100%;
   top: 0px;
@@ -3479,23 +3513,25 @@ a:hover {
   margin-top: 10px;
   -webkit-transform: translateY(-30px);
   transform: translateY(-30px);
-  -webkit-box-shadow: 2px 2px 5px 1px rgba(0, 0, 0, 0.05),
+  -webkit-box-shadow:
+    2px 2px 5px 1px rgba(0, 0, 0, 0.05),
     -2px 0px 5px 1px rgba(0, 0, 0, 0.05);
-  box-shadow: 2px 2px 5px 1px rgba(0, 0, 0, 0.05),
+  box-shadow:
+    2px 2px 5px 1px rgba(0, 0, 0, 0.05),
     -2px 0px 5px 1px rgba(0, 0, 0, 0.05);
 }
 
-.main-menu .navigation>li>ul>li>ul>li {
+.main-menu .navigation > li > ul > li > ul > li {
   position: relative;
   border-bottom: 1px solid #ebf1f5;
   width: 100%;
 }
 
-.main-menu .navigation>li>ul>li>ul>li:last-child {
+.main-menu .navigation > li > ul > li > ul > li:last-child {
   border-bottom: none;
 }
 
-.main-menu .navigation>li>ul>li>ul>li>a {
+.main-menu .navigation > li > ul > li > ul > li > a {
   position: relative;
   display: block;
   padding: 10px 0;
@@ -3510,7 +3546,7 @@ a:hover {
   transition: all 300ms ease;
 }
 
-.main-menu .navigation>li>ul>li>ul>li>a:hover {
+.main-menu .navigation > li > ul > li > ul > li > a:hover {
   color: var(--theme-colo-dark);
 }
 
@@ -3639,7 +3675,9 @@ a:hover {
   border-bottom: 1px solid transparent;
 }
 
-.header-search .form-group input:not([type="submit"])::-webkit-input-placeholder {
+.header-search
+  .form-group
+  input:not([type="submit"])::-webkit-input-placeholder {
   color: var(--text-color);
 }
 
@@ -4038,15 +4076,15 @@ a:hover {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.mobile-menu .navigation li>ul>li:last-child {
+.mobile-menu .navigation li > ul > li:last-child {
   border-bottom: none;
 }
 
-.mobile-menu .navigation li>ul>li:first-child {
+.mobile-menu .navigation li > ul > li:first-child {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.mobile-menu .navigation li>a {
+.mobile-menu .navigation li > a {
   position: relative;
   display: block;
   line-height: 24px;
@@ -4057,8 +4095,8 @@ a:hover {
   text-transform: capitalize;
 }
 
-.mobile-menu .navigation li:hover>a,
-.mobile-menu .navigation li.current>a {
+.mobile-menu .navigation li:hover > a,
+.mobile-menu .navigation li.current > a {
   color: var(--theme-color1);
 }
 
@@ -4090,12 +4128,12 @@ a:hover {
   content: "\f106";
 }
 
-.mobile-menu .navigation li>ul,
-.mobile-menu .navigation li>ul>li>ul {
+.mobile-menu .navigation li > ul,
+.mobile-menu .navigation li > ul > li > ul {
   display: none;
 }
 
-.mobile-menu .navigation li>ul>li {
+.mobile-menu .navigation li > ul > li {
   padding-left: 20px;
 }
 
@@ -4583,7 +4621,7 @@ a:hover {
   color: var(--notech-black);
 }
 
-.contact-details__info li+li {
+.contact-details__info li + li {
   margin-top: 19px;
 }
 
@@ -4664,7 +4702,6 @@ section>.container-fluid {
 } */
 
 @media (min-width: 1400px) {
-
   .container,
   .container-lg,
   .container-md,
@@ -5170,7 +5207,7 @@ section>.container-fluid {
   margin-bottom: 0px !important;
 }
 
-.ph-item>* {
+.ph-item > * {
   padding: 0px !important;
 }
 
@@ -5538,7 +5575,7 @@ section>.container-fluid {
   background-color: rgb(0, 0, 0);
 }
 
-.vicky-cabs .swiper-horizontal>.swiper-pagination-bullets,
+.vicky-cabs .swiper-horizontal > .swiper-pagination-bullets,
 .swiper-pagination-bullets.swiper-pagination-horizontal {
   bottom: 0px;
 }
@@ -5703,7 +5740,7 @@ section>.container-fluid {
     height: unset;
   }
 
-  .vicky-cab-homebanner .feature-carousal>.carousal-item {
+  .vicky-cab-homebanner .feature-carousal > .carousal-item {
     width: 33.33%;
     border-right: 1px solid #c5c5c5;
   }
@@ -5830,8 +5867,8 @@ section>.container-fluid {
     margin-left: -15px;
   }
 
-  .vicky-cabs .img-frame>h1,
-  .img-frame>h2 {
+  .vicky-cabs .img-frame > h1,
+  .img-frame > h2 {
     text-align: center;
   }
 
@@ -6249,7 +6286,9 @@ section>.container-fluid {
 }
 
 .vicky-cab-vehicle .menu {
-  box-shadow: 0 1px 3px rgb(0 0 0 / 12%), 0 1px 2px rgb(0 0 0 / 24%);
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 12%),
+    0 1px 2px rgb(0 0 0 / 24%);
   border-radius: 20px;
   margin: 10px 0;
 }
@@ -6579,7 +6618,10 @@ section>.container-fluid {
     width: 100%;
   }
 
-  .home-form-datetime .custom-input .react-datepicker__input-container input::placeholder,
+  .home-form-datetime
+    .custom-input
+    .react-datepicker__input-container
+    input::placeholder,
   .home-form-datetime .custom-input .react-datepicker__input-container input {
     font-size: 15px;
   }
@@ -6598,7 +6640,10 @@ section>.container-fluid {
     font-size: 11px;
   }
 
-  .home-form-datetime .custom-input .react-datepicker__input-container input::placeholder,
+  .home-form-datetime
+    .custom-input
+    .react-datepicker__input-container
+    input::placeholder,
   .home-form-datetime .custom-input .react-datepicker__input-container input {
     font-size: 15px;
   }
@@ -6613,7 +6658,10 @@ section>.container-fluid {
     font-size: 10px;
   }
 
-  .home-form-datetime .custom-input .react-datepicker__input-container input::placeholder,
+  .home-form-datetime
+    .custom-input
+    .react-datepicker__input-container
+    input::placeholder,
   .home-form-datetime .custom-input .react-datepicker__input-container input {
     font-size: 15px;
   }
@@ -6624,8 +6672,10 @@ section>.container-fluid {
 }
 
 @media (max-width: 376px) {
-
-  .home-form-datetime .custom-input .react-datepicker__input-container input::placeholder,
+  .home-form-datetime
+    .custom-input
+    .react-datepicker__input-container
+    input::placeholder,
   .home-form-datetime .custom-input .react-datepicker__input-container input {
     font-size: 15px;
   }
@@ -6659,7 +6709,10 @@ section>.container-fluid {
     font-size: 8px;
   }
 
-  .home-form-datetime .custom-input .react-datepicker__input-container input::placeholder {
+  .home-form-datetime
+    .custom-input
+    .react-datepicker__input-container
+    input::placeholder {
     font-size: 14px !important;
   }
 
@@ -7167,7 +7220,9 @@ section>.container-fluid {
   bottom: 10px;
 }
 
-.react-datepicker-wrapper .react-datepicker__input-container input::placeholder {
+.react-datepicker-wrapper
+  .react-datepicker__input-container
+  input::placeholder {
   color: #01000599 !important;
   font-size: 18px !important;
   font-weight: 400 !important;
@@ -7603,7 +7658,8 @@ section>.container-fluid {
   padding: 10px;
 }
 
-.taxisafar-outstation-services .outstation-service-item .taxisafar-number {}
+.taxisafar-outstation-services .outstation-service-item .taxisafar-number {
+}
 
 .taxisafar-outstation-services .outstation-service-item.active .number {
   background-color: #e52710;
@@ -7667,7 +7723,8 @@ section>.container-fluid {
   z-index: 2;
 }
 
-.taxisafar-outstation-services .swiper-pagination-bullets.swiper-pagination-horizontal {
+.taxisafar-outstation-services
+  .swiper-pagination-bullets.swiper-pagination-horizontal {
   left: 75px !important;
 }
 
@@ -8015,7 +8072,8 @@ section>.container-fluid {
     margin-top: 20px;
   }
 
-  .taxisafar-outstation-services .swiper-pagination-bullets.swiper-pagination-horizontal {
+  .taxisafar-outstation-services
+    .swiper-pagination-bullets.swiper-pagination-horizontal {
     left: unset !important;
   }
 
@@ -8035,7 +8093,6 @@ section>.container-fluid {
 }
 
 @media (max-width: 440px) {
-
   .vicky-cabbazar-header .taxisafar-theme-outline-button,
   .vicky-cabbazar-header .taxisafar-theme-button {
     display: none;
@@ -8680,11 +8737,13 @@ section>.container-fluid {
 .timeline-dotline .line {
   width: 2px;
   flex-grow: 1;
-  background: repeating-linear-gradient(to bottom,
-      #aaa,
-      #aaa 4px,
-      transparent 4px,
-      transparent 8px);
+  background: repeating-linear-gradient(
+    to bottom,
+    #aaa,
+    #aaa 4px,
+    transparent 4px,
+    transparent 8px
+  );
   margin-top: 2px;
 }
 
@@ -8717,11 +8776,13 @@ section>.container-fluid {
   top: 50%;
   bottom: -90px;
   width: 2px;
-  background: repeating-linear-gradient(to bottom,
-      #aaa,
-      #aaa 4px,
-      transparent 4px,
-      transparent 8px);
+  background: repeating-linear-gradient(
+    to bottom,
+    #aaa,
+    #aaa 4px,
+    transparent 4px,
+    transparent 8px
+  );
   z-index: 1;
 }
 
@@ -8820,21 +8881,9 @@ section>.container-fluid {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
 /* delivery login page  */
 
 .delivery-login-form-section {
-
   height: 100%;
   display: flex;
   justify-items: center;
@@ -8844,13 +8893,12 @@ section>.container-fluid {
   margin: auto;
   max-width: 480px;
   width: 100%;
-  background-color: #F3F4F6;
+  background-color: #f3f4f6;
   position: relative;
 }
 
 .delivery-login-logo-container {
   position: relative;
-
 }
 
 .delivery-login-info {
@@ -8921,7 +8969,6 @@ section>.container-fluid {
   padding: 12px 16px;
 }
 
-
 .delivery-form-control:focus {
   outline: none;
   border-color: #3a7bd500;
@@ -8935,7 +8982,7 @@ section>.container-fluid {
 }
 
 .delivery-form-control::placeholder {
-  color: #01000566
+  color: #01000566;
 }
 
 .error-messages {
@@ -8943,9 +8990,7 @@ section>.container-fluid {
   color: red;
 }
 
-
 /* otp verifiation section  */
-
 
 .otp-verification-section {
   text-align: center;
@@ -9027,17 +9072,11 @@ section>.container-fluid {
   margin-bottom: 15px;
 }
 
-
 .back-arrow {
   position: absolute;
   top: -10px;
   left: -100px;
 }
-
-
-
-
-
 
 /* driver register page code  */
 
@@ -9045,7 +9084,7 @@ section>.container-fluid {
   max-width: 450px;
   margin: 0 auto;
   padding: 120px 20px 20px 20px;
-  background-color: #F3F4F6;
+  background-color: #f3f4f6;
 }
 
 .delivery-register-logo-container {
@@ -9053,7 +9092,6 @@ section>.container-fluid {
   margin-bottom: 25px;
   position: relative;
 }
-
 
 .delivery-register-step {
   display: flex;
@@ -9067,7 +9105,7 @@ section>.container-fluid {
 .delivery-register-step-line {
   height: 4px;
   width: 33%;
-  background-color: #E0E0E0;
+  background-color: #e0e0e0;
   /* Inactive step color */
   border-radius: 2px;
 }
@@ -9141,7 +9179,7 @@ section>.container-fluid {
 }
 
 .driver-register-btn:disabled {
-  background-color: #E0E0E0;
+  background-color: #e0e0e0;
   cursor: not-allowed;
 }
 
@@ -9150,7 +9188,6 @@ section>.container-fluid {
   margin-top: 20px;
   font-size: 18px;
   color: #01000599;
-
 }
 
 .driver-register-login-new-user a {
@@ -9162,7 +9199,7 @@ section>.container-fluid {
 
 .error-message {
   font-size: 12px;
-  color: #FF0000;
+  color: #ff0000;
 }
 
 .driver-profile-note {
@@ -9171,15 +9208,14 @@ section>.container-fluid {
   margin-bottom: 15px;
 }
 
-
 .camera-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  background-color: #F5F5F5;
-  border: 0px dashed #E0E0E0;
+  background-color: #f5f5f5;
+  border: 0px dashed #e0e0e0;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
@@ -9198,7 +9234,7 @@ section>.container-fluid {
   justify-content: center;
 }
 
-.driver-photo-preview>img {
+.driver-photo-preview > img {
   width: 93px;
   height: 93px;
   border-radius: 100%;
@@ -9279,8 +9315,6 @@ section>.container-fluid {
   cursor: pointer;
 }
 
-
-
 /* Date Picker Styles */
 .position-relative {
   position: relative;
@@ -9289,7 +9323,6 @@ section>.container-fluid {
 .datepicker-container {
   position: relative;
   z-index: 99;
-
 }
 
 .calendar-icon-container {
@@ -9309,7 +9342,6 @@ section>.container-fluid {
 /* Customize the date picker input */
 .react-datepicker-wrapper {
   width: 100%;
-
 }
 
 /* Make sure the input has space for the icon */
@@ -9323,7 +9355,6 @@ section>.container-fluid {
   border: 1px solid #e0e0e0;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   width: 100%;
-
 }
 
 .react-datepicker__header {
@@ -9345,18 +9376,7 @@ section>.container-fluid {
   top: 10px;
 }
 
-
-
-
-
-
-
-
-
-
-
 /* step 2  */
-
 
 .document-upload-btn {
   font-size: 16px;
@@ -9373,17 +9393,15 @@ section>.container-fluid {
   border-radius: 8px;
   padding: 40px 0px;
   gap: 8px;
-
 }
 
 .upload-file-span {
   border-bottom: 2px solid #0100051a;
-
 }
 
 .aadhar-card-verify-btn {
   border: none;
-  color: #E52710;
+  color: #e52710;
   font-size: 16px;
   font-weight: 600;
   text-align: right !important;
@@ -9395,14 +9413,12 @@ section>.container-fluid {
   z-index: 99;
 }
 
-
 .document-preview-image {
   width: 24px;
   height: 24px;
 }
 
 .change-document-btn {
-
   z-index: 99;
   cursor: pointer;
   border: none;
@@ -9428,25 +9444,12 @@ section>.container-fluid {
   width: 100%;
   height: 100px;
   padding: 0px 20px;
-
-
 }
 
 .document-preview-image-container {
   display: flex;
   gap: 15px;
-
 }
-
-
-
-
-
-
-
-
-
-
 
 /* driver dashboard css  */
 /* .slider-container {
@@ -9532,9 +9535,6 @@ section>.container-fluid {
   font-size: 13px;
 
 } */
-
-
-
 
 /* upcoming trip  */
 
@@ -9625,9 +9625,6 @@ section>.container-fluid {
 
  */
 
-
-
-
 /* Mobile optimization */
 /* @media (max-width: 480px) {
 
@@ -9637,11 +9634,10 @@ section>.container-fluid {
 } */
 .react-datepicker {
   width: max-content;
-
 }
 
 .react-datepicker__day-name,
 .react-datepicker__day,
 .react-datepicker__time-name {
-  width: 1.5em!important;
+  width: 1.5em !important;
 }
