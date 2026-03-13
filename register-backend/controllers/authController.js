@@ -35,7 +35,7 @@ exports.registerUser = async (req, res) => {
             // Tour guide
             experienceYears, languages, guideLicenseNumber, servicesOffered,
             // RTO
-            officeName, officeAddress, services,rtoOfficeCode,
+            officeName, officeAddress, services, rtoOfficeCode,
             // Car Accessory
             shopName, shopAddress, accessoryTypes,
             // Car Mechanic
@@ -373,8 +373,8 @@ exports.adminVerifyUser = async (req, res) => {
             await Payment.findByIdAndUpdate(payment._id, { paymentLinkSendOrNot: true });
         }
 
-        if(user){
-            user.payment=payment._id
+        if (user) {
+            user.payment = payment._id
             await user.save()
         }
         res.status(200).json({
@@ -395,204 +395,317 @@ exports.adminVerifyUser = async (req, res) => {
 };
 
 exports.paymentSuccessWebhook = async (req, res) => {
-  try {
+    try {
 
-    console.log("========== RAZORPAY WEBHOOK RECEIVED ==========");
+        console.log("========== RAZORPAY WEBHOOK RECEIVED ==========");
 
-    // Headers
-    console.log("Headers:", req.headers);
+        // Headers
+        console.log("Headers:", req.headers);
 
-    // Raw body
-    console.log("Raw Body:", req.rawBody);
-    console.log("Raw Query:", req.query);
+        // Raw body
+        console.log("Raw Body:", req.rawBody);
+        console.log("Raw Query:", req.query);
 
 
-    // Parsed body
-    console.log("Parsed Body:", JSON.stringify(req.body, null, 2));
+        // Parsed body
+        console.log("Parsed Body:", JSON.stringify(req.body, null, 2));
 
-    const signature = req.headers["x-razorpay-signature"];
-    const rawBody = req.rawBody || JSON.stringify(req.body);
+        const signature = req.headers["x-razorpay-signature"];
+        const rawBody = req.rawBody || JSON.stringify(req.body);
 
-    console.log("Signature:", signature);
+        console.log("Signature:", signature);
 
-    // Verify webhook authenticity
-    if (!verifyWebhookSignature(rawBody, signature)) {
-      console.warn("⚠️ Invalid Razorpay webhook signature");
-      return res.status(400).json({ success: false, message: "Invalid signature." });
+        // Verify webhook authenticity
+        if (!verifyWebhookSignature(rawBody, signature)) {
+            console.warn("⚠️ Invalid Razorpay webhook signature");
+            return res.status(400).json({ success: false, message: "Invalid signature." });
+        }
+
+        console.log("✅ Signature verified");
+
+        const event = req.body.event;
+
+        console.log("Event Type:", event);
+
+        // Handle payment link paid event
+        if (event === "payment_link.paid") {
+
+            const paymentLinkId = req.body.payload?.payment_link?.entity?.id;
+            const paymentId = req.body.payload?.payment?.entity?.id;
+            const amount = req.body.payload?.payment?.entity?.amount;
+
+            console.log("Payment Link ID:", paymentLinkId);
+            console.log("Payment ID:", paymentId);
+            console.log("Amount:", amount);
+
+            if (!paymentLinkId) {
+                console.log("❌ Payment link ID missing");
+                return res.status(400).json({ success: false });
+            }
+
+            const payment = await Payment.findOne({ rzp_order_id: paymentLinkId });
+
+            console.log("DB Payment:", payment);
+
+            if (!payment) {
+                console.warn("⚠️ Payment record not found:", paymentLinkId);
+                return res.status(200).json({ received: true });
+            }
+
+            if (payment.status === "paid") {
+                console.log("⚠️ Payment already processed");
+                return res.status(200).json({ received: true });
+            }
+
+            await Payment.findByIdAndUpdate(payment._id, {
+                status: "paid",
+                paymentId,
+                amountPaid: amount ? amount / 100 : payment.amountPaid
+            });
+
+            console.log("✅ Payment updated in DB");
+
+            const user = await User.findByIdAndUpdate(
+                payment.userId,
+                { isPaid: true },
+                { new: true }
+            );
+
+            console.log("User Updated:", user);
+
+            if (user) {
+                console.log("Sending WhatsApp confirmation...");
+                sendPaymentSuccess(user.phone, user.name, user._id).catch(console.error);
+            }
+
+            return res.status(200).json({ received: true, success: true });
+        }
+
+        if (event === "payment_link.expired") {
+
+            const paymentLinkId = req.body.payload?.payment_link?.entity?.id;
+
+            console.log("Payment Link Expired:", paymentLinkId);
+
+            if (paymentLinkId) {
+                await Payment.findOneAndUpdate(
+                    { rzp_order_id: paymentLinkId },
+                    { paymentLinkExpired: true, status: "failed" }
+                );
+            }
+
+            return res.status(200).json({ received: true });
+        }
+
+        console.log("Unhandled event:", event);
+
+        res.status(200).json({ received: true });
+
+    } catch (err) {
+
+        console.error("paymentSuccessWebhook error:", err);
+
+        res.status(200).json({
+            received: true,
+            error: err.message
+        });
     }
-
-    console.log("✅ Signature verified");
-
-    const event = req.body.event;
-
-    console.log("Event Type:", event);
-
-    // Handle payment link paid event
-    if (event === "payment_link.paid") {
-
-      const paymentLinkId = req.body.payload?.payment_link?.entity?.id;
-      const paymentId = req.body.payload?.payment?.entity?.id;
-      const amount = req.body.payload?.payment?.entity?.amount;
-
-      console.log("Payment Link ID:", paymentLinkId);
-      console.log("Payment ID:", paymentId);
-      console.log("Amount:", amount);
-
-      if (!paymentLinkId) {
-        console.log("❌ Payment link ID missing");
-        return res.status(400).json({ success: false });
-      }
-
-      const payment = await Payment.findOne({ rzp_order_id: paymentLinkId });
-
-      console.log("DB Payment:", payment);
-
-      if (!payment) {
-        console.warn("⚠️ Payment record not found:", paymentLinkId);
-        return res.status(200).json({ received: true });
-      }
-
-      if (payment.status === "paid") {
-        console.log("⚠️ Payment already processed");
-        return res.status(200).json({ received: true });
-      }
-
-      await Payment.findByIdAndUpdate(payment._id, {
-        status: "paid",
-        paymentId,
-        amountPaid: amount ? amount / 100 : payment.amountPaid
-      });
-
-      console.log("✅ Payment updated in DB");
-
-      const user = await User.findByIdAndUpdate(
-        payment.userId,
-        { isPaid: true },
-        { new: true }
-      );
-
-      console.log("User Updated:", user);
-
-      if (user) {
-        console.log("Sending WhatsApp confirmation...");
-        sendPaymentSuccess(user.phone, user.name, user._id).catch(console.error);
-      }
-
-      return res.status(200).json({ received: true, success: true });
-    }
-
-    if (event === "payment_link.expired") {
-
-      const paymentLinkId = req.body.payload?.payment_link?.entity?.id;
-
-      console.log("Payment Link Expired:", paymentLinkId);
-
-      if (paymentLinkId) {
-        await Payment.findOneAndUpdate(
-          { rzp_order_id: paymentLinkId },
-          { paymentLinkExpired: true, status: "failed" }
-        );
-      }
-
-      return res.status(200).json({ received: true });
-    }
-
-    console.log("Unhandled event:", event);
-
-    res.status(200).json({ received: true });
-
-  } catch (err) {
-
-    console.error("paymentSuccessWebhook error:", err);
-
-    res.status(200).json({
-      received: true,
-      error: err.message
-    });
-  }
 };
 
 const crypto = require("crypto");
 
+const crypto = require("crypto");
+
 exports.paymentSuccessRedirect = async (req, res) => {
-  try {
+    try {
+        const {
+            razorpay_payment_id,
+            razorpay_payment_link_id,         // this is usually the plink_xxx
+            razorpay_payment_link_reference_id,
+            razorpay_payment_link_status,
+            razorpay_signature,
+        } = req.query;
 
-    const {
-      razorpay_payment_id,
-      razorpay_payment_link_id,
-      razorpay_payment_link_reference_id,
-      razorpay_payment_link_status,
-      razorpay_signature
-    } = req.query;
-    console.log(req.query)
+        console.log("Redirect query params:", req.query);
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+        const secret = process.env.RAZORPAY_KEY_SECRET;
 
-    const data = `${razorpay_payment_link_id}|${razorpay_payment_link_reference_id}|${razorpay_payment_link_status}|${razorpay_payment_id}`;
+        // Razorpay Payment Link redirect signature format (as per docs & common practice)
+        // order: payment_link_id | payment_link_reference_id | payment_link_status | payment_id
+        const data = `${razorpay_payment_link_id}|${razorpay_payment_link_reference_id}|${razorpay_payment_link_status}|${razorpay_payment_id}`;
 
-    const generatedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(data)
-      .digest("hex");
+        const generatedSignature = crypto
+            .createHmac("sha256", secret)
+            .update(data)
+            .digest("hex");
 
-    console.log("Generated:", generatedSignature);
-    console.log("Razorpay:", razorpay_signature);
+        console.log("Generated sig:", generatedSignature);
+        console.log("Received sig :", razorpay_signature);
 
-    if (generatedSignature !== razorpay_signature) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid signature"
-      });
+        if (generatedSignature !== razorpay_signature) {
+            return sendFailurePage(res, "Payment verification failed. Signature mismatch.");
+        }
+
+        console.log("Signature verified ✓");
+
+        // Find payment record
+        const payment = await Payment.findOne({
+            rzp_order_id: razorpay_payment_link_id, // plink_xxx
+        });
+
+        if (!payment) {
+            return sendFailurePage(res, "Payment record not found in our system.");
+        }
+
+        // Already paid → show success anyway (idempotent)
+        if (payment.status === "paid") {
+            return sendSuccessPage(res, payment.userId, "Payment was already processed successfully.");
+        }
+
+        // Update payment & user
+        await Payment.findByIdAndUpdate(payment._id, {
+            status: "paid",
+            paymentId: razorpay_payment_id,
+            // you can add more fields: razorpay_payment_link_status, etc.
+        });
+
+        const user = await User.findByIdAndUpdate(
+            payment.userId,
+            { isPaid: true },
+            { new: true }
+        );
+
+        // Send WhatsApp / SMS notification
+        if (user) {
+            try {
+                const msgData = await sendPaymentSuccess(user.phone, user.name, user._id);
+                console.log("WhatsApp/SMS sent:", msgData);
+            } catch (notifyErr) {
+                console.error("Notification failed:", notifyErr);
+            }
+        }
+
+        // Show success page
+        return sendSuccessPage(res, user?._id, "Payment completed successfully!");
+
+    } catch (err) {
+        console.error("Payment redirect error:", err);
+        return sendFailurePage(res, "Something went wrong. Please contact support.");
     }
-
-    console.log("Payment verified");
-
-    // DB operations
-    const payment = await Payment.findOne({
-      rzp_order_id: razorpay_payment_link_id
-    });
-
-    if (!payment) {
-      return res.status(404).json({
-        success: false,
-        message: "Payment record not found"
-      });
-    }
-
-    // if (payment.status === "paid") {
-    //   return res.json({
-    //     success: true,
-    //     message: "Payment already processed"
-    //   });
-    // }
-
-    await Payment.findByIdAndUpdate(payment._id, {
-      status: "paid",
-      paymentId: razorpay_payment_id
-    });
-
-    const user = await User.findByIdAndUpdate(
-      payment.userId,
-      { isPaid: true },
-      { new: true }
-    );
-
-    console.log(user)
-    if (user) {
-    const data = await  sendPaymentSuccess(user.phone, user.name, user._id).catch(console.error);
-    console.log(data)
-    }
-
-    res.json({
-      success: true,
-      message: "Payment successful"
-    });
-
-  } catch (err) {
-    console.error("Payment redirect error:", err);
-    res.status(500).json({ success: false });
-  }
 };
+
+// ─── Helper: Success HTML ────────────────────────────────────────
+function sendSuccessPage(res, userId, message = "Payment Successful!") {
+    const redirectUrl = "https://taxisafar.com"
+
+    res.status(200).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Payment Successful - Taxi Safar</title>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        body {
+          font-family: 'Outfit', sans-serif;
+          margin: 0;
+          padding: 0;
+          background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #1e293b;
+        }
+        .card {
+          background: white;
+          border-radius: 16px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+          padding: 2.5rem 2rem;
+          max-width: 480px;
+          text-align: center;
+        }
+        .icon { font-size: 4.5rem; margin-bottom: 1rem; }
+        h1 { font-size: 2.1rem; margin: 0.5rem 0 1rem; color: #10b981; }
+        p { font-size: 1.1rem; color: #475569; margin-bottom: 1.8rem; line-height: 1.5; }
+        .btn {
+          display: inline-block;
+          background: #10b981;
+          color: white;
+          font-weight: 600;
+          padding: 0.9rem 2.2rem;
+          border-radius: 50px;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+        .btn:hover { background: #059669; transform: translateY(-2px); }
+        .countdown { font-size: 0.95rem; color: #64748b; margin-top: 1.5rem; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="icon">🎉</div>
+        <h1>Thank You!</h1>
+        <p>${message}</p>
+        <p>Your account is now activated. Enjoy Taxi Safar services!</p>
+        <a href="${redirectUrl}" class="btn">Go to Website</a>
+        <div class="countdown">Redirecting in <span id="sec">6</span> seconds...</div>
+      </div>
+
+      <script>
+        let timeLeft = 6;
+        const timer = setInterval(() => {
+          timeLeft--;
+          document.getElementById("sec").textContent = timeLeft;
+          if (timeLeft <= 0) {
+            clearInterval(timer);
+            window.location.href = "${redirectUrl}";
+          }
+        }, 1000);
+      </script>
+    </body>
+    </html>
+  `);
+}
+
+// ─── Helper: Failure HTML ────────────────────────────────────────
+function sendFailurePage(res, message = "Payment Failed") {
+    const retryUrl = "/"; // or payment page, retry link, etc.
+
+    res.status(400).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+      <title>Payment Failed - Taxi Safar</title>
+      <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Outfit', sans-serif; margin:0; padding:0; background:#fef2f2; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+        .card { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1); padding:2.5rem 2rem; max-width:460px; text-align:center; }
+        .icon { font-size:4.5rem; margin-bottom:1rem; }
+        h1 { font-size:2.1rem; margin:0.5rem 0 1rem; color:#ef4444; }
+        p { font-size:1.1rem; color:#475569; margin-bottom:1.8rem; }
+        .btn { display:inline-block; background:#ef4444; color:white; font-weight:600; padding:0.9rem 2rem; border-radius:50px; text-decoration:none; }
+        .btn:hover { background:#dc2626; }
+        .secondary { margin-top:1.2rem; font-size:0.95rem; color:#64748b; }
+        .secondary a { color:#3b82f6; text-decoration:underline; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="icon">😔</div>
+        <h1>Payment Failed</h1>
+        <p>${message}</p>
+        <p>Please try again or contact support if the amount was deducted.</p>
+        <a href="${retryUrl}" class="btn">Try Again</a>
+        <div class="secondary">Need help? <a href="https://taxisafar.com/contact">Contact Support</a></div>
+      </div>
+    </body>
+    </html>
+  `);
+}
 exports.activateProfile = async (req, res) => {
     try {
         const { userId } = req.params;
