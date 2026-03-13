@@ -7,11 +7,15 @@ const {
     sendLoginOTP,
     verifyLoginOTP,
     adminVerifyUser,
-    paymentSuccessWebhook,
+    paymentSuccessRedirect,
     activateProfile,
     getAllUsersByCategory,
     getUserProfile,
-    resendOTP
+    resendOTP,
+    deactivateProfile,
+    reactivateProfile,
+    adminUpdatePartner,
+    deletePartner
 } = require("../controllers/authController");
 
 const { protect, adminOnly } = require("../middleware/authMiddleware");
@@ -96,8 +100,8 @@ router.get(
 // Admin: verify user and generate payment link
 router.post(
     "/admin/verify-user/:userId",
-    adminOnly,
-    adminVerifyRules,
+    // adminOnly,
+    // adminVerifyRules,
     validate,
     adminVerifyUser
 );
@@ -105,25 +109,39 @@ router.post(
 // Admin: activate profile after payment
 router.post(
     "/admin/activate-profile/:userId",
-    adminOnly,
+   
     activateProfile
 );
 
-// ─── Razorpay Webhook ─────────────────────────────────────────────────────────
-// IMPORTANT: This route needs raw body for signature verification
-// Register BEFORE express.json() middleware using express.raw()
-router.post(
-    "/webhook/razorpay",
-    express.raw({ type: "application/json" }),
-    (req, res, next) => {
-        // Attach raw body string for signature verification
-        if (Buffer.isBuffer(req.body)) {
-            req.rawBody = req.body.toString("utf8");
-            req.body = JSON.parse(req.rawBody);
-        }
-        next();
-    },
-    paymentSuccessWebhook
+router.patch("/admin/partner/:userId/deactivate", deactivateProfile);
+
+// reactivate
+router.patch("/admin/partner/:userId/reactivate", reactivateProfile);
+
+// update partner
+router.put("/admin/partner/:userId", adminUpdatePartner);
+
+// delete partner
+router.delete("/admin/partner/:userId", deletePartner);
+
+router.get(
+  "/webhook/razorpay",
+  express.raw({ type: "application/json" }),
+  (req, res, next) => {
+    try {
+      // Razorpay sends raw buffer
+      if (Buffer.isBuffer(req.body)) {
+        req.rawBody = req.body.toString("utf8");
+        req.body = JSON.parse(req.rawBody);
+      }
+
+      next();
+    } catch (err) {
+      console.error("Webhook body parse error:", err);
+      return res.status(400).json({ success: false, message: "Invalid JSON" });
+    }
+  },
+  paymentSuccessRedirect
 );
 
 module.exports = router;

@@ -34,7 +34,10 @@ const userSchema = new mongoose.Schema(
         profileImage: {
             type: String
         },
+        aadharFront: String,
+        aadharBack: String,
 
+        panCard: String,
         category: {
             type: String,
             enum: [
@@ -142,7 +145,10 @@ const userSchema = new mongoose.Schema(
         },
 
 
-
+        payment: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Payment"
+        },
         // ===============================
         // RTO SERVICE
         // ===============================
@@ -160,7 +166,7 @@ const userSchema = new mongoose.Schema(
                 return this.category === "rto_service"
             }
         },
-
+        rtoOfficeCode: String,
         services: {
             type: [String] // driving license, rc transfer etc
         },

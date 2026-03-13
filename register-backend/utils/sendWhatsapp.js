@@ -16,7 +16,7 @@ function getTemplateBody(templateName, data = {}) {
                 1: String(data.name)
             };
 
-        case "payment_init":
+        case "copy_payment_init":
             return {
                 1: String(data.name),
                 2: String(data.paymentLink)
@@ -34,8 +34,10 @@ function getTemplateBody(templateName, data = {}) {
 
 exports.sendWhatsappTemplateForContactForm = async (data) => {
     try {
+
         const templateName = data.templateName;
         const body = getTemplateBody(templateName, data);
+
         if (!body) throw new Error(`Invalid or unknown template: ${templateName}`);
 
         const context = {
@@ -44,10 +46,16 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
             body
         };
 
+        /* ===============================
+           BUTTON SUPPORT (PAYMENT LINK)
+        =============================== */
+
+      
+
         const payload = {
             phone_number_id: MYOPERATOR_PHONE_NUMBER_ID,
             customer_country_code: "91",
-            customer_number: Number(data.number),
+            customer_number: String(data.number),
             data: {
                 type: "template",
                 context
@@ -69,16 +77,18 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
         });
 
         return response.data;
+
     } catch (err) {
+
         console.error("WhatsApp Send Error:", err.response?.data || err.message);
+
         if (err.response?.data?.errors) {
             console.error("Detailed Errors:", err.response.data.errors);
         }
-        // Don't throw – WhatsApp failures should NOT break the main flow
+
         return null;
     }
 };
-
 
 
 
@@ -91,7 +101,7 @@ exports.sendRegistrationSuccess = (phone, name, userId) =>
     });
 exports.sendPaymentLink = (phone, name, paymentLink, userId) =>
     exports.sendWhatsappTemplateForContactForm({
-        templateName: "payment_init",
+        templateName: "copy_payment_init",
         number: phone,
         name,
         paymentLink,

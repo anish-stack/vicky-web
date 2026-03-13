@@ -27,7 +27,7 @@ exports.createPaymentLink = async ({ amount, userId, name, phone, email, descrip
             userId: String(userId),
             platform: "TaxiSafar"
         },
-        callback_url: `${process.env.FRONTEND_URL}/payment/success`,
+        callback_url: `https://partners.taxisafar.com/api/auth/webhook/razorpay`,
         callback_method: "get",
         expire_by: Math.floor(Date.now() / 1000) + 24 * 60 * 60, 
     };
