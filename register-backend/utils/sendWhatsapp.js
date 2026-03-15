@@ -6,10 +6,26 @@ const MYOPERATOR_COMPANY_ID = process.env.MYOPERATOR_COMPANY_ID;
 const MYOPERATOR_PHONE_NUMBER_ID = process.env.MYOPERATOR_PHONE_NUMBER_ID;
 const MYOPERATOR_API = process.env.MYOPERATOR_API_ENDPOINT;
 
-// ─── Template body builders ───────────────────────────────────────────────────
+
+/* ─────────────────────────────────────────────
+   Clean Phone Number
+─────────────────────────────────────────────*/
+function cleanPhone(number) {
+    if (!number) return null;
+
+    const cleaned = String(number).replace(/\D/g, "").slice(-10);
+
+    if (cleaned.length !== 10) return null;
+
+    return cleaned;
+}
+
+
+/* ─────────────────────────────────────────────
+   Template Body Builder
+─────────────────────────────────────────────*/
 function getTemplateBody(templateName, data = {}) {
     switch (templateName) {
-
 
         case "registration_complete_verification_start":
             return {
@@ -27,18 +43,41 @@ function getTemplateBody(templateName, data = {}) {
                 1: String(data.name)
             };
 
+        case "copy_provider_msg":
+            return {
+                1: String(data.providerName),
+                2: String(data.driverName),
+                3: String(data.driverNumber),
+                4: String(data.message)
+            };
+
         default:
             return null;
     }
 }
 
+
+/* ─────────────────────────────────────────────
+   Core WhatsApp Sender
+─────────────────────────────────────────────*/
 exports.sendWhatsappTemplateForContactForm = async (data) => {
+
     try {
+
+        console.log("📩 Incoming WhatsApp Request:", data);
 
         const templateName = data.templateName;
         const body = getTemplateBody(templateName, data);
 
-        if (!body) throw new Error(`Invalid or unknown template: ${templateName}`);
+        if (!body) {
+            throw new Error(`Invalid template: ${templateName}`);
+        }
+
+        const cleanNumber = cleanPhone(data.number);
+
+        if (!cleanNumber) {
+            throw new Error(`Invalid phone number: ${data.number}`);
+        }
 
         const context = {
             template_name: templateName,
@@ -46,16 +85,10 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
             body
         };
 
-        /* ===============================
-           BUTTON SUPPORT (PAYMENT LINK)
-        =============================== */
-
-      
-
         const payload = {
             phone_number_id: MYOPERATOR_PHONE_NUMBER_ID,
             customer_country_code: "91",
-            customer_number: String(data.number),
+            customer_number: cleanNumber,
             data: {
                 type: "template",
                 context
@@ -66,24 +99,34 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
                 : null
         };
 
-        const response = await axios.post(MYOPERATOR_API, payload, {
-            headers: {
-                Authorization: `Bearer ${MYOPERATOR_API_KEY}`,
-                "X-MYOP-COMPANY-ID": MYOPERATOR_COMPANY_ID,
-                "Content-Type": "application/json",
-                Accept: "application/json"
-            },
-            timeout: 10000
-        });
+        console.log("🚀 MyOperator Payload:", JSON.stringify(payload, null, 2));
+
+        const response = await axios.post(
+            MYOPERATOR_API,
+            payload,
+            {
+                headers: {
+                    Authorization: `Bearer ${MYOPERATOR_API_KEY}`,
+                    "X-MYOP-COMPANY-ID": MYOPERATOR_COMPANY_ID,
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
+                },
+                timeout: 10000
+            }
+        );
+
+        console.log("✅ WhatsApp API Response:", response.data);
 
         return response.data;
 
     } catch (err) {
 
-        console.error("WhatsApp Send Error:", err.response?.data || err.message);
+        console.error("❌ WhatsApp Send Error:");
 
-        if (err.response?.data?.errors) {
-            console.error("Detailed Errors:", err.response.data.errors);
+        if (err.response) {
+            console.error("API Error:", err.response.data);
+        } else {
+            console.error(err.message);
         }
 
         return null;
@@ -91,6 +134,9 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
 };
 
 
+/* ─────────────────────────────────────────────
+   Template Helpers
+─────────────────────────────────────────────*/
 
 exports.sendRegistrationSuccess = (phone, name, userId) =>
     exports.sendWhatsappTemplateForContactForm({
@@ -99,6 +145,8 @@ exports.sendRegistrationSuccess = (phone, name, userId) =>
         name,
         id: userId
     });
+
+
 exports.sendPaymentLink = (phone, name, paymentLink, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "copy_payment_init",
@@ -108,6 +156,7 @@ exports.sendPaymentLink = (phone, name, paymentLink, userId) =>
         id: userId
     });
 
+
 exports.sendPaymentSuccess = (phone, name, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "payment_success_profile_live",
@@ -116,3 +165,36 @@ exports.sendPaymentSuccess = (phone, name, userId) =>
         id: userId
     });
 
+
+/* ─────────────────────────────────────────────
+   CONTACT FORM PROVIDER MESSAGE
+   (WITH FULL LOGGING)
+─────────────────────────────────────────────*/
+
+exports.sendContactFormProvider = async (
+    providerName,
+    driverName,
+    driverNumber,
+    message,
+    driverId
+) => {
+
+    console.log("📞 sendContactFormProvider called with:");
+    console.log({
+        providerName,
+        driverName,
+        driverNumber,
+        message,
+        driverId
+    });
+
+    return exports.sendWhatsappTemplateForContactForm({
+        templateName: "copy_provider_msg",
+        number: driverNumber,   // IMPORTANT
+        providerName,
+        driverName,
+        driverNumber,
+        message,
+        id: driverId
+    });
+};
