@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.taxisafr.driver",
+      "sha256_cert_fingerprints": [
+        "2C:C8:34:87:C5:81:4F:4F:6B:78:E6:DA:EA:BE:BE:CE:21:F4:45:DF:7D:FD:CD:1D:BA:D1:F5:49:8C:8D:D5:7F",
+        "0C:4F:71:B9:D5:F2:D1:2A:59:A5:F4:84:0F:09:C0:92:27:01:DF:4B:F4:E4:19:CA:50:6C:3A:77:39:71:45:4B"
+      ]
+    }
+  }
+]
