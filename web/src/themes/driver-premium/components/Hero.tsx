@@ -140,7 +140,7 @@ ${tripType === "round-trip" ? `*Return Date & Time:*  \n${formatDateTime(returnD
 
   /* ================= UI ================= */
   return (
-    <section className="relative min-h-[600px] overflow-hidden flex items-center">
+    <section id="home" className="relative min-h-[600px] overflow-hidden flex items-center">
       {/* BG */}
       <div className="absolute inset-0">
         <img

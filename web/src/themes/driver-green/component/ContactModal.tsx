@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { X, User, Phone, Mail, MessageSquare, Send } from 'lucide-react';
+import React, { useState } from "react";
+import { X, User, Phone, Mail, MessageSquare, Send } from "lucide-react";
+import { useWebsite } from "@/context/WebsiteContext";
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -7,33 +8,49 @@ interface ContactModalProps {
 }
 
 const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
+  const { website } = useWebsite();
+  const basicInfo = website?.basicInfo || {};
+  const companyName = basicInfo.name || "TaxiSafar";
+  const whatsapp = basicInfo.whatsapp || basicInfo.phone || "9876543210";
+
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    message: ''
+    name: "",
+    phone: "",
+    email: "",
+    message: "",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('Contact form data:', formData);
+
+    const text = `
+New Enquiry - ${companyName}
+
+Name: ${formData.name}
+Phone: ${formData.phone}
+Email: ${formData.email}
+
+Message:
+${formData.message}
+`.trim();
+
+    window.open(`https://wa.me/91${whatsapp}?text=${encodeURIComponent(text)}`, "_blank");
+
     setIsSubmitting(false);
     onClose();
-    setFormData({ name: '', phone: '', email: '', message: '' });
+    setFormData({ name: "", phone: "", email: "", message: "" });
   };
 
   if (!isOpen) return null;
@@ -41,119 +58,109 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div 
-          className="fixed inset-0 bg-dark-900/80 backdrop-blur-sm transition-opacity"
+        <div
+          className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         ></div>
 
-        {/* Modal */}
-        <div className="inline-block align-bottom bg-white dark:bg-dark-900 rounded-2xl px-8 pt-6 pb-8 text-left overflow-hidden shadow-soft-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100 dark:border-dark-700">
-          {/* Header */}
+        <div className="inline-block align-bottom bg-white rounded-2xl px-6 pt-6 pb-8 text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <div className="bg-primary-100 dark:bg-primary-900/30 p-2 rounded-lg mr-3">
-                <Mail className="w-6 h-6 text-primary-600 dark:text-primary-500" />
+              <div className="bg-emerald-100 p-2 rounded-lg mr-3">
+                <Mail className="w-6 h-6 text-emerald-600" />
               </div>
-              <h3 className="text-2xl font-bold text-dark-900 dark:text-white">
-                Get In Touch
-              </h3>
+              <h3 className="text-2xl font-bold text-gray-900">Get In Touch</h3>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-dark-800 rounded-xl transition-colors duration-200"
+              className="p-2 hover:bg-gray-100 rounded-xl transition-colors duration-200"
             >
-              <X className="w-5 h-5 text-dark-500 dark:text-dark-400" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
           </div>
 
-          <p className="text-dark-600 dark:text-dark-300 mb-6">
-            Have questions or need assistance? Send us a message and we'll get back to you soon.
+          <p className="text-gray-600 mb-6 text-sm">
+            Have questions or need assistance? Send us a message on WhatsApp and we'll
+            get back to you soon.
           </p>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name Field */}
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Full Name
               </label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-primary-500 w-5 h-5" />
+                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-500 w-5 h-5" />
                 <input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 dark:border-dark-600 rounded-xl bg-gray-50 dark:bg-dark-800 text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 placeholder:text-dark-400 dark:placeholder:text-dark-500"
+                  className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
                   placeholder="Enter your full name"
                   required
                 />
               </div>
             </div>
 
-            {/* Phone Field */}
             <div>
-              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Phone Number
               </label>
               <div className="relative">
-                <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-primary-500 w-5 h-5" />
+                <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-500 w-5 h-5" />
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 dark:border-dark-600 rounded-xl bg-gray-50 dark:bg-dark-800 text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 placeholder:text-dark-400 dark:placeholder:text-dark-500"
+                  className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
                   placeholder="Enter your phone number"
                   required
                 />
               </div>
             </div>
 
-            {/* Email Field */}
             <div>
-              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Email Address
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-primary-500 w-5 h-5" />
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-500 w-5 h-5" />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 dark:border-dark-600 rounded-xl bg-gray-50 dark:bg-dark-800 text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 placeholder:text-dark-400 dark:placeholder:text-dark-500"
+                  className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
                   placeholder="Enter your email address"
                   required
                 />
               </div>
             </div>
 
-            {/* Message Field */}
             <div>
-              <label className="block text-sm font-semibold text-dark-700 dark:text-dark-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Message
               </label>
               <div className="relative">
-                <MessageSquare className="absolute left-4 top-4 text-primary-500 w-5 h-5" />
+                <MessageSquare className="absolute left-4 top-4 text-emerald-500 w-5 h-5" />
                 <textarea
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
                   rows={4}
-                  className="w-full pl-12 pr-4 py-4 border border-gray-200 dark:border-dark-600 rounded-xl bg-gray-50 dark:bg-dark-800 text-dark-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 resize-none placeholder:text-dark-400 dark:placeholder:text-dark-500"
+                  className="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 resize-none"
                   placeholder="How can we help you?"
                   required
                 />
               </div>
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 shadow-soft hover:shadow-soft-lg flex items-center justify-center group"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold py-3.5 px-6 rounded-xl transition-all duration-200 shadow-lg flex items-center justify-center group"
             >
               {isSubmitting ? (
                 <>
@@ -174,15 +181,14 @@ const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose }) => {
   );
 };
 
-// Create a wrapper component to manage the modal state
+// Wrapper that listens for the global "openContactModal" event dispatched by StickyButtons
 const ContactModalWrapper: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Listen for custom events to open the modal
   React.useEffect(() => {
     const handleOpenModal = () => setIsOpen(true);
-    window.addEventListener('openContactModal', handleOpenModal);
-    return () => window.removeEventListener('openContactModal', handleOpenModal);
+    window.addEventListener("openContactModal", handleOpenModal);
+    return () => window.removeEventListener("openContactModal", handleOpenModal);
   }, []);
 
   return <ContactModal isOpen={isOpen} onClose={() => setIsOpen(false)} />;

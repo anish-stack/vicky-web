@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Menu, X, MapPin, Phone, Mail, Globe, User } from "lucide-react";
+import { Menu, X, MapPin, Phone, Mail } from "lucide-react";
 import { useWebsite } from "@/context/WebsiteContext";
 
 const Header = () => {
@@ -7,12 +7,12 @@ const Header = () => {
   const { website } = useWebsite() as any;
 
   const navItems = [
-    { name: "Home", href: "#" },
+    { name: "Home", href: "#home" },
     { name: "Services", href: "#services" },
-    { name: "Vehicle Models", href: "#tours" },
-    { name: "News", href: "#routes" },
-    { name: "Locations", href: "#locations" },
-    { name: "Faq", href: "#contact" },
+    { name: "Fleet", href: "#tours" },
+    { name: "Routes", href: "#routes" },
+    { name: "Testimonials", href: "#testimonials" },
+    { name: "FAQ", href: "#faq" },
   ];
 
   return (
@@ -86,19 +86,23 @@ const Header = () => {
 
             {/* Right actions */}
             <div className="hidden md:flex items-center gap-3">
-              {/* Language */}
-              <button className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-orange-500 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
-                <Globe size={16} />
-                <span className="font-medium">EN | ₹</span>
-              </button>
-
-              {/* Login */}
               <a
-                href="#"
-                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm font-semibold transition-colors"
+                href={`tel:+91${website?.basicInfo?.phone || "9876543210"}`}
+                className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-orange-500 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <User size={15} />
-                Log in | Register
+                <Phone size={16} />
+                <span className="font-medium">Call Now</span>
+              </a>
+
+              <a
+                href={`https://wa.me/91${
+                  website?.basicInfo?.whatsapp || website?.basicInfo?.phone || "9876543210"
+                }`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition-colors"
+              >
+                Book a Ride
               </a>
             </div>
 
@@ -131,11 +135,14 @@ const Header = () => {
             ))}
             <div className="pt-3 border-t border-gray-100">
               <a
-                href="#"
+                href={`https://wa.me/91${
+                  website?.basicInfo?.whatsapp || website?.basicInfo?.phone || "9876543210"
+                }`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-colors"
               >
-                <User size={15} />
-                Log in | Register
+                Book a Ride
               </a>
             </div>
           </div>

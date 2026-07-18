@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const Razorpay = require("razorpay");
+const { Op } = require("sequelize");
 const {
 	Trip,
 	Transaction,
@@ -20,36 +21,20 @@ const razorpay = new Razorpay({
 	key_secret: `${process.env.RAZORPAY_KEY_SECRET}`,
 });
 
-	
-	function getTemplateName({ trip_type, car_tab }) {
-		if (trip_type === "airport") {
-			return "airport_bookings";
-		} else if (car_tab === "chardham") {
-			return "char_dhar_yatra_bookingss";
-		} else if (trip_type === "local") {
-			return "local_rentals";
-		} else if (["oneWay", "roundTrip"].includes(trip_type)) {
-			return "one_way_drop_round_tripssssss";
-		} else {
-			return null;
-		}
-	};
+function getTemplateName({ trip_type, car_tab }) {
+	if (trip_type === "airport") {
+		return "airport_bookings";
+	} else if (car_tab === "chardham") {
+		return "char_dhar_yatra_bookingss";
+	} else if (trip_type === "local") {
+		return "local_rentals";
+	} else if (["oneWay", "roundTrip"].includes(trip_type)) {
+		return "one_way_drop_round_tripssssss";
+	} else {
+		return null;
+	}
+}
 
-// function getTemplateName(data) {
-//   // console.log("data.trip_type ", data.trip_type);
-// 	if (data.trip_type === "airport") {
-// 		return "airport_bookings";
-// 	} else if (data.car_tab === "chardham") {
-// 		return "char_dhar_yatra_bookingss";
-// 	} 
-//   else if (data.trip_type === "local") {
-// 		return "local_rentals";
-// 	} else if (["oneWay", "roundTrip"].includes(data.trip_type)) {
-// 		return "one_way_drop_round_tripssssss";
-// 	} else {
-// 		return null;
-// 	}
-// }
 const dhamCategoryMap = {
 	"1 Dham": "One Dham Yatra",
 	"2 Dham": "Two Dham Yatra",
@@ -58,7 +43,6 @@ const dhamCategoryMap = {
 };
 
 function getTemplateBody(template, bookingData) {
-	
 	switch (template) {
 		case "airport_bookings":
 			return {
@@ -69,15 +53,12 @@ function getTemplateBody(template, bookingData) {
 				5: `${bookingData.places[2]?.label}`,
 				6: bookingData.departure_date,
 				7: bookingData.vehicle_category,
-			
-				8: `Rs ${bookingData.additional_kilometers}/- Per Km`, //Extra km Charge
+
+				8: `Rs ${bookingData.additional_kilometers}/- Per Km`, // Extra km Charge
 				9: bookingData.additional_time_charge || "-",
 
 				10: bookingData.toll_tax ? "Included" : "Not Included",
 				11: bookingData.parking_charges ? "Included" : "Not Included",
-
-				// 8: bookingData.driver_charges ? "Included" : "Not Included",
-				// 9: bookingData.night_charges ? "Included" : "Not Included",
 
 				12: bookingData.booking_amount,
 				13: bookingData.advance_payment,
@@ -95,9 +76,7 @@ function getTemplateBody(template, bookingData) {
 				6: bookingData.departure_date,
 				7: bookingData.vehicle_category,
 
-				// 	 `${bookingData.extra_km}`, //Total Km Limit
-				 8:`Rs ${bookingData.additional_kilometers}/- Per Km`, //Extra km Charge
-			
+				8: `Rs ${bookingData.additional_kilometers}/- Per Km`, // Extra km Charge
 				9: bookingData.additional_time_charge || "-",
 
 				10: bookingData.toll_tax ? "Included" : "Not Included",
@@ -119,7 +98,6 @@ function getTemplateBody(template, bookingData) {
 
 				5: `${bookingData.places[0]?.label}` || "-",
 				6: bookingData.trip_type == "oneWay" ? "One Way" : "Round Trip",
-				// 7: `${bookingData.places.at(-1)?.label}` || "-",
 				7:
 					bookingData.places?.length > 2
 						? bookingData.places
@@ -128,17 +106,14 @@ function getTemplateBody(template, bookingData) {
 								.join(" <<< To >>> ")
 						: "-", // Middle places if more than 2 exist
 
-				// 7: bookingData.places?.map((place) => place.label).join(" > ") || "-",
 				8: `${bookingData.places.at(-1)?.label}` || "-",
 
 				9: bookingData.vehicle_category,
 
-				10: `${bookingData.extra_km}`, //Total Km Limit
-				11: `Rs ${bookingData.additional_kilometers}/- Per Km`, //Extra km Charge
-				// 10: bookingData.additional_time_charge || "-",
+				10: `${bookingData.extra_km}`, // Total Km Limit
+				11: `Rs ${bookingData.additional_kilometers}/- Per Km`, // Extra km Charge
 
 				12: bookingData.toll_tax ? "Included" : "Not Included",
-				// 12: bookingData.parking_charges ? "Included" : "Not Included",
 
 				13: bookingData.advance_payment
 					? `Rs ${bookingData.advance_payment}/- `
@@ -180,43 +155,41 @@ function getTemplateBody(template, bookingData) {
 
 const sendBookingTemplate = async (bookingData) => {
 	try {
-    let payload = {};
-	const templateName = getTemplateName({
-		trip_type: bookingData.trip_type,
-		car_tab: bookingData.car_tab,
-	});
-	
-		// const templateName = getTemplateName(bookingData); // decide based on logic
-		const body = getTemplateBody(templateName, bookingData); // map body accordingly
-		// console.log("body",body,templateName)
-    	Object.keys(body).forEach((key) => {
-			body[key] = String(body[key]);
+		const templateName = getTemplateName({
+			trip_type: bookingData.trip_type,
+			car_tab: bookingData.car_tab,
 		});
-    
+
+		const body = getTemplateBody(templateName, bookingData);
+
 		if (!templateName || !body) {
 			console.error("Invalid template or body data.");
 			return { status: false, message: "Invalid template or body data." };
-			
 		}
-    	payload = {
-				phone_number_id: "603250552863231",
-				customer_country_code: "91",
-				// customer_number: "9664749915",
-				customer_number: "7042129128",
-				data: {
-					type: "template",
-					context: {
-						template_name: templateName,
-						language: "en",
-						body: body,
-					},
+
+		Object.keys(body).forEach((key) => {
+			body[key] = String(body[key]);
+		});
+
+		const payload = {
+			phone_number_id: process.env.MYOPERATOR_PHONE_NUMBER_ID,
+			customer_country_code: "91",
+			// BUG FIX: this was hardcoded to a fixed test number before, so every
+			// booking notification (for every customer) went to the same number.
+			// It now correctly goes to the actual customer's phone number.
+			customer_number: bookingData.contact_number,
+			data: {
+				type: "template",
+				context: {
+					template_name: templateName,
+					language: "en",
+					body: body,
 				},
-				reply_to: null,
-				myop_ref_id: `TS${String(bookingData.id).padStart(3, "0")}-${
-					bookingData.departure_date
-				}`,
-			};
-		
+			},
+			reply_to: null,
+			myop_ref_id: `TS${String(bookingData.id).padStart(3, "0")}-${bookingData.departure_date}`,
+		};
+
 		const response = await fetch(
 			"https://publicapi.myoperator.co/chat/messages",
 			{
@@ -226,31 +199,27 @@ const sendBookingTemplate = async (bookingData) => {
 					"X-MYOP-COMPANY-ID": process.env.MYOPERATOR_COMPANY_ID,
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify(payload, null, 2), // ✅ sending raw JSON
+				body: JSON.stringify(payload),
 			}
 		);
 
-		// const result = await response.json();
-		
 		if (!response.ok) {
-			console.error("Failed to send message:", response);
+			console.error("Failed to send WhatsApp booking template:", await response.text());
 			return { status: false, message: "Failed to send booking template" };
 		}
 
 		return {
 			status: true,
 			message: "Booking sent successfully!",
-			// data: result,
 		};
 	} catch (error) {
-		console.error("Error sending booking:", error);
+		console.error("Error sending booking template:", error);
 		return { status: false, message: "Internal error occurred" };
 	}
 };
 
-
 exports.createTrip = async (req, res) => {
-  try {
+	try {
 		let {
 			vehicle_id,
 			pickup_address,
@@ -285,6 +254,7 @@ exports.createTrip = async (req, res) => {
 			original_amount,
 			paid_amount,
 		} = req.body;
+		console.log("req.body",user_id)
 		const Schema = Joi.object({
 			vehicle_id: Joi.string().required().messages({
 				"string.empty": "Vehicle id is required",
@@ -296,12 +266,6 @@ exports.createTrip = async (req, res) => {
 			}),
 			places: Joi.array()
 				.required()
-				// .items(
-				//     Joi.object({
-				//         label: Joi.string().required(),
-				//         value: Joi.string().required(),
-				//     })
-				// )
 				.when("trip_type", {
 					is: "local",
 					then: Joi.array().min(1),
@@ -331,7 +295,11 @@ exports.createTrip = async (req, res) => {
 					"number.base": "Plan must be a valid number.",
 				}),
 			}),
-			airport_id: Joi.alternatives().conditional("tripType", {
+			// BUG FIX: these three were checking the sibling field "tripType"
+			// (camelCase), but the payload actually sends "trip_type"
+			// (snake_case) — so `is: "airport"` never matched and airport
+			// bookings could be created without airport_id/city/from_to.
+			airport_id: Joi.alternatives().conditional("trip_type", {
 				is: "airport",
 				then: Joi.number().required().messages({
 					"any.required": "Airport is required.",
@@ -341,7 +309,7 @@ exports.createTrip = async (req, res) => {
 					"number.base": "Airport ID must be a valid number.",
 				}),
 			}),
-			airport_city_id: Joi.alternatives().conditional("tripType", {
+			airport_city_id: Joi.alternatives().conditional("trip_type", {
 				is: "airport",
 				then: Joi.number().required().messages({
 					"any.required": "Please select a city",
@@ -351,7 +319,7 @@ exports.createTrip = async (req, res) => {
 					"number.base": "city must be a valid number",
 				}),
 			}),
-			airport_from_to: Joi.alternatives().conditional("tripType", {
+			airport_from_to: Joi.alternatives().conditional("trip_type", {
 				is: "airport",
 				then: Joi.string().required().messages({
 					"any.required": "Please select from/to",
@@ -373,7 +341,6 @@ exports.createTrip = async (req, res) => {
 
 		const { error } = Schema.validate(req.body, { abortEarly: false });
 		if (error) {
-			console.log("error", error);
 			return res.json({
 				status: false,
 				message: error?.details[0]?.message,
@@ -420,18 +387,18 @@ exports.createTrip = async (req, res) => {
 			include: [
 				{
 					model: User,
-					as: "users", // You gave an alias for the User association
+					as: "users",
 				},
 				{
-					model: Vehicle, // No alias used, so just use the model directly
+					model: Vehicle,
 				},
 				{
 					model: Pincode,
-					as: "pincode_details", // You used an alias here
+					as: "pincode_details",
 				},
 				{
 					model: airports,
-					as: "airport_detail", // You used an alias here
+					as: "airport_detail",
 				},
 				{
 					model: cities,
@@ -462,7 +429,7 @@ exports.createTrip = async (req, res) => {
 			booking_id: `TS${plainData.id.toString().padStart(3, "0")}`,
 			full_name: tripsData.users?.name,
 			airport_from_to: airport_from_to,
-			airport_name: tripsData.airport_detail?.name || "", // resolve via airport_id
+			airport_name: tripsData.airport_detail?.name || "",
 			pickup_address: pickup_address,
 			departure_date: `[${new Date(departure_date).toLocaleString("en-GB", {
 				day: "2-digit",
@@ -485,13 +452,13 @@ exports.createTrip = async (req, res) => {
 				  })}]`
 				: " - ",
 			vehicle_category: tripsData.Vehicle.title,
-			extra_km: distance, //Total Km Limit
-			additional_kilometers: extra_km, //Extra km Charge
+			extra_km: distance, // Total Km Limit
+			additional_kilometers: extra_km, // Extra km Charge
 			driver_charges: driver_charges,
 			night_charges: night_charges,
 			toll_tax: toll_tax,
 			parking_charges: parking_charges,
-			booking_amount: original_amount, // Compute if needed
+			booking_amount: original_amount,
 			advance_payment: paid_amount,
 			contact_number: tripsData.users?.phone_number,
 
@@ -518,15 +485,13 @@ exports.createTrip = async (req, res) => {
 			}/- Per Hours`,
 			payment_link: "",
 		};
-		// console.log("Trip", tripsData);
-		// Determine advance percentage
+
 		const advancePercentage = bookingData.car_tab === "chardham" ? 0.1 : 0.2;
 
 		const driverAdvanceAmount = Math.round(
 			original_amount * advancePercentage * 100
 		); // in paisa
 
-		// Prepare payment link options for Razorpay
 		const paymentLinkOptions = {
 			amount: driverAdvanceAmount,
 			currency: "INR",
@@ -534,49 +499,27 @@ exports.createTrip = async (req, res) => {
 			reference_id: bookingData.booking_id,
 			customer: {
 				name: bookingData.full_name,
-				booking_id: `${bookingData.booking_id}`, // You may remove this; `booking_id` is not a valid Razorpay field under `customer`
-				// email: "user@example.com", // optional
 				contact: bookingData.contact_number,
 			},
 			notify: {
 				sms: false,
 				email: false,
 			},
-			// callback_url: "https://taxisafar.com/payment-success",
-			// callback_method: "get",
 		};
 
-		// Create payment link
-		// razorpay.paymentLink.create(paymentLinkOptions).then(async (link) => {
-		// 	bookingData.payment_link = link.short_url;
-
-		// 	// Now bookingData is complete with payment_link
-		// 	console.log("Final booking data:", bookingData);
-		// 	await sendBookingTemplate(bookingData);
-		// });
 		try {
-			// Create payment link
 			const link = await razorpay.paymentLink.create(paymentLinkOptions);
-
-			// Assign link to bookingData
 			bookingData.payment_link = link.short_url;
-
-			// Log the final enriched booking data
-			console.log("Final booking data:", bookingData);
-
-			// Send the confirmation or payment template
 			await sendBookingTemplate(bookingData);
 		} catch (error) {
-			console.error("Failed to create payment link or send template:");
-
-			// Razorpay errors often include a `.error` field
+			// Payment-link / WhatsApp-notification failures must never fail
+			// the trip creation itself — the trip is already saved at this
+			// point, so we just log and continue.
 			if (error?.error) {
-				console.error("Razorpay error:", error.error.description);
+				console.error("Razorpay error while creating payment link:", error.error.description);
 			} else {
-				console.error(error);
+				console.error("Failed to create payment link or send booking template:", error);
 			}
-
-			// Optionally rethrow or handle fallback (e.g., notify admin)
 		}
 
 		res.status(200).json({
@@ -586,93 +529,84 @@ exports.createTrip = async (req, res) => {
 			message: "Trip Created Successfully",
 		});
 	} catch (error) {
-    console.log("error", error);
-    res.status(500).json({
-      status: false,
-      message: error.message,
-    });
-  }
+		res.status(500).json({
+			status: false,
+			message: error.message,
+		});
+	}
 };
 
 exports.getById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    // console.log("Id for trip", id);
-    const data = await Trip.findOne({
-      where: { id: id },
-      include: [
-        {
-          model: Transaction,
-          where: { trip_id: id }, // Apply the role-based condition
-          required:false
-          // attributes: [], // Exclude quotation details from the result
-        },
-        {
-          model: Vehicle,
-        },
-        // {
-        //   model: otp,
-        //   where: { trip_id: id },
-        // },
-      ],
-    });
-    // console.log(JSON.stringify(data, null, 2));
-    if (data) {
-      res.status(200).json({
-        status: true,
-        data: data,
-        message: "Transaction Details Fetched",
-      });
-    } else {
-      res.status(404).json({
-        status: false,
-        message: "Transaction Not Found",
-      });
-    }
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: error.message,
-    });
-  }
+	try {
+		const { id } = req.params;
+		const data = await Trip.findOne({
+			where: { id: id },
+			include: [
+				{
+					model: Transaction,
+					where: { trip_id: id },
+					required: false,
+				},
+				{
+					model: Vehicle,
+				},
+			],
+		});
+
+		if (data) {
+			res.status(200).json({
+				status: true,
+				data: data,
+				message: "Transaction Details Fetched",
+			});
+		} else {
+			res.status(404).json({
+				status: false,
+				message: "Transaction Not Found",
+			});
+		}
+	} catch (error) {
+		res.status(500).json({
+			status: false,
+			message: error.message,
+		});
+	}
 };
 
 exports.getAllTrips = async (req, res) => {
-  try {
-    const {
-      page = 1,
-      items_per_page = 10,
-      search = "",
-      userId,
-      tripStatus,
-    } = req.query;
-    const pageNumber = parseInt(page, 10);
-    const itemsPerPage = parseInt(items_per_page, 10);
+	try {
+		console.log(req.user)
+		const {
+			page = 1,
+			items_per_page = 10,
+			search = "",
+			userId,
+			tripStatus,
+		} = req.query;
+		const pageNumber = parseInt(page, 10);
+		const itemsPerPage = parseInt(items_per_page, 10);
+		console.log("userId",userId)
+		const whereCondition = {
+			...(search && {
+				[Op.or]: [{ invoice_id: { [Op.like]: `%${search}%` } }],
+			}),
 
-    const whereCondition = {
-      ...(search && {
-        [Op.or]: [{ invoice_id: { [Op.like]: `%${search}%` } }],
-      }),
+			...(userId && {
+				user_id: userId,
+			}),
 
-      ...(userId && {
-        user_id: userId,
-      }),
+			...(tripStatus && {
+				trip_status: tripStatus,
+			}),
+		};
 
-      ...(tripStatus && {
-        trip_status: tripStatus,
-      }),
-    };
-
-    const { count, rows: transactions } = await Trip.findAndCountAll({
+		const { count, rows: transactions } = await Trip.findAndCountAll({
 			where: whereCondition,
 			include: [
 				{
 					model: Transaction,
-					attributes: ["paid_amount"], // Exclude quotation details from the result
+					attributes: ["paid_amount"],
 					required: true,
-					// where: {
-					// 	paid_amount: { [Op.gt]: 0 },
-					// },
 				},
 			],
 			offset: (pageNumber - 1) * itemsPerPage,
@@ -680,74 +614,74 @@ exports.getAllTrips = async (req, res) => {
 			order: [["createdAt", "DESC"]],
 		});
 
-    const totalPages = Math.ceil(count / itemsPerPage);
-    const from = (pageNumber - 1) * itemsPerPage + 1;
-    const to = Math.min(pageNumber * itemsPerPage, count);
+		const totalPages = Math.ceil(count / itemsPerPage);
+		const from = (pageNumber - 1) * itemsPerPage + 1;
+		const to = Math.min(pageNumber * itemsPerPage, count);
 
-    const transactionsWithIndex = transactions.map((quotation, index) => ({
-      ...quotation.toJSON(),
-      index_no: from + index,
-    }));
+		const transactionsWithIndex = transactions.map((quotation, index) => ({
+			...quotation.toJSON(),
+			index_no: from + index,
+		}));
 
-    const links = [];
+		const links = [];
 
-    if (pageNumber > 1) {
-      links.push({
-        label: "Previous",
-        page: pageNumber - 1,
-        url: `/?page=${pageNumber - 1}&items_per_page=${itemsPerPage}`,
-      });
-    }
+		if (pageNumber > 1) {
+			links.push({
+				label: "Previous",
+				page: pageNumber - 1,
+				url: `/?page=${pageNumber - 1}&items_per_page=${itemsPerPage}`,
+			});
+		}
 
-    for (let i = 1; i <= totalPages; i++) {
-      links.push({
-        label: i.toString(),
-        page: i,
-        url: `/?page=${i}&items_per_page=${itemsPerPage}`,
-      });
-    }
+		for (let i = 1; i <= totalPages; i++) {
+			links.push({
+				label: i.toString(),
+				page: i,
+				url: `/?page=${i}&items_per_page=${itemsPerPage}`,
+			});
+		}
 
-    if (pageNumber < totalPages) {
-      links.push({
-        label: "Next",
-        page: pageNumber + 1,
-        url: `/?page=${pageNumber + 1}&items_per_page=${itemsPerPage}`,
-      });
-    }
+		if (pageNumber < totalPages) {
+			links.push({
+				label: "Next",
+				page: pageNumber + 1,
+				url: `/?page=${pageNumber + 1}&items_per_page=${itemsPerPage}`,
+			});
+		}
 
-    const pagination = {
-      first_page_url: `/?page=1&items_per_page=${itemsPerPage}`,
-      from,
-      items_per_page: itemsPerPage,
-      last_page: totalPages,
-      items_per_pages: [10, 20, 50, 100, 150],
-      next_page_url:
-        pageNumber < totalPages
-          ? `/?page=${pageNumber + 1}&items_per_page=${itemsPerPage}`
-          : null,
-      page: pageNumber,
-      prev_page_url:
-        pageNumber > 1
-          ? `/?page=${pageNumber - 1}&items_per_page=${itemsPerPage}`
-          : null,
-      to,
-      total: count,
-      links,
-    };
+		const pagination = {
+			first_page_url: `/?page=1&items_per_page=${itemsPerPage}`,
+			from,
+			items_per_page: itemsPerPage,
+			last_page: totalPages,
+			items_per_pages: [10, 20, 50, 100, 150],
+			next_page_url:
+				pageNumber < totalPages
+					? `/?page=${pageNumber + 1}&items_per_page=${itemsPerPage}`
+					: null,
+			page: pageNumber,
+			prev_page_url:
+				pageNumber > 1
+					? `/?page=${pageNumber - 1}&items_per_page=${itemsPerPage}`
+					: null,
+			to,
+			total: count,
+			links,
+		};
 
-    res.status(200).json({
-      status: true,
-      data: transactionsWithIndex,
-      payload: {
-        pagination: pagination,
-      },
-      message: "Trip fetched successfully",
-    });
-  } catch (error) {
-    console.error("Error fetching trips:", error);
-    res.status(500).json({
-      status: false,
-      message: error.message,
-    });
-  }
+		res.status(200).json({
+			status: true,
+			data: transactionsWithIndex,
+			payload: {
+				pagination: pagination,
+			},
+			message: "Trip fetched successfully",
+		});
+	} catch (error) {
+		console.error("Error fetching trips:", error);
+		res.status(500).json({
+			status: false,
+			message: error.message,
+		});
+	}
 };

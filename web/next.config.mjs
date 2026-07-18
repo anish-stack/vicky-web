@@ -11,9 +11,9 @@ const nextConfig = {
 		// NEXT_PUBLIC_RAZORPAY_KEY_ID: "rzp_test_wPADsslOGY4zIb",
 
 		// below is taxisafar new Test RAZORPAY account
-		RAZORPAY_KEY_ID: "rzp_test_fpge3udxlBXTMw",
-		RAZORPAY_KEY_SECRET: "MgX5Hiq1C7JqZcxSgkaFU3bJ",
-		NEXT_PUBLIC_RAZORPAY_KEY_ID: "rzp_test_fpge3udxlBXTMw",
+		RAZORPAY_KEY_ID: "rzp_test_T8XbqaXF6Hu9ea",
+		RAZORPAY_KEY_SECRET: "5y3UNgaiOM2QtEGdYSeF2jyC",
+		NEXT_PUBLIC_RAZORPAY_KEY_ID: "rzp_test_T8XbqaXF6Hu9ea",
 
 		// below is taxisafar new Live RAZORPAY account
 		// RAZORPAY_KEY_ID: "rzp_live_3GX1MwM4UFc4QG",

@@ -7,6 +7,10 @@ const themes: Record<string, any> = {
   "driver-modern": dynamic(() => import("./driver-modern/ThemeTwo"), { ssr: false }),
   "driver-green": dynamic(() => import("./driver-green/GreenTheme"), { ssr: false }),
   "driver-premium": dynamic(() => import("./driver-premium/ThemeThree"), { ssr: false }),
+  "driver-royal": dynamic(() => import("./driver-royal/Theme"), { ssr: false }),
+  "driver-ocean": dynamic(() => import("./driver-ocean/Theme"), { ssr: false }),
+  "driver-sunset": dynamic(() => import("./driver-sunset/Theme"), { ssr: false }),
+  "driver-slate": dynamic(() => import("./driver-slate/Theme"), { ssr: false }),
 };
 
 export default function ThemeRenderer() {

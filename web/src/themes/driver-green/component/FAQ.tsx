@@ -1,124 +1,179 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Circle as HelpCircle } from 'lucide-react';
+import React, { useState } from "react";
+import {
+  ChevronDown,
+  Calendar,
+  Tag,
+  ShieldCheck,
+  Clock,
+  CreditCard,
+  XCircle,
+  Briefcase,
+  Headphones,
+  MessageCircle,
+  Phone,
+  HelpCircle,
+} from "lucide-react";
+import { useWebsite } from "@/context/WebsiteContext";
 
-const FAQ: React.FC = () => {
+type Props = {
+  onEnquiry?: () => void;
+};
+
+const faqs = [
+  {
+    icon: Calendar,
+    question: "How do I book a taxi?",
+    answer:
+      "Book through our website enquiry form or message us on WhatsApp. Enter pickup & destination, pick a time, get instant confirmation with driver details.",
+  },
+  {
+    icon: Tag,
+    question: "What are your fare rates and pricing structure?",
+    answer:
+      "Fares are transparent and based on distance, time and vehicle type. Get an instant estimate on our booking form before confirming — no hidden charges.",
+  },
+  {
+    icon: ShieldCheck,
+    question: "Are all your drivers verified and professional?",
+    answer:
+      "Yes. Every driver is background-verified, holds a valid license, and follows strict safety and cleanliness standards.",
+  },
+  {
+    icon: Clock,
+    question: "Do you provide 24/7 taxi service?",
+    answer:
+      "Yes, we operate round-the-clock, 365 days a year — early airport transfers, late-night rides or emergency trips.",
+  },
+  {
+    icon: CreditCard,
+    question: "What payment methods do you accept?",
+    answer:
+      "We accept cash, UPI and most digital wallets. Choose your preferred method while booking or pay the driver directly.",
+  },
+  {
+    icon: XCircle,
+    question: "Can I cancel or modify my booking?",
+    answer:
+      "You can cancel or modify free up to 30 minutes before pickup. Small charges may apply within 30 minutes of pickup.",
+  },
+  {
+    icon: Briefcase,
+    question: "Do you offer outstation and tour packages?",
+    answer:
+      "Yes, we offer comfortable outstation travel and custom tour packages with professional drivers and flexible itineraries.",
+  },
+];
+
+const FAQ: React.FC<Props> = ({ onEnquiry }) => {
+  const { website } = useWebsite();
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
-  const faqs = [
-    {
-      question: 'How do I book a taxi with VickyCab?',
-      answer: 'You can book a taxi through our website booking form, mobile app, or by calling us directly. Simply enter your pickup and destination, select your preferred time, and confirm your booking. You\'ll receive instant confirmation and driver details.'
-    },
-    {
-      question: 'What are your fare rates and pricing structure?',
-      answer: 'Our fares are transparent and competitive. Rates vary based on distance, time, and vehicle type. You can get an instant fare estimate using our booking form before confirming your ride. We don\'t have any hidden charges or surge pricing.'
-    },
-    {
-      question: 'Are all your drivers verified and professional?',
-      answer: 'Absolutely! All our drivers undergo thorough background verification, possess valid driving licenses, and complete professional training. We conduct regular performance reviews and maintain strict quality standards to ensure your safety and comfort.'
-    },
-    {
-      question: 'Do you provide 24/7 taxi service?',
-      answer: 'Yes, we operate round-the-clock, 365 days a year. Whether you need an early morning airport transfer, late-night ride home, or emergency transportation, our drivers are always available to serve you.'
-    },
-    {
-      question: 'What payment methods do you accept?',
-      answer: 'We accept all major payment methods including cash, credit/debit cards, UPI payments, digital wallets (Paytm, PhonePe, Google Pay), and net banking. You can choose your preferred payment method during booking or pay directly to the driver.'
-    },
-    {
-      question: 'Can I cancel or modify my booking?',
-      answer: 'Yes, you can cancel or modify your booking up to 30 minutes before the scheduled pickup time without any charges. For cancellations within 30 minutes of pickup time, minimal cancellation charges may apply as per our terms and conditions.'
-    },
-    {
-      question: 'Do you offer outstation and tour packages?',
-      answer: 'Yes, we provide comfortable outstation travel and customized tour packages to popular destinations. Our packages include professional drivers, well-maintained vehicles, and flexible itineraries. Contact us for custom tour planning and special rates.'
-    },
-    {
-      question: 'How do I track my ride and driver location?',
-      answer: 'Once your booking is confirmed, you\'ll receive driver details and can track your ride in real-time through our app or website. We also provide SMS updates with driver information and estimated arrival time for your convenience.'
-    }
-  ];
+  const phone = website?.basicInfo?.phone || "9876543210";
 
   const toggleFAQ = (index: number) => {
     setOpenIndex(openIndex === index ? null : index);
   };
 
   return (
-    <section className="py-20 bg-gray-50 dark:bg-dark-900">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-            <HelpCircle className="w-4 h-4 mr-2" />
-            Help & Support
+    <section className="py-14 md:py-20 bg-white relative overflow-hidden">
+      {/* decorative dots */}
+      <div className="hidden sm:grid absolute top-8 right-8 grid-cols-6 gap-1.5 opacity-30">
+        {Array.from({ length: 18 }).map((_, i) => (
+          <span key={i} className="w-1 h-1 rounded-full bg-emerald-300" />
+        ))}
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 px-3.5 py-1.5 rounded-full text-xs font-bold mb-3">
+            <HelpCircle className="w-3.5 h-3.5" />
+            We're Here to Help
           </div>
-          <h2 className="text-3xl lg:text-4xl font-bold text-dark-900 dark:text-white mb-4">
-            Frequently Asked Questions
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">
+            Frequently Asked <span className="text-emerald-600">Questions</span>
           </h2>
-          <p className="text-xl text-dark-600 dark:text-dark-300 max-w-2xl mx-auto">
-            Find quick answers to common questions about our taxi services, booking process, and policies.
+          <p className="text-sm sm:text-base text-gray-500 max-w-xl mx-auto leading-relaxed">
+            Find quick answers to common questions about our taxi services, booking
+            process, and policies.
           </p>
         </div>
 
-        {/* FAQ List */}
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <div
-              key={index}
-              className="bg-white dark:bg-dark-950 border border-gray-200 dark:border-dark-700 rounded-2xl overflow-hidden shadow-soft hover:shadow-soft-lg transition-all duration-300"
-            >
-              <button
-                onClick={() => toggleFAQ(index)}
-                className="w-full px-8 py-6 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-dark-800 transition-colors duration-200"
+        {/* FAQ list */}
+        <div className="space-y-3">
+          {faqs.map((faq, index) => {
+            const isOpen = openIndex === index;
+            const Icon = faq.icon;
+            return (
+              <div
+                key={index}
+                className={`rounded-xl border transition-all duration-200 ${
+                  isOpen
+                    ? "border-emerald-200 bg-white shadow-md shadow-emerald-100/60"
+                    : "border-gray-100 bg-gray-50/70 hover:border-emerald-100 hover:bg-white hover:shadow-sm"
+                }`}
               >
-                <span className="font-bold text-dark-900 dark:text-white text-lg pr-8">
-                  {faq.question}
-                </span>
-                <div className="flex-shrink-0">
-                  {openIndex === index ? (
-                    <ChevronUp className="w-6 h-6 text-primary-600 dark:text-primary-500" />
-                  ) : (
-                    <ChevronDown className="w-6 h-6 text-dark-400 dark:text-dark-500" />
-                  )}
-                </div>
-              </button>
-              
-              {openIndex === index && (
-                <div className="px-8 pb-6">
-                  <div className="border-t border-gray-200 dark:border-dark-700 pt-6">
-                    <p className="text-dark-600 dark:text-dark-300 leading-relaxed text-lg">
+                <button
+                  onClick={() => toggleFAQ(index)}
+                  className="w-full px-4 sm:px-5 py-3.5 flex items-center gap-3 text-left"
+                >
+                  <span
+                    className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 ${
+                      isOpen ? "bg-emerald-600" : "bg-emerald-100"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isOpen ? "text-white" : "text-emerald-600"}`} />
+                  </span>
+                  <span className="flex-1 font-semibold text-gray-900 text-[13.5px] sm:text-sm">
+                    {faq.question}
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 flex-shrink-0 text-emerald-600 transition-transform duration-200 ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                <div
+                  className={`grid transition-all duration-200 ease-in-out ${
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <p className="px-4 sm:px-5 pb-4 pl-[52px] sm:pl-[56px] text-[13px] sm:text-sm text-gray-500 leading-relaxed">
                       {faq.answer}
                     </p>
                   </div>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
-        {/* Contact Support */}
-        <div className="text-center mt-16">
-          <div className="bg-primary-50 dark:bg-primary-900/20 rounded-2xl p-8 border border-primary-200 dark:border-primary-800/50">
-            <div className="bg-primary-100 dark:bg-primary-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <HelpCircle className="w-8 h-8 text-primary-600 dark:text-primary-500" />
-            </div>
-            <h3 className="text-2xl font-bold text-dark-900 dark:text-white mb-3">
-              Still Need Help?
-            </h3>
-            <p className="text-dark-600 dark:text-dark-300 mb-6 max-w-md mx-auto">
-              Our customer support team is available 24/7 to assist you with any questions or concerns.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 shadow-soft hover:shadow-soft-lg">
-                Contact Support
-              </button>
+        {/* Support CTA */}
+        <div className="mt-10 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 sm:p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-600/25">
+            <Headphones className="w-6 h-6 text-white" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1.5">Still Need Help?</h3>
+          <p className="text-[13px] sm:text-sm text-gray-500 mb-5 max-w-sm mx-auto">
+            Our team is available 24/7 to assist you with any questions or concerns.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={onEnquiry}
+              className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2.5 px-6 rounded-full transition-colors duration-200 shadow-md shadow-emerald-600/20"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Contact Support
+            </button>
               <a
-                href="tel:+919999999999"
-                className="border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white font-bold py-4 px-8 rounded-xl transition-all duration-200"
-              >
-                Call: +91 9999999999
-              </a>
-            </div>
+              href={`tel:+91${phone}`}
+              className="inline-flex items-center justify-center gap-2 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white text-sm font-bold py-2.5 px-6 rounded-full transition-colors duration-200"
+            >
+              <Phone className="w-4 h-4" />
+              Call: +91 {phone}
+            </a>
           </div>
         </div>
       </div>
