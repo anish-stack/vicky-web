@@ -153,7 +153,7 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ payment_id: paymentId }),
-        }
+        },
       );
       const data = await response.json();
 
@@ -261,7 +261,7 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
 
         (await createTransaction(
           transactionDetails as any,
-          token as any
+          token as any,
         )) as any;
         setBookShow(false);
         formik.resetForm({
@@ -297,120 +297,125 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
     }
   };
 
-const handlePayment = async (userId, userNumber, userName) => {
-  if (!userId || !userNumber) return;
+  const handlePayment = async (userId: any, userNumber: any, userName: any) => {
+    if (!userId || !userNumber) return;
 
-  try {
-    if (typeof window === "undefined" || !window.Razorpay) {
-      console.error("Razorpay SDK is not loaded.");
-      return;
-    }
-
-    const token = localStorage.getItem("token");
-
-    const response = await fetch(
-      `${process.env.API_URL}/api/payment/create-order`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          amount: Number(price) * 100,
-          userId,
-          userName,
-        }),
+    try {
+      if (typeof window === "undefined" || !window.Razorpay) {
+        console.error("Razorpay SDK is not loaded.");
+        return;
       }
-    );
 
-    const result = await response.json();
+      const token = localStorage.getItem("token");
 
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Failed to create Razorpay order");
-    }
+      const response = await fetch(
+        `${process.env.API_URL}/api/payment/create-order`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            amount: Number(price) * 100,
+            userId,
+            userName,
+          }),
+        },
+      );
 
-    const order = result.data;
+      const result = await response.json();
 
-    console.log("Order:", order);
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to create Razorpay order");
+      }
 
-    const options = {
-      key: order.key, // ✅ Backend se aayi key
-      amount: order.amount,
-      currency: order.currency,
-      order_id: order.id,
-      name: "TaxiSafar",
-      description: "Payment",
+      const order = result.data;
 
-      config: {
-        display: {
-          hide: [{ method: "paylater" }, { method: "emi" }],
-          preferences: {
-            show_default_blocks: true,
+      console.log("Order:", order);
+
+      const options = {
+        key: order.key, // ✅ Backend se aayi key
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.id,
+        name: "TaxiSafar",
+        description: "Payment",
+
+        config: {
+          display: {
+            hide: [{ method: "paylater" }, { method: "emi" }],
+            preferences: {
+              show_default_blocks: true,
+            },
           },
         },
-      },
 
-      readonly: {
-        contact: true,
-      },
-
-      prefill: {
-        contact: userNumber,
-        email: "",
-      },
-
-      notes: order.notes,
-
-      theme: {
-        color: "#3399cc",
-      },
-
-      handler: async function (response) {
-        await fetchPaymentAndAddTransaction(
-          response.razorpay_payment_id,
-          userId
-        );
-      },
-
-      modal: {
-        ondismiss: function () {
-          console.warn("Payment modal dismissed.");
-
-          window.removeEventListener("beforeunload", blockNavigation);
-          window.history.pushState(null, "", window.location.href);
-          window.onpopstate = null;
+        readonly: {
+          contact: true,
         },
-      },
-    };
 
-    window.addEventListener("beforeunload", blockNavigation);
+        prefill: {
+          contact: userNumber,
+          email: "",
+        },
 
-    window.history.pushState(null, "", window.location.href);
+        notes: order.notes,
 
-    window.onpopstate = function () {
-      alert("Payment is in progress. You cannot navigate back.");
+        theme: {
+          color: "#3399cc",
+        },
+
+        handler: async function (response: { razorpay_payment_id: any }) {
+          await fetchPaymentAndAddTransaction(
+            response.razorpay_payment_id,
+            userId,
+          );
+        },
+
+        modal: {
+          ondismiss: function () {
+            console.warn("Payment modal dismissed.");
+
+            window.removeEventListener("beforeunload", blockNavigation);
+            window.history.pushState(null, "", window.location.href);
+            window.onpopstate = null;
+          },
+        },
+      };
+
+      window.addEventListener("beforeunload", blockNavigation);
+
       window.history.pushState(null, "", window.location.href);
-    };
 
-    const rzp = new window.Razorpay(options);
+      window.onpopstate = function () {
+        alert("Payment is in progress. You cannot navigate back.");
+        window.history.pushState(null, "", window.location.href);
+      };
 
-    rzp.on("payment.error", async function (response) {
-      console.error("Payment Failed:", response);
+      const rzp = new window.Razorpay(options);
 
-      const paymentId = response?.error?.metadata?.payment_id;
+      rzp.on(
+        "payment.error",
+        async function (response: {
+          error: { metadata: { payment_id: any } };
+        }) {
+          console.error("Payment Failed:", response);
 
-      if (paymentId) {
-        await fetchPaymentAndAddTransaction(paymentId, userId);
-      }
-    });
+          const paymentId = response?.error?.metadata?.payment_id;
 
-    rzp.open();
-  } catch (error) {
-    console.error("Error initializing Razorpay:", error);
-    alert(error.message || "Unable to start payment.");
-  }
-};
+          if (paymentId) {
+            await fetchPaymentAndAddTransaction(paymentId, userId);
+          }
+        },
+      );
+
+      rzp.open();
+    } catch (error: unknown) {
+      console.error("Error initializing Razorpay:", error);
+      alert(error.message || "Unable to start payment.");
+    }
+  };
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -516,7 +521,7 @@ const handlePayment = async (userId, userNumber, userName) => {
 
   const [step, setStep] = useState(0);
   const [submitButtonName, setSubmitButtonName] = useState(
-    `Pay ₹${price} & Book`
+    `Pay ₹${price} & Book`,
   );
   const [OtpButton, setOtpButton] = useState(`Send OTP`);
   const [customerData, setCustomerData] = useState() as any;
@@ -628,7 +633,7 @@ const handlePayment = async (userId, userNumber, userName) => {
                 setCustomerData(response?.data);
                 formik.setFieldValue(
                   "name",
-                  response?.data?.name ? response?.data?.name : ""
+                  response?.data?.name ? response?.data?.name : "",
                 );
               }
               // console.log("esponse?.data?.token", response?.data?.token)
@@ -669,14 +674,14 @@ const handlePayment = async (userId, userNumber, userName) => {
                 pincode: pincode,
               };
               const tripAvailableData = (await checkBookingLimit(
-                tripAvailable as any
+                tripAvailable as any,
               )) as any;
 
               if (tripAvailableData.status == true) {
                 await handlePayment(
                   response?.data?.id?.toString(),
                   response?.data?.phone_number,
-                  response?.data?.name
+                  response?.data?.name,
                 );
               } else {
                 setToastShow(true);
@@ -687,7 +692,7 @@ const handlePayment = async (userId, userNumber, userName) => {
               await handlePayment(
                 response?.data?.id?.toString(),
                 response?.data?.phone_number,
-                response?.data?.name
+                response?.data?.name,
               );
               NProgress.done();
             }
@@ -708,7 +713,7 @@ const handlePayment = async (userId, userNumber, userName) => {
       formik.setFieldValue("name", customerDetail?.name || "");
       formik.setFieldValue(
         "phone_number",
-        customerDetail?.phone_number || phoneNo || ""
+        customerDetail?.phone_number || phoneNo || "",
       );
       setStep(2);
     }
