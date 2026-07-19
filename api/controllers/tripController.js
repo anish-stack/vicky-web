@@ -59,7 +59,7 @@ function getTemplateBody(template, bookingData) {
 				6: bookingData.departure_date,
 				7: bookingData.vehicle_category,
 
-				8: `Rs ${bookingData.additional_kilometers}/- Per Km`, // Extra km Charge
+				8: `Rs ${bookingData.additional_kilometers}/- Per Km`,
 				9: bookingData.additional_time_charge || "-",
 
 				10: bookingData.toll_tax ? "Included" : "Not Included",
@@ -81,7 +81,7 @@ function getTemplateBody(template, bookingData) {
 				6: bookingData.departure_date,
 				7: bookingData.vehicle_category,
 
-				8: `Rs ${bookingData.additional_kilometers}/- Per Km`, // Extra km Charge
+				8: `Rs ${bookingData.additional_kilometers}/- Per Km`,
 				9: bookingData.additional_time_charge || "-",
 
 				10: bookingData.toll_tax ? "Included" : "Not Included",
@@ -106,17 +106,17 @@ function getTemplateBody(template, bookingData) {
 				7:
 					bookingData.places?.length > 2
 						? bookingData.places
-								.slice(1, -1) // Exclude first and last
-								.map((place) => place.label)
-								.join(" <<< To >>> ")
-						: "-", // Middle places if more than 2 exist
+							.slice(1, -1)
+							.map((place) => place.label)
+							.join(" <<< To >>> ")
+						: "-",
 
 				8: `${bookingData.places.at(-1)?.label}` || "-",
 
 				9: bookingData.vehicle_category,
 
-				10: `${bookingData.extra_km}`, // Total Km Limit
-				11: `Rs ${bookingData.additional_kilometers}/- Per Km`, // Extra km Charge
+				10: `${bookingData.extra_km}`,
+				11: `Rs ${bookingData.additional_kilometers}/- Per Km`,
 
 				12: bookingData.toll_tax ? "Included" : "Not Included",
 
@@ -179,9 +179,6 @@ const sendBookingTemplate = async (bookingData) => {
 		const payload = {
 			phone_number_id: process.env.MYOPERATOR_PHONE_NUMBER_ID,
 			customer_country_code: "91",
-			// BUG FIX: this was hardcoded to a fixed test number before, so every
-			// booking notification (for every customer) went to the same number.
-			// It now correctly goes to the actual customer's phone number.
 			customer_number: bookingData.contact_number,
 			data: {
 				type: "template",
@@ -260,10 +257,6 @@ exports.createTrip = async (req, res) => {
 			paid_amount,
 		} = req.body;
 
-		// SECURITY / CORRECTNESS: for a customer booking their own ride, never
-		// trust user_id from the request body — a stale client-side id (e.g. 512)
-		// could otherwise override the real authenticated one (513). Staff/admin
-		// tokens may still book on behalf of a customer using the body user_id.
 		if (req.user?.role === "customer") {
 			user_id = req.user.id;
 		}
@@ -313,10 +306,6 @@ exports.createTrip = async (req, res) => {
 					"number.base": "Plan must be a valid number.",
 				}),
 			}),
-			// BUG FIX: these three were checking the sibling field "tripType"
-			// (camelCase), but the payload actually sends "trip_type"
-			// (snake_case) — so `is: "airport"` never matched and airport
-			// bookings could be created without airport_id/city/from_to.
 			airport_id: Joi.alternatives().conditional("trip_type", {
 				is: "airport",
 				then: Joi.number().required().messages({
@@ -460,18 +449,18 @@ exports.createTrip = async (req, res) => {
 			})}]`,
 			return_date: return_date
 				? `[${new Date(return_date).toLocaleString("en-GB", {
-						day: "2-digit",
-						month: "2-digit",
-						year: "numeric",
-				  })} Time ${new Date(return_date).toLocaleString("en-US", {
-						hour: "2-digit",
-						minute: "2-digit",
-						hour12: true,
-				  })}]`
+					day: "2-digit",
+					month: "2-digit",
+					year: "numeric",
+				})} Time ${new Date(return_date).toLocaleString("en-US", {
+					hour: "2-digit",
+					minute: "2-digit",
+					hour12: true,
+				})}]`
 				: " - ",
 			vehicle_category: tripsData.Vehicle.title,
-			extra_km: distance, // Total Km Limit
-			additional_kilometers: extra_km, // Extra km Charge
+			extra_km: distance,
+			additional_kilometers: extra_km,
 			driver_charges: driver_charges,
 			night_charges: night_charges,
 			toll_tax: toll_tax,
@@ -498,9 +487,8 @@ exports.createTrip = async (req, res) => {
 				" Hours, " +
 				tripsData.local_rental_plan?.km +
 				" Km",
-			additional_time_charge: `Rs ${
-				tripsData.additional_time_charge || 0
-			}/- Per Hours`,
+			additional_time_charge: `Rs ${tripsData.additional_time_charge || 0
+				}/- Per Hours`,
 			payment_link: "",
 		};
 
@@ -508,7 +496,7 @@ exports.createTrip = async (req, res) => {
 
 		const driverAdvanceAmount = Math.round(
 			original_amount * advancePercentage * 100
-		); // in paisa
+		);
 
 		const paymentLinkOptions = {
 			amount: driverAdvanceAmount,
@@ -530,9 +518,6 @@ exports.createTrip = async (req, res) => {
 			bookingData.payment_link = link.short_url;
 			await sendBookingTemplate(bookingData);
 		} catch (error) {
-			// Payment-link / WhatsApp-notification failures must never fail
-			// the trip creation itself — the trip is already saved at this
-			// point, so we just log and continue.
 			if (error?.error) {
 				console.error("Razorpay error while creating payment link:", error.error.description);
 			} else {
@@ -554,6 +539,7 @@ exports.createTrip = async (req, res) => {
 	}
 };
 
+
 exports.getById = async (req, res) => {
 	try {
 		const { id } = req.params;
@@ -566,7 +552,39 @@ exports.getById = async (req, res) => {
 					required: false,
 				},
 				{
+					model: User,
+					as: "users",
+				},
+				{
 					model: Vehicle,
+				},
+				{
+					model: Pincode,
+					as: "pincode_details",
+				},
+				{
+					model: airports,
+					as: "airport_detail",
+				},
+				{
+					model: cities,
+					as: "trip_city",
+				},
+				{
+					model: localrentalplans,
+					as: "local_rental_plan",
+				},
+				{
+					model: DhamPackageRoute,
+					as: "dham_package",
+				},
+				{
+					model: DhamPickupCity,
+					as: "dham_pickup_city",
+				},
+				{
+					model: DhamCategory,
+					as: "dham_category",
 				},
 			],
 		});
@@ -593,7 +611,6 @@ exports.getById = async (req, res) => {
 
 exports.getAllTrips = async (req, res) => {
 	try {
-		console.log(req.user)
 		const {
 			page = 1,
 			items_per_page = 10,
@@ -603,7 +620,7 @@ exports.getAllTrips = async (req, res) => {
 		} = req.query;
 		const pageNumber = parseInt(page, 10);
 		const itemsPerPage = parseInt(items_per_page, 10);
-		console.log("userId",userId)
+
 		const whereCondition = {
 			...(search && {
 				[Op.or]: [{ invoice_id: { [Op.like]: `%${search}%` } }],
@@ -618,26 +635,63 @@ exports.getAllTrips = async (req, res) => {
 			}),
 		};
 
-		const { count, rows: transactions } = await Trip.findAndCountAll({
+		// full details: Trip + full User + full Vehicle + full Transactions
+		// + all lookup tables (pincode, airport, city, local rental plan, dham)
+		const { count, rows: trips } = await Trip.findAndCountAll({
 			where: whereCondition,
 			include: [
 				{
-					model: Transaction,
-					attributes: ["paid_amount"],
-					required: true,
+					model: Transaction, // ALL fields, no attributes filter
+					required: false,
+				},
+				{
+					model: User,
+					as: "users", // full user record (id, name, phone_number, etc.)
+				},
+				{
+					model: Vehicle, // full vehicle record
+				},
+				{
+					model: Pincode,
+					as: "pincode_details",
+				},
+				{
+					model: airports,
+					as: "airport_detail",
+				},
+				{
+					model: cities,
+					as: "trip_city",
+				},
+				{
+					model: localrentalplans,
+					as: "local_rental_plan",
+				},
+				{
+					model: DhamPackageRoute,
+					as: "dham_package",
+				},
+				{
+					model: DhamPickupCity,
+					as: "dham_pickup_city",
+				},
+				{
+					model: DhamCategory,
+					as: "dham_category",
 				},
 			],
 			offset: (pageNumber - 1) * itemsPerPage,
 			limit: itemsPerPage,
 			order: [["createdAt", "DESC"]],
+			distinct: true, // correct count when joining hasMany (Transaction)
 		});
 
 		const totalPages = Math.ceil(count / itemsPerPage);
 		const from = (pageNumber - 1) * itemsPerPage + 1;
 		const to = Math.min(pageNumber * itemsPerPage, count);
 
-		const transactionsWithIndex = transactions.map((quotation, index) => ({
-			...quotation.toJSON(),
+		const tripsWithIndex = trips.map((trip, index) => ({
+			...trip.toJSON(),
 			index_no: from + index,
 		}));
 
@@ -689,7 +743,7 @@ exports.getAllTrips = async (req, res) => {
 
 		res.status(200).json({
 			status: true,
-			data: transactionsWithIndex,
+			data: tripsWithIndex,
 			payload: {
 				pagination: pagination,
 			},
@@ -701,5 +755,209 @@ exports.getAllTrips = async (req, res) => {
 			status: false,
 			message: error.message,
 		});
+	}
+};
+
+
+const ALLOWED_TRANSITIONS = {
+	reserved: ["ongoing", "cancelled"],
+	ongoing: ["completed", "cancelled"],
+	completed: [],
+	cancelled: [],
+};
+
+exports.markConverted = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const trip = await Trip.findOne({
+      where: { id },
+    });
+
+    if (!trip) {
+      return res.status(404).json({
+        status: false,
+        message: "Trip not found",
+      });
+    }
+
+    if (trip.is_converted_post) {
+      return res.status(400).json({
+        status: false,
+        message: "Trip is already converted.",
+      });
+    }
+
+    trip.is_converted_post = true;
+    await trip.save();
+
+    return res.status(200).json({
+      status: true,
+      message: "Trip marked as converted successfully.",
+      data: trip,
+    });
+  } catch (error) {
+    console.error("markConverted Error:", error);
+
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+exports.markUnConverted = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const trip = await Trip.findOne({
+      where: { id },
+    });
+
+    if (!trip) {
+      return res.status(404).json({
+        status: false,
+        message: "Trip not found",
+      });
+    }
+
+    if (!trip.is_converted_post) {
+      return res.status(400).json({
+        status: false,
+        message: "Trip is already unconverted.",
+      });
+    }
+
+    trip.is_converted_post = false;
+    await trip.save();
+
+    return res.status(200).json({
+      status: true,
+      message: "Trip marked as unconverted successfully.",
+      data: trip,
+    });
+  } catch (error) {
+    console.error("markUnConverted Error:", error);
+
+    return res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+exports.cancelTrip = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { reason } = req.body || {};
+
+		const trip = await Trip.findOne({ where: { id } });
+		if (!trip) {
+			return res.status(404).json({ status: false, message: "Trip not found" });
+		}
+
+		const current = trip.trip_status;
+		if (!ALLOWED_TRANSITIONS[current]?.includes("cancelled")) {
+			return res.status(400).json({
+				status: false,
+				message: `Trip cannot be cancelled from status "${current}"`,
+			});
+		}
+
+		trip.trip_status = "cancelled";
+		if (reason) trip.cancellation_reason = reason;
+		await trip.save();
+
+		return res.status(200).json({
+			status: true,
+			data: trip,
+			message: "Trip cancelled successfully",
+		});
+	} catch (error) {
+		console.error("Error cancelling trip:", error);
+		return res.status(500).json({ status: false, message: error.message });
+	}
+};
+
+const VALID_STATUSES = ["reserved", "ongoing", "completed", "cancelled"];
+
+
+exports.changeTripStatus = async (req, res) => {
+	try {
+		const { id } = req.params;
+		const { status, reason } = req.body || {};
+
+		if (!status || !VALID_STATUSES.includes(status)) {
+			return res.status(400).json({
+				status: false,
+				message: `Invalid status. Must be one of: ${VALID_STATUSES.join(", ")}`,
+			});
+		}
+
+		const trip = await Trip.findOne({ where: { id } });
+		if (!trip) {
+			return res.status(404).json({ status: false, message: "Trip not found" });
+		}
+
+		const current = trip.trip_status;
+
+		if (current === status) {
+			return res.status(400).json({
+				status: false,
+				message: `Trip is already in "${status}" status`,
+			});
+		}
+
+		if (!ALLOWED_TRANSITIONS[current]?.includes(status)) {
+			return res.status(400).json({
+				status: false,
+				message: `Cannot change status from "${current}" to "${status}"`,
+			});
+		}
+
+		trip.trip_status = status;
+		if (reason) trip.cancellation_reason = reason;
+		await trip.save();
+
+		return res.status(200).json({
+			status: true,
+			data: trip,
+			message: `Trip status updated to "${status}"`,
+		});
+	} catch (error) {
+		console.error("Error changing trip status:", error);
+		return res.status(500).json({ status: false, message: error.message });
+	}
+};
+
+exports.completeTrip = async (req, res) => {
+	try {
+		const { id } = req.params;
+
+		const trip = await Trip.findOne({ where: { id } });
+		if (!trip) {
+			return res.status(404).json({ status: false, message: "Trip not found" });
+		}
+
+		const current = trip.trip_status;
+		if (!ALLOWED_TRANSITIONS[current]?.includes("completed")) {
+			return res.status(400).json({
+				status: false,
+				message: `Trip cannot be marked completed from status "${current}"`,
+			});
+		}
+
+		trip.trip_status = "completed";
+		await trip.save();
+
+		return res.status(200).json({
+			status: true,
+			data: trip,
+			message: "Trip marked as completed",
+		});
+	} catch (error) {
+		console.error("Error completing trip:", error);
+		return res.status(500).json({ status: false, message: error.message });
 	}
 };

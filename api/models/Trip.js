@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const Trip = sequelize.define(
+	const Trip = sequelize.define(
 		"Trip",
 		{
 			id: {
@@ -59,6 +59,11 @@ module.exports = (sequelize, DataTypes) => {
 			places: {
 				type: DataTypes.JSON,
 				allowNull: true,
+			},
+			is_converted_post: {
+				type: DataTypes.BOOLEAN,
+				allowNull: false,
+				defaultValue: false,
 			},
 			departure_date: {
 				type: DataTypes.STRING,
@@ -156,62 +161,62 @@ module.exports = (sequelize, DataTypes) => {
 		}
 	);
 
-  Trip.associate = (models) => {
-    Trip.belongsTo(models.User, {
-      foreignKey: "user_id",
-      as: "users",
-    });
+	Trip.associate = (models) => {
+		Trip.belongsTo(models.User, {
+			foreignKey: "user_id",
+			as: "users",
+		});
 
-    Trip.belongsTo(models.Vehicle, {
-      foreignKey: "vehicle_id",
-      targetKey: "id",
-    });
+		Trip.belongsTo(models.Vehicle, {
+			foreignKey: "vehicle_id",
+			targetKey: "id",
+		});
 
-    Trip.hasMany(models.Transaction, {
-      foreignKey: "trip_id",
-      sourceKey: "id",
-    });
+		Trip.hasMany(models.Transaction, {
+			foreignKey: "trip_id",
+			sourceKey: "id",
+		});
 
-    Trip.hasMany(models.otp, {
-      foreignKey: "trip_id",
-      sourceKey: "id",
-    });
-    Trip.belongsTo(models.Pincode, {
+		Trip.hasMany(models.otp, {
+			foreignKey: "trip_id",
+			sourceKey: "id",
+		});
+		Trip.belongsTo(models.Pincode, {
 			foreignKey: "pincode",
 			targetKey: "pincode",
 			as: "pincode_details",
 		});
-	Trip.belongsTo(models.airports, {
-		foreignKey: "airport_id",
-		targetKey: "id",
-		as: "airport_detail",
-	});
+		Trip.belongsTo(models.airports, {
+			foreignKey: "airport_id",
+			targetKey: "id",
+			as: "airport_detail",
+		});
 
-	Trip.belongsTo(models.cities, {
-		foreignKey: "city_id",
-		as: "trip_city",
-	});
+		Trip.belongsTo(models.cities, {
+			foreignKey: "city_id",
+			as: "trip_city",
+		});
 
-	Trip.belongsTo(models.localrentalplans, {
-		foreignKey: "local_rental_plan_id",
-		as: "local_rental_plan",
-	});
+		Trip.belongsTo(models.localrentalplans, {
+			foreignKey: "local_rental_plan_id",
+			as: "local_rental_plan",
+		});
 
-	Trip.belongsTo(models.DhamPackageRoute, {
-		foreignKey: "dham_package_id",
-		as: "dham_package",
-	});
+		Trip.belongsTo(models.DhamPackageRoute, {
+			foreignKey: "dham_package_id",
+			as: "dham_package",
+		});
 
-	Trip.belongsTo(models.DhamPickupCity, {
-		foreignKey: "dham_pickup_city_id",
-		as: "dham_pickup_city",
-	});
+		Trip.belongsTo(models.DhamPickupCity, {
+			foreignKey: "dham_pickup_city_id",
+			as: "dham_pickup_city",
+		});
 
-	Trip.belongsTo(models.DhamCategory, {
-		foreignKey: "dham_category_id",
-		as: "dham_category",
-	});
-  };
+		Trip.belongsTo(models.DhamCategory, {
+			foreignKey: "dham_category_id",
+			as: "dham_category",
+		});
+	};
 
-  return Trip;
+	return Trip;
 };
