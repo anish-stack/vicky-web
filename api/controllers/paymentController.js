@@ -12,6 +12,14 @@ const razorpay = new Razorpay({
         : process.env.RAZORPAY_TEST_KEY_SECRET,
 });
 
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("LIVE_KEY_ID:", process.env.RAZORPAY_LIVE_KEY_ID);
+console.log(
+  "LIVE_SECRET:",
+  process.env.RAZORPAY_LIVE_KEY_SECRET
+    ? process.env.RAZORPAY_LIVE_KEY_SECRET.substring(0, 8) + "********"
+    : "NOT FOUND"
+);
 // POST /api/payment/create-order
 exports.createOrder = async (req, res) => {
     const { amount, userId, userName } = req.body;
