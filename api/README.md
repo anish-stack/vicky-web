@@ -114,6 +114,7 @@ npx sequelize-cli db:migrate
     ]
   }
 }); -->
-
+PS D:\vicky-web> ssh -L 3307:127.0.0.1:3306 root@31.97.203.168
+root@31.97.203.168's password: 
 ALTER TABLE `trips` CHANGE `distance` `distance` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL;
 ALTER TABLE `trips` CHANGE `trip_type` `trip_type` VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL;

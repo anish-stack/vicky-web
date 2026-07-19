@@ -1,7 +1,7 @@
 const { BookingLimit, cities, Trip, Pincode } = require("../models");
 const { Op, where, fn, col } = require("sequelize");
 const Joi = require("joi");
-const moment = require("moment"); 
+const moment = require("moment");
 // const Pincode = require("../models/Pincode");
 
 
@@ -274,6 +274,13 @@ exports.checkBookingAvailable = async (req, res) => {
 			});
 		}
 
+		console.log({
+			status: true,
+			available: true,
+			message: "Booking is allowed",
+			limit: bookingLimit.max_limit,
+			current: bookingCount,
+		})
 		// 5. Allow booking
 		return res.status(200).json({
 			status: true,

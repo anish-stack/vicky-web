@@ -23,7 +23,7 @@ import {
 } from "@/pages/api/customer";
 import { createTransaction } from "@/pages/api/transaction";
 import { createTrip, checkBookingLimit } from "@/pages/api/trip";
-// import Razorpay from "razorpay";
+
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 // import Select from "react-select";
@@ -144,14 +144,17 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
   const fetchPaymentAndAddTransaction = async (paymentId: any, userId: any) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("/api/get-payment-details", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ payment_id: paymentId }),
-      });
+      const response = await fetch(
+        `${process.env.API_URL}/api/payment/get-payment-details`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ payment_id: paymentId }),
+        }
+      );
       const data = await response.json();
 
       const pickUpDateTime = formatToLocalISO(departureDate);
@@ -294,91 +297,120 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
     }
   };
 
-  const handlePayment = async (userId: any, userNumber: any, userName: any) => {
-    if (userId && userNumber) {
-      try {
-        if (typeof window !== "undefined" && window.Razorpay) {
-          const token = localStorage.getItem("token");
-          const response = await fetch("/api/create-order", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              amount: parseFloat(price) * 100,
-              userId: userId,
-              userName,
-            }),
-          });
-          // console.log("handlePayment", token)
-          const data = await response.json();
+const handlePayment = async (userId, userNumber, userName) => {
+  if (!userId || !userNumber) return;
 
-          const options = {
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: data.amount,
-            currency: data.currency,
-            order_id: data.id,
-            name: "TaxiSafar",
-            description: "Payment",
-            config: {
-              display: {
-                hide: [{ method: "paylater" }, { method: "emi" }],
-                preferences: { show_default_blocks: true },
-              },
-            },
-            readonly: {
-              contact: true,
-            },
-            handler: async function (response: any) {
-              fetchPaymentAndAddTransaction(
-                response.razorpay_payment_id,
-                userId
-              );
-            },
-            modal: {
-              ondismiss: function () {
-                console.warn("Payment modal dismissed by the user.");
-                window.removeEventListener("beforeunload", blockNavigation);
-                window.history.pushState(null, "", window.location.href);
-                window.onpopstate = null;
-              },
-            },
-            prefill: {
-              contact: userNumber,
-              email: "",
-            },
-            notes: {
-              address: "Razorpay Corporate Office",
-            },
-            theme: {
-              color: "#3399cc",
-            },
-          };
-
-          window.addEventListener("beforeunload", blockNavigation);
-          window.history.pushState(null, "", window.location.href);
-          window.onpopstate = function () {
-            alert("Payment is in progress. You cannot navigate back.");
-            window.history.pushState(null, "", window.location.href);
-          };
-
-          const rzp = new window.Razorpay(options);
-
-          rzp.on("payment.error", async function (response: any) {
-            const paymentId = response.error.metadata.payment_id;
-            fetchPaymentAndAddTransaction(paymentId, userId);
-          });
-
-          rzp.open();
-        } else {
-          console.error("Razorpay is not loaded");
-        }
-      } catch (error) {
-        console.error("Error initializing Razorpay:", error);
-      }
+  try {
+    if (typeof window === "undefined" || !window.Razorpay) {
+      console.error("Razorpay SDK is not loaded.");
+      return;
     }
-  };
+
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+      `${process.env.API_URL}/api/payment/create-order`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: Number(price) * 100,
+          userId,
+          userName,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Failed to create Razorpay order");
+    }
+
+    const order = result.data;
+
+    console.log("Order:", order);
+
+    const options = {
+      key: order.key, // ✅ Backend se aayi key
+      amount: order.amount,
+      currency: order.currency,
+      order_id: order.id,
+      name: "TaxiSafar",
+      description: "Payment",
+
+      config: {
+        display: {
+          hide: [{ method: "paylater" }, { method: "emi" }],
+          preferences: {
+            show_default_blocks: true,
+          },
+        },
+      },
+
+      readonly: {
+        contact: true,
+      },
+
+      prefill: {
+        contact: userNumber,
+        email: "",
+      },
+
+      notes: order.notes,
+
+      theme: {
+        color: "#3399cc",
+      },
+
+      handler: async function (response) {
+        await fetchPaymentAndAddTransaction(
+          response.razorpay_payment_id,
+          userId
+        );
+      },
+
+      modal: {
+        ondismiss: function () {
+          console.warn("Payment modal dismissed.");
+
+          window.removeEventListener("beforeunload", blockNavigation);
+          window.history.pushState(null, "", window.location.href);
+          window.onpopstate = null;
+        },
+      },
+    };
+
+    window.addEventListener("beforeunload", blockNavigation);
+
+    window.history.pushState(null, "", window.location.href);
+
+    window.onpopstate = function () {
+      alert("Payment is in progress. You cannot navigate back.");
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    const rzp = new window.Razorpay(options);
+
+    rzp.on("payment.error", async function (response) {
+      console.error("Payment Failed:", response);
+
+      const paymentId = response?.error?.metadata?.payment_id;
+
+      if (paymentId) {
+        await fetchPaymentAndAddTransaction(paymentId, userId);
+      }
+    });
+
+    rzp.open();
+  } catch (error) {
+    console.error("Error initializing Razorpay:", error);
+    alert(error.message || "Unable to start payment.");
+  }
+};
   const [token, setToken] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window !== "undefined") {
