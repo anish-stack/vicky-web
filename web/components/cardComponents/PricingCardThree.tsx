@@ -30,6 +30,7 @@ import "react-phone-number-input/style.css";
 
 import NProgress from "nprogress";
 import "nprogress/nprogress.css";
+import { isAxiosError } from "axios";
 
 interface PricingCardThreeProps {
   img: string;
@@ -411,9 +412,11 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
       );
 
       rzp.open();
-    } catch (error: unknown) {
-      console.error("Error initializing Razorpay:", error);
-      alert(error.message || "Unable to start payment.");
+    } catch (error) {
+      if (isAxiosError(error)) {
+        console.error("Error initializing Razorpay:", error);
+        alert(error.message || "Unable to start payment.");
+      }
     }
   };
   const [token, setToken] = useState<string | null>(null);
