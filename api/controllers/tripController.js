@@ -16,9 +16,14 @@ const {
 	cities,
 } = require("../models");
 
+const razorpayIsProd = process.env.NODE_ENV === "production";
 const razorpay = new Razorpay({
-	key_id: `${process.env.RAZORPAY_KEY_ID}`,
-	key_secret: `${process.env.RAZORPAY_KEY_SECRET}`,
+	key_id: razorpayIsProd
+		? process.env.RAZORPAY_LIVE_KEY_ID
+		: process.env.RAZORPAY_TEST_KEY_ID,
+	key_secret: razorpayIsProd
+		? process.env.RAZORPAY_LIVE_KEY_SECRET
+		: process.env.RAZORPAY_TEST_KEY_SECRET,
 });
 
 function getTemplateName({ trip_type, car_tab }) {
@@ -254,7 +259,20 @@ exports.createTrip = async (req, res) => {
 			original_amount,
 			paid_amount,
 		} = req.body;
-		console.log("req.body",user_id)
+
+		// SECURITY / CORRECTNESS: for a customer booking their own ride, never
+		// trust user_id from the request body — a stale client-side id (e.g. 512)
+		// could otherwise override the real authenticated one (513). Staff/admin
+		// tokens may still book on behalf of a customer using the body user_id.
+		if (req.user?.role === "customer") {
+			user_id = req.user.id;
+		}
+		if (!user_id) {
+			return res.status(401).json({
+				status: false,
+				message: "Unauthorized: user could not be resolved for this booking.",
+			});
+		}
 		const Schema = Joi.object({
 			vehicle_id: Joi.string().required().messages({
 				"string.empty": "Vehicle id is required",

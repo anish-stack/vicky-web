@@ -17,22 +17,15 @@ const dhamCategoryRoutes = require("./routes/dhamCategoryRoutes");
 const discountRoutes = require("./routes/discountRoutes");
 const bookingLimitRoutes = require("./routes/bookingLimitRoutes");
 const sequelize = require("./config/database");
-const admin = require("firebase-admin");
-const serviceAccount = require("./firebaseServiceAccount.json");
 // const { Sequelize } = require('sequelize');
 const config = require("./config/config.json");
 const cors = require("cors");
 require("dotenv").config();
 const path = require("path");
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
-console.log("Static path:", path.join(__dirname, "public"));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors());

@@ -57,12 +57,10 @@ const GoogleBookingFormOnBannerTwo: React.FC<
         console.error(`Error: ${response.status} - ${response.statusText}`);
         return null;
       }
-      console.log("response", response);
       const data = await response.json();
 
       return data?.status && data?.data?.pincode ? data.data.pincode : null;
     } catch (error) {
-      console.log("error", error);
       return null;
     }
   };
@@ -134,8 +132,6 @@ const GoogleBookingFormOnBannerTwo: React.FC<
     if (!departureDate || !returnDate) {
       return 1;
     }
-    console.log("departureDate", departureDate);
-    console.log("returnDate", returnDate);
     // const timeDifference = returnDate?.getTime() - departureDate?.getTime();
     const departureDateObj = new Date(departureDate);
     const returnDateObj = new Date(returnDate);
@@ -736,7 +732,6 @@ const GoogleBookingFormOnBannerTwo: React.FC<
   };
 
   const handleSelectChange = (type: string | number, selectedOption: any) => {
-    console.log("type", type, "selectedOption", selectedOption);
     if (!selectedOption) return;
     if (type == "start") {
       if (selectedOption) {
@@ -930,7 +925,6 @@ const GoogleBookingFormOnBannerTwo: React.FC<
           citiplaceId = allPlaces[1].value;
         }
         PlaceId = citiplaceId;
-        console.log("Data local", Data);
       } else if (tripType == "airport") {
         Data = {
           distance: distance,
@@ -962,7 +956,6 @@ const GoogleBookingFormOnBannerTwo: React.FC<
         };
         PlaceId = allPlaces[2].value;
       }
-      console.log("Data", Data);
       if (!PlaceId) {
         console.error(
           "PlaceId not found for the given trip type and allPlaces array"
@@ -970,17 +963,14 @@ const GoogleBookingFormOnBannerTwo: React.FC<
         return; // or handle gracefully (e.g., show error to user)
       }
 
-      console.log("PlaceId:", PlaceId);
       const pincode = await getPincodePlaceId(PlaceId);
       // console.log("getPincodePlaceId", pincode, Data.places[0].value)
       if (pincode) {
         // setToastShow(true);
         Data = { ...Data, pincode };
-        console.log("Service Available in this area", pincode);
       } else {
         setToastShow(true);
         setMessage("Service Not Available in this area");
-        console.log("Service Not Available in this area", pincode);
 
         return false;
       }
@@ -1147,8 +1137,6 @@ const GoogleBookingFormOnBannerTwo: React.FC<
   }, [localPackageId]);
 
   const handleCityChange = (value: any) => {
-    console.log("value", value);
-    console.log("cityID", value?.value);
     setCityId(value?.value);
     const places = [{ label: value?.label, value: `${value?.value}` }];
     setAllPlaces(places);
@@ -1963,8 +1951,6 @@ const GoogleBookingFormOnBannerTwo: React.FC<
                                 });
                               }
 
-                              console.log("allPlaces[0]", allPlaces[0]);
-                              console.log("allPlaces[1]", allPlaces[1]);
                             }}
                             onInputChange={(value) =>
                               handleSearchChange(value, "start")
@@ -2132,8 +2118,6 @@ const GoogleBookingFormOnBannerTwo: React.FC<
                                 });
                               }
 
-                              console.log("allPlaces[0]", allPlaces[0]);
-                              console.log("allPlaces[1]", allPlaces[1]);
                             }}
                             onInputChange={(value) =>
                               handleSearchChange(value, "start")

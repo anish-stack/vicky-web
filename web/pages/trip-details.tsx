@@ -28,13 +28,11 @@ const TripDetails = () => {
           //   setBookingTransaction(null);
         }
       } catch (error) {
-        console.log(error);
       }
     };
 
     fetchData();
   }, [id]);
-  console.log("DAta byId", dataById);
 
   function formatDate(inputDate: Date) {
     const date = new Date(inputDate);
@@ -101,7 +99,6 @@ const TripDetails = () => {
 
   const handleDownload = async (id: any) => {
     try {
-      console.log("Download");
       const response = await fetch(
         `${process.env.API_URL}/api/transaction/pdf/${id}`,
         {
@@ -111,7 +108,6 @@ const TripDetails = () => {
           },
         }
       );
-      console.log(response);
       if (!response.ok) {
         throw new Error("Failed to fetch the PDF");
       }
@@ -745,7 +741,6 @@ const TripDetails = () => {
             style={{ cursor: "pointer" }}
             onClick={(event) => {
               event.stopPropagation();
-              console.log("Invoice Clicked");
               handleDownload(dataById?.Transactions[0]?.id);
             }}
           >

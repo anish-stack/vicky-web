@@ -258,7 +258,6 @@ export default function DriverRegister() {
     onSubmit: async (values) => {
       setCurrentStep(3);
       try {
-        console.log("Document submission data:", values);
 
         const formData = new FormData();
 
@@ -307,7 +306,6 @@ export default function DriverRegister() {
     fieldName: keyof DocumentFormValues,
     file: File | null
   ) => {
-    console.log("File selected:", file);
     if (!file) {
       documentFormik.setFieldValue(fieldName, null);
       documentFormik.setFieldTouched(fieldName, true);
@@ -420,7 +418,6 @@ export default function DriverRegister() {
   };
 
   const handleResendOTP = async () => {
-    console.log("Resending OTP...");
     setSeconds(30);
     setDisabled(true);
 
@@ -454,7 +451,6 @@ export default function DriverRegister() {
     fieldName: keyof VehicleFormValues,
     file: File | null
   ) => {
-    console.log("Vehicle file selected:", file);
     if (!file) {
       vehicleFormik.setFieldValue(fieldName, null);
       vehicleFormik.setFieldTouched(fieldName, true);
@@ -611,7 +607,6 @@ export default function DriverRegister() {
     }),
 
     onSubmit: async (values) => {
-      console.log("Vehicle submission data:", values);
       try {
         // Create FormData for file uploads
         const formData = new FormData();
@@ -655,7 +650,6 @@ export default function DriverRegister() {
         appendFile("oneYearPermitDocument", values.oneYearPermitDocument);
 
         // Submit to API
-        console.log("Submitting vehicle data:", formData);
         const response = await fetch(`${API_URL}/api/`, {
           method: "POST",
           body: formData,

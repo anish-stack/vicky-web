@@ -26,7 +26,7 @@ function getCountryCodeAndNumber(phone) {
   return null;
 }
 
-const SECRET_KEY = process.env.JWT_SECRET || "mysecretkey";
+const SECRET_KEY = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? undefined : "dev-insecure-secret");
 
 const { Op } = require("sequelize");
 const sendDltMessage = require("../utils/dlt");
@@ -433,7 +433,6 @@ exports.loginCustomer = async (req, res) => {
   try {
     const { phone_number, OTP } = req.body;
 
-    console.log("📩 Login request received:", req.body);
 
     // ---------------- Validation ----------------
     const Schema = Joi.object({
@@ -455,7 +454,6 @@ exports.loginCustomer = async (req, res) => {
     const { error } = Schema.validate(req.body, { abortEarly: false });
 
     if (error) {
-      console.log("❌ Validation error:", error.details[0].message);
       return res.json({
         status: false,
         message: error.details[0].message,
@@ -464,10 +462,8 @@ exports.loginCustomer = async (req, res) => {
 
     // Normalize phone number
     const normalizedPhone = phone_number.replace("+91", "").trim();
-    console.log("📱 Normalized Phone:", normalizedPhone);
 
     // ---------------- Check OTP ----------------
-    console.log("🔍 Checking OTP in database...");
 
     const otpRecord = await otp.findOne({
       where: {
@@ -478,34 +474,28 @@ exports.loginCustomer = async (req, res) => {
     });
 
     if (!otpRecord) {
-      console.log("❌ Invalid or expired OTP");
       return res.json({
         status: false,
         message: "Invalid or expired OTP!",
       });
     }
 
-    console.log("✅ OTP matched successfully");
 
     // ---------------- Check Customer ----------------
-    console.log("🔍 Fetching customer...");
 
     const customer = await User.findOne({
       where: { phone_number: normalizedPhone },
     });
 
     if (!customer) {
-      console.log("❌ Customer not found in DB");
       return res.json({
         status: false,
         message: "Customer not found",
       });
     }
 
-    console.log("👤 Customer found:", customer.id);
 
     // ---------------- Generate JWT ----------------
-    console.log("🔐 Generating JWT token...");
 
     const token = jwt.sign(
       {
@@ -514,10 +504,9 @@ exports.loginCustomer = async (req, res) => {
         role: customer.role,
       },
       SECRET_KEY,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
-    console.log("✅ Login successful. Token generated.");
 
     return res.json({
       status: true,
@@ -608,7 +597,6 @@ exports.updateUserProfile = async (req, res) => {
 	
 		const user = await User.findByPk(id);
 		if (user) {
-			console.log("user",user)
 			user.name = name ? name : user.name;
 	
 			await user.save();
@@ -759,7 +747,6 @@ exports.verifyOTP = async (req, res) => {
   try {
     let { phone_number, OTP, name } = req.body;
 
-    console.log("📩 Incoming verifyOTP request:", req.body);
 
     // ---------------- Validation ----------------
     const schema = Joi.object({
@@ -770,7 +757,6 @@ exports.verifyOTP = async (req, res) => {
     const { error } = schema.validate(req.body);
 
     if (error) {
-      console.log("❌ Validation Error:", error.details[0].message);
       return res.status(400).json({
         status: false,
         message: error.details[0].message,
@@ -783,7 +769,6 @@ exports.verifyOTP = async (req, res) => {
       .replace(/\s+/g, "")
       .trim();
 
-    console.log("📱 Normalized Phone:", phone_number);
 
     // ---------------- Check OTP Record ----------------
     const otpRecord = await otp.findOne({
@@ -791,7 +776,6 @@ exports.verifyOTP = async (req, res) => {
     });
 
     if (!otpRecord) {
-      console.log("❌ No OTP record found");
       return res.status(400).json({
         status: false,
         message: "No OTP found. Please request OTP again.",
@@ -800,7 +784,6 @@ exports.verifyOTP = async (req, res) => {
 
     // ---------------- Expiry Check ----------------
     if (new Date() > new Date(otpRecord.expires_at)) {
-      console.log("⏳ OTP Expired");
       await otp.destroy({ where: { phone_number } });
 
       return res.status(400).json({
@@ -811,7 +794,6 @@ exports.verifyOTP = async (req, res) => {
 
     // ---------------- Wrong OTP Check ----------------
     if (otpRecord.otp !== OTP) {
-      console.log("❌ Incorrect OTP entered");
 
       return res.status(400).json({
         status: false,
@@ -819,13 +801,11 @@ exports.verifyOTP = async (req, res) => {
       });
     }
 
-    console.log("✅ OTP verified successfully");
 
     // ---------------- Find / Create User ----------------
     let user = await User.findOne({ where: { phone_number } });
 
     if (!user) {
-      console.log("🆕 User not found. Creating new user...");
 
       user = await User.create({
         name: name || "User",
@@ -833,17 +813,13 @@ exports.verifyOTP = async (req, res) => {
         role: "customer",
       });
 
-      console.log("✅ New user created with ID:", user.id);
     } else {
-      console.log("👤 Existing user found:", user.id);
     }
 
     // ---------------- Delete Used OTP ----------------
-    console.log("🗑 Deleting used OTP...");
     await otp.destroy({ where: { phone_number } });
 
     // ---------------- Generate JWT ----------------
-    console.log("🔐 Generating token...");
 
     const token = jwt.sign(
       {
@@ -852,10 +828,9 @@ exports.verifyOTP = async (req, res) => {
         role: user.role,
       },
       SECRET_KEY,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
-    console.log("✅ Login successful");
 
     return res.status(200).json({
       status: true,
@@ -917,7 +892,6 @@ exports.createCustomer = async (req, res) => {
 
 exports.sendOTP = async (req, res) => {
   try {
-    console.log("📩 Raw Request Body:", req.body);
 
     let { phone_number } = req.body;
 
@@ -933,7 +907,6 @@ exports.sendOTP = async (req, res) => {
     const { error } = schema.validate(req.body);
 
     if (error) {
-      console.log("❌ Validation error:", error.details[0].message);
       return res.status(400).json({
         status: false,
         message: error.details[0].message,
@@ -942,17 +915,14 @@ exports.sendOTP = async (req, res) => {
 
     // ---------------- Normalize Phone ----------------
     phone_number = phone_number.replace("+91", "").trim();
-    console.log("📱 Normalized Phone:", phone_number);
 
     // ---------------- Generate OTP ----------------
     const OTP = Math.floor(1000 + Math.random() * 9000).toString();
     const expires_at = new Date(Date.now() + 10 * 60 * 1000);
 
-    console.log("🔐 Generated OTP:", OTP);
 
     // ---------------- Send OTP ----------------
     await sendDltMessage(phone_number, OTP);
-    console.log("📤 OTP sent via WhatsApp");
 
     // ---------------- Save / Update OTP ----------------
     const existingOTP = await otp.findOne({
@@ -961,7 +931,6 @@ exports.sendOTP = async (req, res) => {
 
     if (existingOTP) {
       await existingOTP.update({ otp: OTP, expires_at });
-      console.log("♻️ Existing OTP updated");
     } else {
       await otp.create({
         phone_number,
@@ -969,7 +938,6 @@ exports.sendOTP = async (req, res) => {
         otp_type: "login",
         expires_at,
       });
-      console.log("🆕 New OTP created");
     }
 
     return res.status(200).json({
@@ -991,7 +959,6 @@ exports.sendOTPForLogin = async (req, res) => {
   try {
     let { phone_number } = req.body;
 
-    console.log("📩 Incoming request body:", req.body);
 
     // ---------------- Validation ----------------
     const schema = Joi.object({
@@ -1004,7 +971,6 @@ exports.sendOTPForLogin = async (req, res) => {
 
 const { error } = schema.validate(req.body, { allowUnknown: true });
     if (error) {
-      console.log("❌ Validation error:", error.details[0].message);
       return res.status(400).json({
         status: false,
         message: error.details[0].message,
@@ -1014,17 +980,14 @@ const { error } = schema.validate(req.body, { allowUnknown: true });
     // Normalize phone number
     phone_number = phone_number.replace("+91", "").trim();
 
-    console.log("📱 Normalized Phone:", phone_number);
 
     // ---------------- Check / Auto Register User ----------------
     let isNewUser = false;
 
     let user = await User.findOne({ where: { phone_number } });
 
-    console.log("🔍 Existing user:", user ? "Found" : "Not Found");
 
     if (!user) {
-      console.log("👤 User not found. Creating new user...");
 
       isNewUser = true;
 
@@ -1034,19 +997,16 @@ const { error } = schema.validate(req.body, { allowUnknown: true });
         role: "customer",
       });
 
-      console.log("✅ New user created with ID:", user.id);
     }
 
     // ---------------- Generate OTP ----------------
     const OTP = Math.floor(1000 + Math.random() * 9000).toString();
     const expires_at = new Date(Date.now() + 10 * 60 * 1000);
 
-    console.log("🔐 Generated OTP:", OTP);
 
     // ---------------- Send OTP via WhatsApp ----------------
     await sendDltMessage(phone_number, OTP);
 
-    console.log("📤 OTP sent via WhatsApp");
 
     // ---------------- Save / Update OTP ----------------
     const existingOTP = await otp.findOne({
@@ -1055,7 +1015,6 @@ const { error } = schema.validate(req.body, { allowUnknown: true });
 
     if (existingOTP) {
       await existingOTP.update({ otp: OTP, expires_at });
-      console.log("♻️ Existing OTP updated");
     } else {
       await otp.create({
         phone_number,
@@ -1063,7 +1022,6 @@ const { error } = schema.validate(req.body, { allowUnknown: true });
         otp_type: "login",
         expires_at,
       });
-      console.log("🆕 New OTP created");
     }
 
     return res.status(200).json({

@@ -33,6 +33,8 @@ web/dist/
 web/build/
 web/.next/
 
+api/vickycabs_20_06_2025_after_clear.sql
+
 admin/node_modules/
 admin/dist/
 admin/build/

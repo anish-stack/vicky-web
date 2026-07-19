@@ -2,26 +2,15 @@
 const nextConfig = {
 	reactStrictMode: true,
 
+	// Only client-safe values are inlined here, sourced from the environment.
+	// Server-only secrets (e.g. RAZORPAY_KEY_SECRET) are read directly from
+	// process.env inside API routes and are never exposed to the browser.
 	env: {
-		API_URL: "https://webapi.taxisafar.com",
-		// API_URL: "https://webapi.taxisafar.com",
-
-		// RAZORPAY_KEY_ID: "rzp_test_wPADsslOGY4zIb",
-		// RAZORPAY_KEY_SECRET: "7XteXj17HF1GQhnxA8duPvCX",
-		// NEXT_PUBLIC_RAZORPAY_KEY_ID: "rzp_test_wPADsslOGY4zIb",
-
-		// below is taxisafar new Test RAZORPAY account
-		RAZORPAY_KEY_ID: "rzp_test_T8XbqaXF6Hu9ea",
-		RAZORPAY_KEY_SECRET: "5y3UNgaiOM2QtEGdYSeF2jyC",
-		NEXT_PUBLIC_RAZORPAY_KEY_ID: "rzp_test_T8XbqaXF6Hu9ea",
-
-		// below is taxisafar new Live RAZORPAY account
-		// RAZORPAY_KEY_ID: "rzp_live_3GX1MwM4UFc4QG",
-		// RAZORPAY_KEY_SECRET: "2dRT7VNgUpVqjTBya3cUq0Kt",
-		// NEXT_PUBLIC_RAZORPAY_KEY_ID: "rzp_live_3GX1MwM4UFc4QG",
-
-		// google map API Key
-		GOOGLE_MAP_API_KEY: "AIzaSyDnyLLiPykuaRbCKZEmBPa0jzdiB61qRpc",
+		API_URL: process.env.API_URL,
+		GOOGLE_MAP_API_KEY: process.env.GOOGLE_MAP_API_KEY,
+		// Public Razorpay key id auto-switches with the environment.
+		NEXT_PUBLIC_RAZORPAY_KEY_ID:process.env.RAZORPAY_LIVE_KEY_ID
+		
 	},
 };
 

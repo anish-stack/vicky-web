@@ -688,8 +688,6 @@ export default function Vehicles({}: InferGetServerSidePropsType<
     if (!departureDate || !returnDate) {
       return 1;
     }
-    console.log("departureDate", departureDate);
-    console.log("returnDate", returnDate);
     // const timeDifference = returnDate.getTime() - departureDate.getTime();
     const departureDateObj = new Date(departureDate);
     const returnDateObj = new Date(returnDate);

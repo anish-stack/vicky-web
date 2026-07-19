@@ -7,7 +7,7 @@ const {
 } = require("../controllers/tripController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
-router.post("/", createTrip);
+router.post("/", authMiddleware, createTrip);
 router.get("/:id", getById);
 router.get("/", authMiddleware, getAllTrips);
 

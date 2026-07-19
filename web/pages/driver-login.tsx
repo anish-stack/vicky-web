@@ -82,7 +82,6 @@ export default function DriverLogin() {
                 setErrorsMessage('');
 
                  const response = await loginDriver(values as any) as any;
-                 console.log('response', response); 
                  if (response.status == true) {   
                                
                 setPhoneNumber(fullPhoneNumber);
@@ -162,7 +161,6 @@ export default function DriverLogin() {
     };
 
     const handleResendOTP = async () => {
-        console.log('Resending OTP...');
         setSeconds(30);
         setDisabled(true);
 

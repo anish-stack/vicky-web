@@ -60,7 +60,6 @@ const sendDltMessage = async (phone, otp) => {
     /* -------------------- API Call -------------------- */
     const response = await axios.post(url, body, { headers });
 
-    console.log("✅ WhatsApp OTP sent via MyOperator:", otp);
     return response.data;
 
   } catch (error) {

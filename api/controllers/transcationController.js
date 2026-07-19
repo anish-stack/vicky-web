@@ -83,6 +83,33 @@ exports.createTransaction = async (req, res) => {
 			dham_category_id,
 			dham_category_name,
 		} = req.body;
+
+		// SECURITY / CORRECTNESS: bind a customer's own transaction to their
+		// authenticated id, never to a client-supplied user_id (root cause of the
+		// 513 -> 512 bug). Staff/admin tokens may still pass an explicit user_id.
+		if (req.user?.role === "customer") {
+			user_id = req.user.id;
+		}
+		if (!user_id) {
+			return res.status(401).json({
+				status: false,
+				message: "Unauthorized: user could not be resolved for this transaction.",
+			});
+		}
+
+		// Keep the customer's name in sync with what they entered while booking.
+		if (req.user?.role === "customer" && name && name.trim()) {
+			try {
+				const bookingUser = await User.findByPk(user_id);
+				if (bookingUser && bookingUser.name !== name.trim()) {
+					await bookingUser.update({ name: name.trim() });
+				}
+			} catch (e) {
+				// Non-fatal: never block a paid booking on a name sync failure.
+				console.error("Failed to sync customer name:", e.message);
+			}
+		}
+
 		const Schema = Joi.object({
 			payment_id: Joi.string().required().messages({
 				"string.empty": "Payment id is required",
@@ -183,7 +210,6 @@ exports.createTransaction = async (req, res) => {
 
 		const { error } = Schema.validate(req.body, { abortEarly: false });
 		if (error) {
-			console.log("error in transaction", error);
 			return res.json({
 				status: false,
 				message: error?.details[0]?.message,
@@ -271,7 +297,6 @@ exports.createTransaction = async (req, res) => {
 			message: "Transaction Created Successfully",
 		});
 	} catch (error) {
-		console.log("error", error);
 		res.status(500).json({
 			status: false,
 			message: error.message,
@@ -359,10 +384,8 @@ exports.getAllTransactions = async (req, res) => {
 			// 		[Op.gte]: toUTC(localStart),
 			// 		[Op.lte]: toUTC(localEnd),
 			// 	};
-			console.log("filter_start_pickup_date", filter_start_pickup_date);
 			const localStart = new Date(filter_start_pickup_date);
 			localStart.setHours(0, 0, 0, 0);
-			console.log("localStart", localStart);
 
 
 			const localEnd = new Date(filter_start_pickup_date);
@@ -376,7 +399,6 @@ exports.getAllTransactions = async (req, res) => {
 		}
 
 
-		console.log("whereCondition", whereCondition);
 		const { count, rows: transactions } = await Transaction.findAndCountAll({
 			where: whereCondition,
 			offset: (pageNumber - 1) * itemsPerPage,
@@ -459,7 +481,6 @@ exports.getAllTransactions = async (req, res) => {
 exports.getById = async (req, res) => {
 	try {
 		const { id } = req.params;
-		console.log("Id", id);
 		const data = await Transaction.findOne({
 			where: { id: id },
 			include: [
@@ -470,7 +491,6 @@ exports.getById = async (req, res) => {
 				},
 			],
 		});
-		console.log(JSON.stringify(data, null, 2));
 		if (data) {
 			res.status(200).json({
 				status: true,
@@ -496,7 +516,6 @@ exports.generatePDF = async (req, res) => {
 
 	const data = await Transaction.findByPk(id);
 
-	console.log("Data", JSON.stringify(data, null, 2));
 
 	if (data) {
 		const user = await User.findByPk(data.user_id);
@@ -516,7 +535,6 @@ exports.generatePDF = async (req, res) => {
 			};
 		});
 
-		console.log("Places", places);
 		const PDFDocument = require("pdfkit");
 
 		function formatDateTime(inputDateTime) {
@@ -1142,12 +1160,6 @@ exports.generatePDF = async (req, res) => {
 			Number(data?.additional_time_charge || 0) *
 			Number(data?.additional_time || 0);
 		const formattedExtratimeCharge = extratimeCharge.toFixed(2);
-		console.log(
-			"extratimeCharge",
-			extratimeCharge,
-			data?.additional_time_charge,
-			data?.additional_time
-		);
 
 		const totalNetAmount =
 			data?.original_amount - 0 + extrakmCharge + extratimeCharge;

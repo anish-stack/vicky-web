@@ -10,7 +10,7 @@ const {
 // const upload = require("../middlewares/multerConfig");
 const authMiddleware = require("../middlewares/authMiddleware");
 
-router.post("/", createTransaction);
+router.post("/", authMiddleware, createTransaction);
 
 // router.get('/:id', authMiddleware, getById);
 router.get("/pdf/:id", generatePDF);

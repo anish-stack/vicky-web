@@ -73,7 +73,6 @@ exports.get = async (req, res) => {
 			const roundtrip_toll_tax = settings.find(
 				(s) => s.key === "roundtrip_toll_tax"
 			)?.value;
-console.log("data", data.percentage, toll_tax, roundtrip_toll_tax);
 			res.status(200).json({
 				status: true,
 				data: {

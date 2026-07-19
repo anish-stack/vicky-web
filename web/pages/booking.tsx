@@ -145,7 +145,6 @@ export default function Booking() {
     return `${day} ${month}, ${year} • ${hours}:${minutes} ${ampm}`;
   }
 
-  console.log("Booking", transactionId, dataById, bookingTransaction);
 
   // Example usage:
   //   console.log(formatDate('2025-04-25T21:00:00')); // Output: "25 Apr, 25 • 9:00 pm"

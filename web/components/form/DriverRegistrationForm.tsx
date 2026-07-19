@@ -88,7 +88,6 @@ const FormTwo: React.FC<FormTwoProps> = ({
         },
     });
 
-    console.log("formik.errors", formik.errors);
     return (
         <>
             <ToastContainer className="toast-container-custom">

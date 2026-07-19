@@ -42,7 +42,6 @@ exports.createSession = async (req, res) => {
                 discount_slug,
                 pincode,
 			} = req.body;
-console.log("pincode", pincode);
         const sessionId = generateSessionId();
 
         const Schema = Joi.object({

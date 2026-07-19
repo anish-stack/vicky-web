@@ -7,8 +7,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Payment ID is required' });
   }
 
-  const username = process.env.RAZORPAY_KEY_ID;
-  const password =  process.env.RAZORPAY_KEY_SECRET;
+  const isProd = process.env.NODE_ENV === 'production';
+  const keyId = process.env.RAZORPAY_LIVE_KEY_ID
+  const keySecret = process.env.RAZORPAY_LIVE_KEY_SECRET
+
+  const username = keyId
+  const password = keySecret
 
   const base64Credentials = btoa(username + ":" + password);
 

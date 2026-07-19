@@ -131,7 +131,6 @@ exports.update = async (req, res) => {
 
 		city.name = name;
 		city.airport_id = airport_id?airport_id:null;
-		console.log("airport_id", airport_id);
 		city.distance = airport_id? distance:0;
 		city.hotel = hotel;
 		await city.save();

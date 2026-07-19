@@ -13,6 +13,8 @@ import moment from "moment";
 // import { Model } from "@/pages/api/sessions";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import useAuth from "@/hooks/useAuth";
+import { useCustomerContext } from "@/context/userContext";
 import {
   // createCustomer,
   createUpdateCustomer,
@@ -137,6 +139,8 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
     event.returnValue = "";
   }
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { customerDetail } = useCustomerContext();
   const fetchPaymentAndAddTransaction = async (paymentId: any, userId: any) => {
     try {
       const token = localStorage.getItem("token");
@@ -256,7 +260,6 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
           transactionDetails as any,
           token as any
         )) as any;
-        console.log("Token", token);
         setBookShow(false);
         formik.resetForm({
           values: {
@@ -272,6 +275,11 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
         setSeconds(60);
         setDisabled(true);
         setStep(0);
+        // Booking done: clear the saved session so the home banner no longer
+        // restores the old pickup/drop on the next visit.
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("sessionId");
+        }
         window.removeEventListener("beforeunload", blockNavigation);
         window.history.pushState(null, "", window.location.href);
         window.onpopstate = null;
@@ -586,7 +594,6 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
               setStep(2);
               if (response?.data) {
                 setCustomerData(response?.data);
-                console.log("response?.data", response?.data);
                 formik.setFieldValue(
                   "name",
                   response?.data?.name ? response?.data?.name : ""
@@ -632,7 +639,6 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
               const tripAvailableData = (await checkBookingLimit(
                 tripAvailable as any
               )) as any;
-              console.log("tripAvailableData", tripAvailableData);
 
               if (tripAvailableData.status == true) {
                 await handlePayment(
@@ -654,13 +660,29 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
               NProgress.done();
             }
           } catch (error) {
-            console.log("error", error);
             NProgress.done();
           }
         }
       }
     },
   });
+
+  // Session persistence: if the user is already logged in, never re-ask for
+  // name / mobile / OTP. Pre-fill their details and jump straight to the final
+  // confirmation step when the booking modal opens.
+  useEffect(() => {
+    if (bookShow && isAuthenticated && customerDetail?.id) {
+      setCustomerData(customerDetail);
+      formik.setFieldValue("name", customerDetail?.name || "");
+      formik.setFieldValue(
+        "phone_number",
+        customerDetail?.phone_number || phoneNo || ""
+      );
+      setStep(2);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookShow, isAuthenticated, customerDetail]);
+
   const [inputChange, setInputChange] = useState("");
 
   let timer: NodeJS.Timeout;
