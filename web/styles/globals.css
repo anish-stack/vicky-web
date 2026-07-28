@@ -5838,9 +5838,7 @@ section>.container-fluid {
     border-radius: 0px;
   }
 
-  .vicky-cab-homebanner .page-header {
-    padding-top: 0px;
-  }
+
 }
 
 .logo-text {
@@ -8059,7 +8057,7 @@ section>.container-fluid {
   }
 
   .vickycab-booking-form {
-    display: flex;
+    /* display: flex; */
     justify-content: center;
   }
 

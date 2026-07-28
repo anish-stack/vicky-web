@@ -8,6 +8,8 @@ type HeaderWithoutMenuProps = {
 
 };
 
+const CONTACT_NUMBER = "9412222722";
+
 const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
 
 }) => {
@@ -30,10 +32,6 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
             document.removeEventListener("mousedown", handleOutsideClick);
         };
     }, []);
-
-    // const isAuthenticated = false;
-
-    // const Router = useRouter();
 
     const { isAuthenticated, checkAuth } = useAuth();
 
@@ -82,12 +80,9 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                         <i className="fa-solid fa-xmark"></i>
                     </div>
 
-
                     <div className="off-canvas-inner">
                         <Link href="/" className="d-flex align-items-center justify-content-center text-logo">
                             <img src="/images/logo/taxisafar-logo.png" width="181px" height="30px" />
-                            {/* <img src="/images/logo/taxisafar-logo.png" width="200px" /> */}
-                            {/* <span className="logo-text-highlight">Taxi</span><span className="logo-text">Safar</span> */}
                         </Link>
 
                         {customerDetail?.role == 'driver' && (
@@ -109,7 +104,6 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                                 </div>
                             </div>
                         )}
-
 
                         {customerDetail?.role == 'customer' && (
                             <div>
@@ -145,12 +139,7 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
 
                         )}
 
-
                         <div className="sidebar-bottom-menu">
-                            {/* <div className="logout mt-1" onClick={signOut}>
-                                <p className="mb-0">Sign Out</p>
-                            </div> */}
-
                             <div className="taxisafar-sidebar-logout d-flex align-items-center justify-content-center" onClick={signOut}>
                                 <img src="/images/icons/taxisafar-logout.png" height="24" width="24" className="me-2" />
                                 <p className="mb-0">Logout</p>
@@ -173,8 +162,6 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                             <img src="/images/logo/taxisafar-logo.png" width="181px" height="30px" />
                         </Link>
 
-
-
                         <div className="sidebar-links mb-4">
                             <Link href="/" className="d-flex align-items-center mt-4">
                                 <img className="me-3" src="/images/icons/home-menu-icon.png" width={24} />
@@ -196,9 +183,6 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                             )}
 
                         </div>
-                        {/* <Link href={"#"}>
-                            <div className="taxisafar-theme-outline-button w-100 mt-4 text-center">Register</div>
-                        </Link> */}
 
                         <Link href={"/login"}>
                             <div className="taxisafar-theme-button w-100 mt-2 text-center">Log In</div>
@@ -213,54 +197,119 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                     <Link href="/" className="d-flex align-items-center">
                         <img src="/images/logo/taxisafar-logo.png" className="taxisafar-logo" width="212.42px" height="35px" />
                     </Link>
-                    {isAuthenticated ? <div style={{ position: "relative" }}>
-                        <div className="user-img"
-                            onClick={() => setOpenSideBar(true)}
-                        >
-                            <div className="d-flex justify-content-center align-items-center taxisafar-user-icon">
-                                <img src="/images/icons/user-profile-icon.png" height="20" width="20" />
-                            </div>
 
-
-                            {/* <img src="/images/icons/user.jpg" width={40} /> */}
-                            {/* <img src="/images/logo/taxisafar-logo.png" width="181px" height="30px" /> */}
-                        </div>
-
-
-
-                        {showPopup && (
-                            <div
-                                className="vicky-popup mt-2"
-                                ref={popupRef}
+                    <div className="d-flex align-items-center gap-2">
+                        <div className="taxisafar-call-whatsapp-group d-flex align-items-center">
+                            <a
+                                href={`tel:${CONTACT_NUMBER}`}
+                                className="d-flex justify-content-center align-items-center taxisafar-contact-icon taxisafar-call-icon"
+                                aria-label="Call us"
                             >
-                                <div className="user-img d-inline-flex align-items-center">
-                                    <Link href="/booking">
-                                        <img src="/images/icons/user.jpg" width={50} className="me-2" />
-                                    </Link>
-                                    {customerDetail?.name && (<p className="mb-0 fw-bold">{customerDetail?.name}</p>)}
-                                </div>
-                                <div className="vickycab-sign-out mt-1 custom-cursor-pointer" onClick={signOut}>
-                                    <p className="mb-0 fs-6 text-center">Sign Out</p>
-                                </div>
-                            </div>
-                        )}
-                    </div> :
-                        <div className="d-inline-flex gap-2">
-                            {/* <Link href={"#"}>
-                                <div className="taxisafar-theme-outline-button">Register</div>
-                            </Link> */}
-                            <Link href={"/login"}>
-                                <div className="taxisafar-theme-button">Log In</div>
-                            </Link>
+                                <img
+                                    src="/images/icons/phone.png"
+                                    width="18"
+                                    height="18"
+                                />
+                            </a>
 
-                            <div className="d-flex justify-content-center align-items-center taxisafar-user-icon d-lg-none d-block" onClick={() => setOpenMenuSideBar(true)}>
-                                <img src="/images/icons/user-profile-icon.png" height="20" width="20" />
-                            </div>
+                            <a
+                                href={`https://wa.me/91${CONTACT_NUMBER}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="d-flex justify-content-center align-items-center taxisafar-contact-icon taxisafar-whatsapp-icon"
+                                aria-label="Chat on WhatsApp"
+                            >
+                                <img
+                                    src="/images/icons/whatsapp.png"
+                                    width="18"
+                                    height="18"
+                                />
+                            </a>
                         </div>
 
-                    }
+                        {isAuthenticated ? <div style={{ position: "relative" }}>
+                            <div className="user-img"
+                                onClick={() => setOpenSideBar(true)}
+                            >
+                                <div className="d-flex justify-content-center align-items-center taxisafar-user-icon">
+                                    <img src="/images/icons/user-profile-icon.png" height="18" width="18" />
+                                </div>
+                            </div>
+
+                            {showPopup && (
+                                <div
+                                    className="vicky-popup mt-2"
+                                    ref={popupRef}
+                                >
+                                    <div className="user-img d-inline-flex align-items-center">
+                                        <Link href="/booking">
+                                            <img src="/images/icons/user.jpg" width={50} className="me-2" />
+                                        </Link>
+                                        {customerDetail?.name && (<p className="mb-0 fw-bold">{customerDetail?.name}</p>)}
+                                    </div>
+                                    <div className="vickycab-sign-out mt-1 custom-cursor-pointer" onClick={signOut}>
+                                        <p className="mb-0 fs-6 text-center">Sign Out</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div> :
+                            <div className="d-inline-flex gap-2 align-items-center">
+                                <Link href={"/login"}>
+                                    <div className="taxisafar-theme-button">Log In</div>
+                                </Link>
+
+                                <div className="d-flex justify-content-center align-items-center taxisafar-user-icon d-lg-none d-block" onClick={() => setOpenMenuSideBar(true)}>
+                                    <img src="/images/icons/user-profile-icon.png" height="18" width="18" />
+                                </div>
+                            </div>
+
+                        }
+                    </div>
                 </div>
             </header>
+
+            <style jsx>{`
+                .taxisafar-call-whatsapp-group {
+                    border: 2px solid #25d366;
+                    border-radius: 999px;
+                    padding: 4px 8px;
+                    gap: 10px;
+                }
+
+                .taxisafar-contact-icon {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    background: #fff;
+                }
+
+                .taxisafar-user-icon {
+                    width: 34px;
+                    height: 34px;
+                    border: 2px solid #25d366;
+                    border-radius: 50%;
+                    background: #fff;
+                }
+
+                @media (max-width: 576px) {
+                    .taxisafar-call-whatsapp-group {
+                        padding: 3px 6px;
+                        gap: 6px;
+                    }
+
+                    .taxisafar-contact-icon,
+                    .taxisafar-user-icon {
+                        width: 28px;
+                        height: 28px;
+                    }
+
+                    .taxisafar-contact-icon img,
+                    .taxisafar-user-icon img {
+                        width: 15px;
+                        height: 15px;
+                    }
+                }
+            `}</style>
         </>
 
     );

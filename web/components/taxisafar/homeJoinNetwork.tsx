@@ -1,21 +1,119 @@
 import React, { useState } from "react";
 import parse from "html-react-parser";
-import { Button, Col, Container, Row } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay, Navigation } from "swiper/modules";
 
 interface HomeJoinNetworkProps {
   title: string;
   subtitle: string;
-  networkItems: any;
 }
+
+interface NetworkItem {
+  imgSrc: string;
+  title: string;
+  description: string;
+  serviceType: string;
+}
+
+// Google Play search link for the Taxi Safar app — swap for the direct app
+// page link once you have it (play.google.com/store/apps/details?id=...)
+const PLAY_STORE_URL =
+  "https://play.google.com/store/search?q=Taxi%20safar&c=apps&hl=en_IN";
+
+// Fixed 3-card list — all three drive the same goal: get the Driver App
+// installed. No longer sourced from a prop; the content itself now talks
+// about the app instead of a generic "Get Started" link per card.
+const networkItems: NetworkItem[] = [
+  {
+    imgSrc: "/images/our-network/driver.jpg",
+    title: "Become a Driver — Download the Driver App",
+    description:
+      "Taxi Safar Driver App mein gadi add karen aur har din intercity booking accept karen.<br/>Taxi Attachment & All Updates ek hi app mein.<br/>(Only For Taxi Owners & Drivers)",
+    serviceType: "Taxi Attach",
+  },
+  {
+    imgSrc: "/images/our-network/booking.jpg",
+    title: "Manage Bookings — Download the Driver App",
+    description:
+      "Apne city ya area ki bookings manage karne ke liye Taxi Safar Driver App download karen aur seedha app se accept/track karen.",
+    serviceType: "Booking Panel",
+  },
+  {
+    imgSrc: "/images/our-network/hotel.jpg",
+    title: "Partner Hotels — Download the Driver App",
+    description:
+      "Hotel guests ke liye ride requests seedha Taxi Safar Driver App par milengi. Download karen aur judiye.",
+    serviceType: "Hotel List",
+  },
+];
+
+// Inline SVG icons — rendered directly, never dependent on an external
+// icon-font CDN loading correctly.
+const ArrowRightIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <polyline points="13 5 20 12 13 19" />
+  </svg>
+);
+
+const ArrowLeftIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <line x1="20" y1="12" x2="4" y2="12" />
+    <polyline points="11 5 4 12 11 19" />
+  </svg>
+);
+
+// Google Play triangle glyph for the download badge.
+const PlayStoreGlyph = () => (
+  <svg width="22" height="22" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#00d2ff" d="M99.617 8.057c-4.995 4.05-8.017 10.517-8.017 18.977v460.66c0 8.46 3.022 14.927 8.017 18.977l1.049.8L343.3 274.7v-5.33L100.666 7.257z" />
+    <path fill="#00f076" d="M423.652 356.988l-81.44-81.44v-4.096l81.472-81.44 1.842.987 96.55 54.86c27.582 15.66 27.582 41.34 0 57.03l-96.55 54.86z" />
+    <path fill="#ff3a44" d="M425.494 356l-83.282-83.282L99.617 503.99c8.966 9.485 23.766 10.663 40.427 1.21l285.45-149.2" />
+    <path fill="#ffcf00" d="M425.494 190.03L140.044 40.796c-16.66-9.42-31.46-8.276-40.427 1.21l242.595 242.62z" />
+  </svg>
+);
+
+const PlayStoreBadge = () => (
+  <a
+    href={PLAY_STORE_URL}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="taxisafar-playstore-badge d-inline-flex align-items-center"
+  >
+    <PlayStoreGlyph />
+    <span className="ms-2 d-flex flex-column lh-1">
+      <span style={{ fontSize: "10px" }}>Download on</span>
+      <span style={{ fontSize: "15px", fontWeight: 600 }}>Play Store</span>
+    </span>
+  </a>
+);
 
 const HomeJoinNetwork: React.FC<HomeJoinNetworkProps> = ({
   title,
   subtitle,
-  networkItems,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const active = networkItems[activeIndex];
+
   return (
     <div className="taxisafar-section">
       <Container>
@@ -24,15 +122,10 @@ const HomeJoinNetwork: React.FC<HomeJoinNetworkProps> = ({
 
         {/* Mobile view: buttons instead of swiper */}
         <div className="d-block d-md-none mt-4">
-          <div className="d-flex justify-content-center gap-2">
-            {networkItems.map((item: any, index: number) => (
+          <div className="d-flex justify-content-center flex-wrap gap-2">
+            {networkItems.map((item, index) => (
               <button
                 key={index}
-                // className={`btn ${
-                //   activeIndex === index
-                //     ? "theme-btn btn-style-two hover-light"
-                //     : "transparent"
-                // }`}
                 className="px-3"
                 style={{
                   backgroundColor:
@@ -50,63 +143,30 @@ const HomeJoinNetwork: React.FC<HomeJoinNetworkProps> = ({
 
           {/* Show selected item */}
           <div className="our-network-card d-flex flex-column mt-3">
-            <img
-              src={networkItems[activeIndex].imgSrc}
-              alt={networkItems[activeIndex].title}
-              loading="lazy"
-            />
+            <img src={active.imgSrc} alt={active.title} loading="lazy" />
             <div className="info d-flex flex-column flex-grow-1 mt-2">
-              <h3 className="title">{networkItems[activeIndex].title}</h3>
+              <h3 className="title">{active.title}</h3>
               <p
                 className="mb-3 description"
-                dangerouslySetInnerHTML={{
-                  __html: networkItems[activeIndex].description,
-                }}
+                dangerouslySetInnerHTML={{ __html: active.description }}
               ></p>
-              <a href={networkItems[activeIndex].link || "#"}>
-                <button className="taxisafar-theme-button">
-                  Get Started <i className="fa-regular fa-arrow-right"></i>
-                </button>
-              </a>
+              <PlayStoreBadge />
             </div>
           </div>
         </div>
-
-        {/* <Row className="mt-4">
-                    {networkItems.map((item: any, index: any) => (
-                        <Col lg={4} md={6} className='mt-3' key={index}>
-                            <div className="our-network-card d-flex flex-column h-100">
-                                <div>
-                                    <img src={item.imgSrc} alt={item.title} />
-                                </div>
-
-                                <div className="info d-flex flex-column flex-grow-1">
-                                    <h3 className="title">{item.title}</h3>
-                                    <p className="mb-3 description">{item.description}</p>
-
-                                    <div className="mt-auto">
-                                        <div className="button d-flex justify-content-center align-items-center">
-                                            <i className="fa-regular fa-arrow-right"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </Col>
-                    ))}
-                </Row> */}
 
         <div className="d-none d-md-block position-relative join-our-network mt-5">
           <button
             className="position-absolute swiper-prev-button start-0 top-50 translate-middle-y z-3 ms-3"
             id="prevBtn"
           >
-            <i className="fa-solid fa-arrow-left"></i>
+            <ArrowLeftIcon size={18} />
           </button>
           <button
             className="position-absolute swiper-next-button end-0 top-50 translate-middle-y z-3 me-3"
             id="nextBtn"
           >
-            <i className="fa-solid fa-arrow-right"></i>
+            <ArrowRightIcon size={18} />
           </button>
           <Swiper
             modules={[Pagination, Autoplay, Navigation]}
@@ -131,7 +191,7 @@ const HomeJoinNetwork: React.FC<HomeJoinNetworkProps> = ({
               disableOnInteraction: false,
             }}
           >
-            {networkItems.map((destination: any, index: any) => (
+            {networkItems.map((destination, index) => (
               <SwiperSlide
                 key={index}
                 className="our-network-card d-flex flex-column h-100"
@@ -154,16 +214,7 @@ const HomeJoinNetwork: React.FC<HomeJoinNetworkProps> = ({
                   ></p>
 
                   <div className="mt-auto">
-                    {/* <div className="button d-flex justify-content-center align-items-center">
-                                                <i className="fa-regular fa-arrow-right"></i>
-                                            </div> */}
-
-                    <a href={`${destination.link ? destination.link : "#"} `}>
-                      <button className="taxisafar-theme-button">
-                        Get Started{" "}
-                        <i className="fa-regular fa-arrow-right"></i>
-                      </button>
-                    </a>
+                    <PlayStoreBadge />
                   </div>
                 </div>
               </SwiperSlide>

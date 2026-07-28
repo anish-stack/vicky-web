@@ -11,6 +11,8 @@ interface BannerSectionTwoProps {
     heading: string
 }
 
+const CONTACT_NUMBER = "9412222722";
+
 const BannerSectionTwo: React.FC<BannerSectionTwoProps> = ({
     imageURL,
     heading
@@ -27,53 +29,86 @@ const BannerSectionTwo: React.FC<BannerSectionTwoProps> = ({
                                 buttonName="Check Prices"
                                 heading={heading}
                             />
+
+                            <div className="d-flex gap-2 mt-3 vickycab-support-row">
+                                <a
+                                    href={`tel:${CONTACT_NUMBER}`}
+                                    className="d-flex justify-content-center align-items-center vickycab-support-btn vickycab-call-btn"
+                                >
+                                    <img
+                                        src="/images/icons/phone.png"
+                                        width="18"
+                                        height="18"
+                                        className="me-2"
+                                    />
+                                    Call Now. 941 2222 7222
+                                </a>
+
+                                <a
+                                    href={`https://wa.me/91${CONTACT_NUMBER}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="d-flex justify-content-center align-items-center vickycab-support-btn vickycab-whatsapp-btn"
+                                    aria-label="Chat on WhatsApp"
+                                >
+                                    <img
+                                        src="/images/icons/whatsapp.png"
+                                        width="18"
+                                        height="18"
+                                    />
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            {/* <div className="container py-0" style={{ position: "relative" }}>
-                <div className="text-center carousal-wrapper vicky-feature-block">
-                    <Swiper
-                        modules={[Navigation, Pagination, Autoplay]}
-                        slidesPerView={1}
-                        autoplay={{ delay: 3000 }}
-                        breakpoints={{
-                            640: {
-                                slidesPerView: 1,
-                            },
-                            768: {
-                                slidesPerView: 2,
-                            },
-                            1024: {
-                                slidesPerView: 3,
-                            },
-                        }}
-                        className="feature-carousal carousal"
-                    >
-                        <SwiperSlide>
-                            <div className="text-bold">Popular Tour Package</div>
-                            <div className="popular-place">
-                                Vrindavan
-                            </div>
-                        </SwiperSlide>
-                        <SwiperSlide>
-                            <div className="text-bold">Popular Tour Package</div>
-                            <div className="popular-place">
-                                Rishikesh
-                            </div>
-                        </SwiperSlide>
-                        <SwiperSlide>
-                            <div className="text-bold">Popular Tour Package</div>
-                            <div className="popular-place">
-                                Haridwar
-                            </div>
-                        </SwiperSlide>
-                    </Swiper>
-                </div>
-            </div> */}
+           
             <div className="container tablet-page-background py-0">
                 <div className="row mobile-page-background" style={{ backgroundImage: `url(${imageURL})` }}></div>
             </div>
+
+            <style jsx>{`
+                .vickycab-support-row {
+                    width: 60%;
+                    flex-wrap: nowrap;
+                }
+
+                .vickycab-support-btn {
+                    height: 48px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    background: #fff;
+                    text-decoration: none;
+                    white-space: nowrap;
+                }
+
+                .vickycab-call-btn {
+                    flex: 1;
+                    min-width: 0;
+                    border: 1px solid #e2231a;
+                    color: #e2231a;
+                }
+
+                .vickycab-whatsapp-btn {
+                    flex-shrink: 0;
+                    width: 60px;
+                    border: 1px solid #dddddd;
+                    color: #25d366;
+                }
+
+                @media (max-width: 576px) {
+                    .vickycab-call-btn {
+                        font-size: 13px;
+                    }
+    .vickycab-support-row {
+                    width: 100%;
+                    flex-wrap: nowrap;
+                }
+                    .vickycab-whatsapp-btn {
+                        width: 48px;
+                    }
+                }
+            `}</style>
         </section>
     );
 };

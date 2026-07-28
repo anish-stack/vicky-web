@@ -1,18 +1,3 @@
-// import { Html, Head, Main, NextScript } from "next/document";
-
-// export default function Document() {
-//   return (
-//     <Html lang="en">
-//       <Head />
-//       <body>
-//         <Main />
-//         <NextScript />
-//       </body>
-//     </Html>
-//   );
-// }
-
-
 import { Html, Head, Main, NextScript } from "next/document";
 import Script from "next/script";
 
@@ -20,15 +5,28 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        {/* Classic Font Awesome 6 — covers fa-solid, fa-regular, fa-brands
+            (matches the fa-solid/fa-brands classes used across the app).
+            Previously this loaded FA4.7 (old "fa fa-x" syntax, no fa-solid/
+            fa-brands support) PLUS FA6 "Sharp" style sheets (fa-sharp-*
+            naming, different from fa-solid/fa-brands) — neither matched the
+            classes actually used in components, so icons rendered as a
+            missing-glyph box. */}
         <link
           rel="stylesheet"
-          type="text/css"
-          href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+          integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
         />
+
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossOrigin="anonymous" />
 
-
-
+        {/* Sharp style — ONLY needed if some component actually uses
+            fa-sharp fa-solid / fa-sharp fa-regular etc. classes. Keep these
+            only if you're intentionally using Sharp-style icons somewhere;
+            otherwise they're dead weight since nothing in the codebase uses
+            the fa-sharp-* prefix today. */}
         <link
           rel="stylesheet"
           href="https://site-assets.fontawesome.com/releases/v6.5.2/css/sharp-thin.css"
@@ -47,7 +45,7 @@ export default function Document() {
         <link
           rel="stylesheet"
           href="https://site-assets.fontawesome.com/releases/v6.5.2/css/sharp-light.css"
-        /> 
+        />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -60,14 +58,10 @@ export default function Document() {
         {/* <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> */}
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wdth,wght@75..100,100..900&display=swap" rel="stylesheet" />
 
-
-
         {/* <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@hugeicons/css/font.min.css" /> */}
         {/* <link rel="stylesheet" href="https://cdn.hugeicons.com/font/hgi-stroke-rounded.css" /> */}
 
         <link rel="stylesheet" href="https://cdn.hugeicons.com/font/hgi-stroke-rounded.css" />
-
-
 
         {/* <script src="https://checkout.razorpay.com/v1/checkout.js"></script> */}
         <Script

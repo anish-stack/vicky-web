@@ -183,23 +183,24 @@ export default function App({ Component, pageProps }: AppProps) {
                     <div className="contact mt-4">
                       <Row>
                         <Col xs={2}>
-                          <div className="icon">
-                            <i
-                              className="fa-light fa-comment"
-                              style={{ fontSize: "26px", color: "#e52710" }}
-                            ></i>
+                         <div className="icon">
+                            <img
+                              src="/images/icons/phone.png"
+                              width="28"
+                              height="28"
+                            />
                           </div>
                         </Col>
 
                         <Col xs={10} className="ps-3">
                           <p className="title mb-0">Customer support Anytime</p>
-                          {/* <Link href="tel:+919412222722">+91 94122 22722</Link> */}
-                          <Link
+                          <Link href="tel:+919412222722">+91 94122 22722</Link>
+                          {/* <Link
                             href="https://whatsform.com/cs2ujv"
                             target="_blank"
                           >
                             Customer Support Chat
-                          </Link>
+                          </Link> */}
                         </Col>
                       </Row>
 
