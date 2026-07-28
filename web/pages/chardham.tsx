@@ -273,7 +273,6 @@ export default function Home() {
         <HomeJoinNetwork
           title="Partner & Grow With Us"
           subtitle="Join Our Network & Unlock Opportunities"
-          networkItems={networkItems}
         />
       </div>
     </>

@@ -274,7 +274,6 @@ export default function Hotel() {
         <HomeJoinNetwork
           title="Partner & Grow With Us"
           subtitle="Join Our Network & Unlock Opportunities"
-          networkItems={networkItems}
         />
       </div>
     </>
