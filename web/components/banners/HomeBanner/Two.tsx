@@ -37,8 +37,8 @@ const BannerSectionTwo: React.FC<BannerSectionTwoProps> = ({
                                 >
                                     <img
                                         src="/images/icons/phone.png"
-                                        width="18"
-                                        height="18"
+                                        width="24"
+                                        height="24"
                                         className="me-2"
                                     />
                                     Call Now. 941 2222 7222
@@ -53,8 +53,8 @@ const BannerSectionTwo: React.FC<BannerSectionTwoProps> = ({
                                 >
                                     <img
                                         src="/images/icons/whatsapp.png"
-                                        width="18"
-                                        height="18"
+                                        width="24"
+                                        height="24"
                                     />
                                 </a>
                             </div>
@@ -76,6 +76,7 @@ const BannerSectionTwo: React.FC<BannerSectionTwoProps> = ({
                 .vickycab-support-btn {
                     height: 48px;
                     border-radius: 8px;
+                    font-size:16px;
                     font-weight: 600;
                     background: #fff;
                     text-decoration: none;
@@ -98,7 +99,7 @@ const BannerSectionTwo: React.FC<BannerSectionTwoProps> = ({
 
                 @media (max-width: 576px) {
                     .vickycab-call-btn {
-                        font-size: 13px;
+                        font-size: 18px;
                     }
     .vickycab-support-row {
                     width: 100%;

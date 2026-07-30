@@ -207,8 +207,8 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                             >
                                 <img
                                     src="/images/icons/phone.png"
-                                    width="18"
-                                    height="18"
+                                    width="30"
+                                    height="30"
                                 />
                             </a>
 
@@ -221,8 +221,8 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                             >
                                 <img
                                     src="/images/icons/whatsapp.png"
-                                    width="18"
-                                    height="18"
+                                    width="30"
+                                    height="30"
                                 />
                             </a>
                         </div>
@@ -270,15 +270,14 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
 
             <style jsx>{`
                 .taxisafar-call-whatsapp-group {
-                    border: 2px solid #25d366;
-                    border-radius: 999px;
+                  
                     padding: 4px 8px;
                     gap: 10px;
                 }
 
                 .taxisafar-contact-icon {
-                    width: 32px;
-                    height: 32px;
+                    width: 50px;
+                    height: 50px;
                     border-radius: 50%;
                     background: #fff;
                 }
@@ -299,15 +298,11 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
 
                     .taxisafar-contact-icon,
                     .taxisafar-user-icon {
-                        width: 28px;
-                        height: 28px;
+                        width: 40px;
+                        height: 40px;
                     }
 
-                    .taxisafar-contact-icon img,
-                    .taxisafar-user-icon img {
-                        width: 15px;
-                        height: 15px;
-                    }
+                
                 }
             `}</style>
         </>
