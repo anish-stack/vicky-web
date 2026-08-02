@@ -1,0 +1,37 @@
+<svg width="113.000000" height="113.000000" viewBox="0 0 113 113" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<desc>
+			Created with Pixso.
+	</desc>
+	<defs>
+		<clipPath id="clip790_994">
+			<rect id="user-solid-rounded 1" rx="0.000000" width="45.511627" height="45.511627" transform="translate(27.244186 27.244141)" fill="white" fill-opacity="0"/>
+		</clipPath>
+		<filter id="filter_790_998_dd" x="51.000000" y="51.000000" width="62.000000" height="62.000000" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+			<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+			<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+			<feOffset dx="0" dy="0"/>
+			<feGaussianBlur stdDeviation="5.33333"/>
+			<feComposite in2="hardAlpha" operator="out" k2="-1" k3="1"/>
+			<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.059 0"/>
+			<feBlend mode="normal" in2="BackgroundImageFix" result="effect_dropShadow_1"/>
+			<feBlend mode="normal" in="SourceGraphic" in2="effect_dropShadow_1" result="shape"/>
+		</filter>
+		<clipPath id="clip790_1017">
+			<rect id="photo_camera_24dp_1F1F1F_FILL1_wght400_GRAD0_opsz24 1" rx="0.000000" width="17.947369" height="17.947369" transform="translate(73.026306 73.026245)" fill="white" fill-opacity="0"/>
+		</clipPath>
+	</defs>
+	<circle id="Ellipse 24" cx="50.000000" cy="50.000000" r="50.000000" fill="#FFFFFF" fill-opacity="1.000000"/>
+	<circle id="Ellipse 23" cx="50.511627" cy="50.511597" r="46.511627" fill="#C0C0C0" fill-opacity="1.000000"/>
+	<rect id="user-solid-rounded 1" rx="0.000000" width="45.511627" height="45.511627" transform="translate(27.244186 27.244141)" fill="#FFFFFF" fill-opacity="0"/>
+	<g clip-path="url(#clip790_994)">
+		<path id="Vector" d="M61.25 55.49C61.47 55.63 61.75 55.78 62.07 55.96C63.45 56.74 65.54 57.92 66.97 59.32C67.86 60.2 68.71 61.35 68.87 62.76C69.03 64.27 68.37 65.68 67.06 66.93C64.79 69.1 62.06 70.83 58.54 70.83L41.45 70.83C37.93 70.83 35.2 69.1 32.93 66.93C31.62 65.68 30.96 64.27 31.12 62.76C31.28 61.35 32.13 60.2 33.02 59.32C34.45 57.92 36.54 56.74 37.92 55.96C38.24 55.78 38.52 55.63 38.74 55.49C45.63 51.39 54.36 51.39 61.25 55.49Z" fill="#FFFFFF" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Vector" d="M39.82 39.34C39.82 33.72 44.38 29.16 49.99 29.16C55.61 29.16 60.17 33.72 60.17 39.34C60.17 44.96 55.61 49.51 49.99 49.51C44.38 49.51 39.82 44.96 39.82 39.34Z" fill="#FFFFFF" fill-opacity="1.000000" fill-rule="nonzero"/>
+	</g>
+	<g filter="url(#filter_790_998_dd)">
+		<circle id="Ellipse 25" cx="82.000000" cy="82.000000" r="15.000000" fill="#FFFFFF" fill-opacity="1.000000"/>
+		<rect id="photo_camera_24dp_1F1F1F_FILL1_wght400_GRAD0_opsz24 1" rx="0.000000" width="17.947369" height="17.947369" transform="translate(73.026306 73.026245)" fill="#FFFFFF" fill-opacity="0"/>
+		<g clip-path="url(#clip790_1017)">
+			<path id="Vector" d="M82 86.34C82.98 86.34 83.82 85.99 84.51 85.3C85.2 84.61 85.55 83.77 85.55 82.78C85.55 81.8 85.2 80.96 84.51 80.27C83.82 79.58 82.98 79.23 82 79.23C81.01 79.23 80.17 79.58 79.48 80.27C78.79 80.96 78.44 81.8 78.44 82.78C78.44 83.77 78.79 84.61 79.48 85.3C80.17 85.99 81.01 86.34 82 86.34ZM82 84.76C81.44 84.76 80.98 84.57 80.59 84.19C80.21 83.8 80.02 83.34 80.02 82.78C80.02 82.23 80.21 81.76 80.59 81.38C80.98 81 81.44 80.81 82 80.81C82.55 80.81 83.01 81 83.4 81.38C83.78 81.76 83.97 82.23 83.97 82.78C83.97 83.34 83.78 83.8 83.4 84.19C83.01 84.57 82.55 84.76 82 84.76ZM75.68 89.1C75.25 89.1 74.87 88.95 74.56 88.64C74.25 88.33 74.1 87.96 74.1 87.52L74.1 78.05C74.1 77.61 74.25 77.24 74.56 76.93C74.87 76.62 75.25 76.47 75.68 76.47L78.17 76.47L79.63 74.89L84.36 74.89L85.82 76.47L88.31 76.47C88.75 76.47 89.12 76.62 89.43 76.93C89.74 77.24 89.89 77.61 89.89 78.05L89.89 87.52C89.89 87.96 89.74 88.33 89.43 88.64C89.12 88.95 88.75 89.1 88.31 89.1L75.68 89.1Z" fill="#E52710" fill-opacity="1.000000" fill-rule="nonzero"/>
+		</g>
+	</g>
+</svg>
