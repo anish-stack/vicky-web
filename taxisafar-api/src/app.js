@@ -20,7 +20,18 @@ app.set("trust proxy", 1);
 /* ---- security & basics ---- */
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(compression());
-app.use(cors());
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Allow requests with no Origin (Postman, mobile apps, curl)
+      if (!origin) return callback(null, true);
+
+      // Allow every origin
+      return callback(null, true);
+    },
+    credentials: true,
+  })
+);
 app.use(morgan(env.isProd ? "combined" : "dev"));
 
 /**
