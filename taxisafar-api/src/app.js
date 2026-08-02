@@ -20,15 +20,7 @@ app.set("trust proxy", 1);
 /* ---- security & basics ---- */
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(compression());
-app.use(
-  cors({
-    origin(origin, cb) {
-      if (!origin || env.corsOrigins.includes(origin) || env.corsOrigins.includes("*")) return cb(null, true);
-      cb(new Error(`CORS blocked for origin ${origin}`));
-    },
-    credentials: true,
-  })
-);
+app.use(cors());
 app.use(morgan(env.isProd ? "combined" : "dev"));
 
 /**
