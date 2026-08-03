@@ -75,7 +75,24 @@ export default function Document() {
           src="https://checkout.razorpay.com/v1/checkout.js"
         /> */}
 
+        {/* Google Ads Global Site Tag */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-11461628313"
+          strategy="afterInteractive"
+        />
 
+        <Script
+          id="google-ads-gtag"
+          strategy="afterInteractive"
+        >
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'AW-11461628313');
+          `}
+        </Script>
       </Head>
       <body className="body-bg">
         <Main />
