@@ -2,7 +2,7 @@
 import type { AppProps } from "next/app";
 import Router, { useRouter } from "next/router";
 import HeaderWithoutMenu from "@/components/headers/headerWithoutMenu";
-
+import Script from "next/script";
 import { Col, Container, Row } from "react-bootstrap";
 
 import { CustomerProvider } from "@/context/userContext";
@@ -31,6 +31,20 @@ export default function App({ Component, pageProps }: AppProps) {
   // }
   return (
     <>
+       <Script
+      src="https://www.googletagmanager.com/gtag/js?id=AW-11461628313"
+      strategy="afterInteractive"
+    />
+
+    <Script id="google-ads" strategy="afterInteractive">
+      {`
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        window.gtag = gtag;
+        gtag('js', new Date());
+        gtag('config', 'AW-11461628313');
+      `}
+    </Script>
       <CustomerProvider>
         {!isDriverThemeRoute && <HeaderWithoutMenu />}
 

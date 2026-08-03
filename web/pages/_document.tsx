@@ -75,6 +75,7 @@ export default function Document() {
           src="https://checkout.razorpay.com/v1/checkout.js"
         /> */}
 
+
       </Head>
       <body className="body-bg">
         <Main />
