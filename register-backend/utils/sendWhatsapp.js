@@ -6,10 +6,6 @@ const MYOPERATOR_COMPANY_ID = process.env.MYOPERATOR_COMPANY_ID;
 const MYOPERATOR_PHONE_NUMBER_ID = process.env.MYOPERATOR_PHONE_NUMBER_ID;
 const MYOPERATOR_API = process.env.MYOPERATOR_API_ENDPOINT;
 
-
-/* ─────────────────────────────────────────────
-   Clean Phone Number
-─────────────────────────────────────────────*/
 function cleanPhone(number) {
     if (!number) return null;
 
@@ -20,13 +16,8 @@ function cleanPhone(number) {
     return cleaned;
 }
 
-
-/* ─────────────────────────────────────────────
-   Template Body Builder
-─────────────────────────────────────────────*/
 function getTemplateBody(templateName, data = {}) {
     switch (templateName) {
-
         case "registration_complete_verification_start":
             return {
                 1: String(data.name)
@@ -43,6 +34,13 @@ function getTemplateBody(templateName, data = {}) {
                 1: String(data.name)
             };
 
+        case "tour_guide":
+            return {
+                1: String(data.name),
+                2: String(data.number),
+                3: String(data.security_deposit)
+            };
+
         case "copy_provider_msg":
             return {
                 1: String(data.providerName),
@@ -56,14 +54,8 @@ function getTemplateBody(templateName, data = {}) {
     }
 }
 
-
-/* ─────────────────────────────────────────────
-   Core WhatsApp Sender
-─────────────────────────────────────────────*/
 exports.sendWhatsappTemplateForContactForm = async (data) => {
-
     try {
-
         console.log("📩 Incoming WhatsApp Request:", data);
 
         const templateName = data.templateName;
@@ -99,7 +91,10 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
                 : null
         };
 
-        console.log("🚀 MyOperator Payload:", JSON.stringify(payload, null, 2));
+        console.log(
+            "🚀 MyOperator Payload:",
+            JSON.stringify(payload, null, 2)
+        );
 
         const response = await axios.post(
             MYOPERATOR_API,
@@ -118,9 +113,7 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
         console.log("✅ WhatsApp API Response:", response.data);
 
         return response.data;
-
     } catch (err) {
-
         console.error("❌ WhatsApp Send Error:");
 
         if (err.response) {
@@ -133,11 +126,6 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
     }
 };
 
-
-/* ─────────────────────────────────────────────
-   Template Helpers
-─────────────────────────────────────────────*/
-
 exports.sendRegistrationSuccess = (phone, name, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "registration_complete_verification_start",
@@ -145,7 +133,6 @@ exports.sendRegistrationSuccess = (phone, name, userId) =>
         name,
         id: userId
     });
-
 
 exports.sendPaymentLink = (phone, name, paymentLink, userId) =>
     exports.sendWhatsappTemplateForContactForm({
@@ -156,7 +143,6 @@ exports.sendPaymentLink = (phone, name, paymentLink, userId) =>
         id: userId
     });
 
-
 exports.sendPaymentSuccess = (phone, name, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "payment_success_profile_live",
@@ -165,11 +151,14 @@ exports.sendPaymentSuccess = (phone, name, userId) =>
         id: userId
     });
 
-
-/* ─────────────────────────────────────────────
-   CONTACT FORM PROVIDER MESSAGE
-   (WITH FULL LOGGING)
-─────────────────────────────────────────────*/
+exports.sendTourGuideRequest = (name, number, security_deposit, userId) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "tour_guide",
+        number,
+        name,
+        security_deposit,
+        id: userId
+    });
 
 exports.sendContactFormProvider = async (
     providerName,
@@ -178,9 +167,7 @@ exports.sendContactFormProvider = async (
     message,
     driverId
 ) => {
-
-    console.log("📞 sendContactFormProvider called with:");
-    console.log({
+    console.log("📞 sendContactFormProvider called with:", {
         providerName,
         driverName,
         driverNumber,
@@ -190,7 +177,7 @@ exports.sendContactFormProvider = async (
 
     return exports.sendWhatsappTemplateForContactForm({
         templateName: "copy_provider_msg",
-        number: driverNumber,   // IMPORTANT
+        number: driverNumber,
         providerName,
         driverName,
         driverNumber,
