@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const axios = require("axios");
 
 const MYOPERATOR_API_KEY = process.env.MYOPERATOR_API_KEY;
@@ -41,6 +42,14 @@ function getTemplateBody(templateName, data = {}) {
                 3: String(data.security_deposit)
             };
 
+        case "canceltourguidebookingrequest":
+            return {
+                1: String(data.tour_guide_name),
+                2: String(data.driver_name),
+                3: String(data.number),
+                4: String(data.bookingId)
+            };
+
         case "copy_provider_msg":
             return {
                 1: String(data.providerName),
@@ -49,11 +58,49 @@ function getTemplateBody(templateName, data = {}) {
                 4: String(data.message)
             };
 
+        // ---- Tour guide security deposit payment (dedicated templates) ----
+
+        case "tour_guide_security_deposit_link":
+            return {
+                1: String(data.name),
+                2: String(data.security_deposit),
+                3: String(data.paymentLink)
+                // 4th placeholder for "valid for 1 hour" is baked into the
+                // template text itself in WhatsApp Business Manager, not passed here.
+            };
+
+        case "tour_guide_security_deposit_success":
+            return {
+                1: String(data.name),
+                2: String(data.security_deposit),
+                3: String(data.bookingId)
+            };
+
+        case "tour_guide_security_deposit_expired":
+            return {
+                1: String(data.name),
+                2: String(data.bookingId)
+            };
+        case "rto_agent_send_request":
+            return {
+                1: String(data.name),
+                2: String(data.guestName),
+                3: String(data.guestPhone),
+                4: String(data.source),
+            };
+
+
+
         default:
             return null;
     }
 }
 
+/**
+ * `data.customerNumber` is the ONLY source used to decide WHO the WhatsApp
+ * message is sent to (recipient). Any other number-like field is business
+ * data that may appear inside the template body only.
+ */
 exports.sendWhatsappTemplateForContactForm = async (data) => {
     try {
         console.log("📩 Incoming WhatsApp Request:", data);
@@ -65,10 +112,10 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
             throw new Error(`Invalid template: ${templateName}`);
         }
 
-        const cleanNumber = cleanPhone(data.number);
+        const cleanNumber = cleanPhone(data.customerNumber);
 
         if (!cleanNumber) {
-            throw new Error(`Invalid phone number: ${data.number}`);
+            throw new Error(`Invalid customer/recipient number: ${data.customerNumber}`);
         }
 
         const context = {
@@ -126,41 +173,65 @@ exports.sendWhatsappTemplateForContactForm = async (data) => {
     }
 };
 
-exports.sendRegistrationSuccess = (phone, name, userId) =>
+// ---- helpers ----
+// Every helper takes an explicit recipient phone (customerNumber), separate
+// from any "number" that only needs to show up inside the template body.
+
+exports.sendRegistrationSuccess = (customerNumber, name, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "registration_complete_verification_start",
-        number: phone,
+        customerNumber,
         name,
         id: userId
     });
 
-exports.sendPaymentLink = (phone, name, paymentLink, userId) =>
+exports.sendPaymentLink = (customerNumber, name, paymentLink, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "copy_payment_init",
-        number: phone,
+        customerNumber,
         name,
         paymentLink,
         id: userId
     });
 
-exports.sendPaymentSuccess = (phone, name, userId) =>
+exports.sendPaymentSuccess = (customerNumber, name, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "payment_success_profile_live",
-        number: phone,
+        customerNumber,
         name,
         id: userId
     });
 
-exports.sendTourGuideRequest = (name, number, security_deposit, userId) =>
+exports.sendTourGuideRequest = (customerNumber, name, number, security_deposit, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "tour_guide",
-        number,
+        customerNumber,
         name,
+        number,
         security_deposit,
         id: userId
     });
 
+exports.sendCancelTourGuideBookingRequest = (
+    customerNumber,
+    tour_guide_name,
+    driver_name,
+    number,
+    bookingId,
+    userId
+) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "canceltourguidebookingrequest",
+        customerNumber,
+        tour_guide_name,
+        driver_name,
+        number,
+        bookingId,
+        id: userId
+    });
+
 exports.sendContactFormProvider = async (
+    customerNumber,
     providerName,
     driverName,
     driverNumber,
@@ -168,6 +239,7 @@ exports.sendContactFormProvider = async (
     driverId
 ) => {
     console.log("📞 sendContactFormProvider called with:", {
+        customerNumber,
         providerName,
         driverName,
         driverNumber,
@@ -177,7 +249,7 @@ exports.sendContactFormProvider = async (
 
     return exports.sendWhatsappTemplateForContactForm({
         templateName: "copy_provider_msg",
-        number: driverNumber,
+        customerNumber,
         providerName,
         driverName,
         driverNumber,
@@ -185,3 +257,46 @@ exports.sendContactFormProvider = async (
         id: driverId
     });
 };
+
+// ---- Tour guide security deposit payment (dedicated) ----
+
+exports.sendTourGuideSecurityDepositLink = (customerNumber, name, security_deposit, paymentLink, bookingId) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "tour_guide_security_deposit_link",
+        customerNumber,
+        name,
+        security_deposit,
+        paymentLink,
+        id: bookingId
+    });
+
+exports.sendTourGuideSecurityDepositSuccess = (customerNumber, name, security_deposit, bookingId) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "tour_guide_security_deposit_success",
+        customerNumber,
+        name,
+        security_deposit,
+        bookingId,
+        id: bookingId
+    });
+
+exports.sendTourGuideSecurityDepositExpired = (customerNumber, name, bookingId) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "tour_guide_security_deposit_expired",
+        customerNumber,
+        name,
+        bookingId,
+        id: bookingId
+    });
+
+
+    exports.sendRtoRequest = (customerNumber, name, guestName,guestPhone, source) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "rto_agent_send_request",
+        customerNumber,
+        name,
+        guestName,
+        guestPhone,
+        source
+    });
+         

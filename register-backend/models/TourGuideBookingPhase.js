@@ -27,6 +27,50 @@ const tourGuideBookingPhaseSchema = new mongoose.Schema({
     whatsappMessageSent: {
         type: Boolean,
         default: false
+    },
+
+    // ---- Payment link tracking (Razorpay Payment Links) ----
+
+    paymentLinkId: {
+        type: String,
+        default: null
+    },
+
+    paymentLinkUrl: {
+        type: String,
+        default: null
+    },
+
+    paymentLinkStatus: {
+        type: String,
+        enum: ["not_generated", "active", "paid", "expired", "invalidated"],
+        default: "not_generated"
+    },
+
+    paymentLinkExpiresAt: {
+        type: Date,
+        default: null
+    },
+
+    // Razorpay's payment id, once the link is actually paid
+    paymentId: {
+        type: String,
+        default: null
+    },
+
+    paidAt: {
+        type: Date,
+        default: null
+    },
+
+    whatsappPaymentLinkMessageSent: {
+        type: Boolean,
+        default: false
+    },
+
+    whatsappPaymentSuccessMessageSent: {
+        type: Boolean,
+        default: false
     }
 
 
