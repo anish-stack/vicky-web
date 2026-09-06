@@ -54,6 +54,8 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/auth/mechanic", require("./routes/carMechanic.routes"));
+
 app.use("/api/contact", require("./routes/contact"));
 
 app.use((req, res) => {
