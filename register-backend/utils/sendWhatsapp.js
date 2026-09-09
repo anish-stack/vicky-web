@@ -89,6 +89,17 @@ function getTemplateBody(templateName, data = {}) {
                 4: String(data.source),
             };
 
+        case "vtld_order_placed":
+            return {
+                1: String(data.name),
+                2: String(data.vehcileNumber),
+                3: String(data.plan),
+                4: String(data.pickupHub),
+                5: String(data.amount)
+
+            };
+
+
 
 
         default:
@@ -290,7 +301,7 @@ exports.sendTourGuideSecurityDepositExpired = (customerNumber, name, bookingId) 
     });
 
 
-    exports.sendRtoRequest = (customerNumber, name, guestName,guestPhone, source) =>
+exports.sendRtoRequest = (customerNumber, name, guestName, guestPhone, source) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "rto_agent_send_request",
         customerNumber,
@@ -299,4 +310,16 @@ exports.sendTourGuideSecurityDepositExpired = (customerNumber, name, bookingId) 
         guestPhone,
         source
     });
-         
+
+
+    exports.sendVtldOrderPlaced = (customerNumber, name, vehcileNumber, plan, pickupHub, amount, orderId) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "vtld_order_placed",
+        customerNumber,
+        name,
+        vehcileNumber,
+        plan,
+        pickupHub,
+        amount,
+        id: orderId
+    });

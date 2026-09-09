@@ -49,12 +49,16 @@ app.use("/api/auth/send-login-otp", otpLimiter);
 app.use("/api/auth/resend-otp", otpLimiter);
 app.use("/api/auth/register", otpLimiter);
 
+
 app.get("/", (req, res) => {
   res.json({ success: true, message: "TaxiSafar partner API Running ✅", version: "1.0.0" });
 });
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/auth/mechanic", require("./routes/carMechanic.routes"));
+app.use("/api/auth/recovery-vehicle", require("./routes/recovery.routes"));
+app.use("/api/auth/vltd", require("./routes/vltd.routes"));
+
 
 app.use("/api/contact", require("./routes/contact"));
 

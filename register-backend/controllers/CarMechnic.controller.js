@@ -28,7 +28,7 @@ exports.createMechanic = async (req, res) => {
 
     ["servicesOffered", "brandsServiced", "vehicleTypesServiced", "facilities", "whyChooseUs", "workingHours", "address"].forEach((k) => {
       if (typeof body[k] === "string") {
-        try { body[k] = JSON.parse(body[k]); } catch (_) {}
+        try { body[k] = JSON.parse(body[k]); } catch (_) { }
       }
     });
 
@@ -145,7 +145,7 @@ exports.updateMechanic = async (req, res) => {
     const body = { ...req.body };
     ["servicesOffered", "brandsServiced", "vehicleTypesServiced", "facilities", "whyChooseUs", "workingHours", "address"].forEach((k) => {
       if (typeof body[k] === "string") {
-        try { body[k] = JSON.parse(body[k]); } catch (_) {}
+        try { body[k] = JSON.parse(body[k]); } catch (_) { }
       }
     });
 
@@ -288,7 +288,7 @@ exports.updateMechanicStatus = async (req, res) => {
 exports.trackContact = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, userPhone, platform, appVersion } = req.body;
+    const { type, userId, userPhone, platform, appVersion } = req.body;
 
     if (!["call", "whatsapp"].includes(type)) {
       return res.status(400).json({ success: false, data: null, message: "Invalid contact type" });
@@ -299,7 +299,7 @@ exports.trackContact = async (req, res) => {
 
     const log = await MechanicContactLog.create({
       mechanicId: id,
-      userId: req.user?._id || null,
+      userId: userId || null,
       userPhone,
       type,
       meta: { platform, appVersion }
@@ -324,6 +324,38 @@ exports.getMechanicContactLogs = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [data, total] = await Promise.all([
       MechanicContactLog.find(query).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
+      MechanicContactLog.countDocuments(query)
+    ]);
+
+    return res.json({
+      success: true,
+      data,
+      message: "Contact logs fetched",
+      pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / limit) }
+    });
+  } catch (err) {
+    console.error("getMechanicContactLogs err:", err);
+    return res.status(500).json({ success: false, data: null, message: err.message || "Failed to fetch logs" });
+  }
+};
+
+// ADMIN: get contact logs for a userId
+
+exports.getMechanicContactLogsForUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 20, type } = req.query;
+
+    const query = { userId: userId };
+    if (type) query.type = type;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [data, total] = await Promise.all([
+      MechanicContactLog.find(query)
+        .populate('mechanicId', 'name garageName profileImage address specialty phone') // Populate mechanic details
+        .skip(skip)
+        .limit(parseInt(limit))
+        .sort({ createdAt: -1 }),
       MechanicContactLog.countDocuments(query)
     ]);
 

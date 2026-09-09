@@ -17,5 +17,9 @@ router.get("/:id", ctrl.getOneMechanic);
 router.patch("/:id/status", /* adminAuth, */ ctrl.updateMechanicStatus);
 router.post("/:id/contact", /* userAuth, */ ctrl.trackContact);
 router.get("/:id/contact-logs", /* adminAuth, */ ctrl.getMechanicContactLogs);
+router.get("/:userId/contact-logs-user", /* adminAuth, */ ctrl.getMechanicContactLogsForUser);
+
+
+
 router.get("/options/all", ctrl.getMechanicOptions);
 module.exports = router;
