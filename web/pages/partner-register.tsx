@@ -67,15 +67,15 @@ const CATEGORIES = [
     border: "#A7F3D0",
     textColor: "#065F46",
   },
-  {
-    value: "car_mechanic" as Category,
-    label: "Car Mechanic",
-    icon: Building2,
-    gradient: "from-purple-400 to-violet-500",
-    light: "#FAF5FF",
-    border: "#DDD6FE",
-    textColor: "#4C1D95",
-  },
+  // {
+  //   value: "car_mechanic" as Category,
+  //   label: "Car Mechanic",
+  //   icon: Building2,
+  //   gradient: "from-purple-400 to-violet-500",
+  //   light: "#FAF5FF",
+  //   border: "#DDD6FE",
+  //   textColor: "#4C1D95",
+  // },
 ] as const;
 
 type DocFile = { file: File; preview: string } | null;
@@ -960,7 +960,7 @@ export default function RegisterPage() {
                       />
                     </Section>
 
-                    {/* Category
+                    {/* Category */}
                     <Section label="Service Category *">
                       <div className="cat-grid grid grid-cols-2 gap-3">
                         {CATEGORIES.map(
@@ -1016,7 +1016,7 @@ export default function RegisterPage() {
                           },
                         )}
                       </div>
-                    </Section> */}
+                    </Section>
 
                     {/* Tour Guide */}
                     {category === "tour_guide" && (
