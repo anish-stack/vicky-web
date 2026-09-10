@@ -7,12 +7,24 @@ const PartnerConfig = require("../models/PartnerConfig");
 
 // Helper to generate full URL from relative path
 const fileUrl = (req, relativePath) => {
+    const base_url = "https://partners.taxisafar.com";
+
     if (!relativePath) return null;
-  
-    if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) {
+
+    // Already a complete URL
+    if (
+        relativePath.startsWith("http://") ||
+        relativePath.startsWith("https://")
+    ) {
         return relativePath;
     }
-    return `${req.protocol}://${req.get("host")}${relativePath}`;
+
+    // Make sure path starts with /
+    const path = relativePath.startsWith("/")
+        ? relativePath
+        : `/${relativePath}`;
+
+    return `${base_url}${path}`;
 };
 
 // Helper to safely delete local files

@@ -6,8 +6,13 @@ const VltdPickupLocation = require("../models/VltdPickupLocation");
 const VltdOrder = require("../models/VltdOrder");
 const { sendVtldOrderPlaced } = require("../utils/sendWhatsapp");
 
-const fileUrl = (req, filename) => `${req.protocol}://${req.get("host")}/uploads/mechanics/${filename}`;
+const base_url = "https://partners.taxisafar.com";
 
+const fileUrl = (req, filename) => {
+    if (!filename) return null;
+
+    return `${base_url}/uploads/mechanics/${filename}`;
+};
 const safeUnlink = (filePath) => {
     fs.unlink(filePath, (err) => { if (err && err.code !== "ENOENT") console.error("unlink err:", err); });
 };

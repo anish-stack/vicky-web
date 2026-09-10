@@ -576,7 +576,7 @@ export default function RegisterPage() {
     try {
       const res = await axios({
         method: "post",
-        url: "http://localhost:5001/api/auth/register",
+        url: "https://partners.taxisafar.com/api/auth/register",
         data: buildFD(),
         headers: { Accept: "application/json" },
         withCredentials: false,
@@ -636,7 +636,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        "http://localhost:5001/api/auth/verify-register-otp",
+        "https://partners.taxisafar.com/api/auth/verify-register-otp",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

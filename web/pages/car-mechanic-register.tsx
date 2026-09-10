@@ -40,7 +40,7 @@ import {
 import Swal from "sweetalert2";
 import INDIAN_STATES_CITIES, { STATE_LIST } from "@/data/indianStatesCities";
 
-const API_BASE = "http://localhost:5001/api/auth/mechanic";
+const API_BASE = "https://partners.taxisafar.com/api/auth/mechanic";
 const DRAFT_KEY = "mechanic_register_draft";
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 

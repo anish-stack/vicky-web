@@ -26,7 +26,7 @@ import {
 import Swal from "sweetalert2";
 import INDIAN_STATES_CITIES, { STATE_LIST } from "@/data/indianStatesCities";
 
-const API_BASE = "http://localhost:5001/api/auth";
+const API_BASE = "https://partners.taxisafar.com/api/auth";
 const DRAFT_KEY = "recovery_register_draft";
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_MS = 60 * 1000;

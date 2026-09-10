@@ -1,8 +1,8 @@
 // constants/mechanicOptions.js
 
 const SERVICE_LIST = [
-  { title: "General Service", image: "https://images.unsplash.com/photo-1487754180451-c456f719a1fc?w=200" },
-  { title: "Engine Repair", image: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=200" },
+  { title: "General Service", image: "https://images.unsplash.com/photo-1669024401193-1728ef303e8e?q=80&w=1632&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" },
+  { title: "Engine Repair", image: "https://images.unsplash.com/photo-1625047509248-ec889cbff17f?w=200&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8Y2FyJTIwcmVwYWlyfGVufDB8fDB8fHww" },
   { title: "Gearbox Repair", image: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=200" },
   { title: "Brake Repair", image: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=200" },
   { title: "AC Repair", image: "https://images.unsplash.com/photo-1631545806609-8c0e4c5f5f5a?w=200" },
