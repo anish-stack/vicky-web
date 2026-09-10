@@ -960,7 +960,7 @@ export default function RegisterPage() {
                       />
                     </Section>
 
-                    {/* Category */}
+                    {/* Category
                     <Section label="Service Category *">
                       <div className="cat-grid grid grid-cols-2 gap-3">
                         {CATEGORIES.map(
@@ -1016,7 +1016,7 @@ export default function RegisterPage() {
                           },
                         )}
                       </div>
-                    </Section>
+                    </Section> */}
 
                     {/* Tour Guide */}
                     {category === "tour_guide" && (
