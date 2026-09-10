@@ -58,7 +58,7 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/auth/mechanic", require("./routes/carMechanic.routes"));
 app.use("/api/auth/recovery-vehicle", require("./routes/recovery.routes"));
 app.use("/api/auth/vltd", require("./routes/vltd.routes"));
-
+app.use("/api/auth/partner-configs", require("./routes/partnerConfigRoutes"));
 
 app.use("/api/contact", require("./routes/contact"));
 

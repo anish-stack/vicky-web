@@ -18,6 +18,201 @@ const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
    VLTD PRODUCT & PICKUP LOCATIONS CONTROLLERS
 ====================================================== */
 
+
+
+
+
+// --- CREATE PICKUP LOCATION ---
+exports.createPickupLocation = async (req, res) => {
+    try {
+        const {
+            state,
+            city,
+            hubName,
+            fullAddress,
+            contactPerson,
+            contactPhone,
+            isActive
+        } = req.body;
+
+        // Required field validation
+        if (!state || !city || !hubName || !fullAddress) {
+            return res.status(400).json({
+                success: false,
+                message: "state, city, hubName and fullAddress are required"
+            });
+        }
+
+        const location = await VltdPickupLocation.create({
+            state: state.trim(),
+            city: city.trim(),
+            hubName: hubName.trim(),
+            fullAddress: fullAddress.trim(),
+            contactPerson: contactPerson?.trim() || null,
+            contactPhone: contactPhone?.trim() || null,
+            isActive: typeof isActive === "boolean" ? isActive : true
+        });
+
+        return res.status(201).json({
+            success: true,
+            data: location,
+            message: "Pickup location created successfully"
+        });
+
+    } catch (err) {
+        console.error("createPickupLocation err:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to create pickup location"
+        });
+    }
+};
+
+
+// --- UPDATE PICKUP LOCATION ---
+exports.updatePickupLocation = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid pickup location ID"
+            });
+        }
+
+        const {
+            state,
+            city,
+            hubName,
+            fullAddress,
+            contactPerson,
+            contactPhone,
+            isActive
+        } = req.body;
+
+        const updateData = {};
+
+        if (state !== undefined) {
+            updateData.state = state.trim();
+        }
+
+        if (city !== undefined) {
+            updateData.city = city.trim();
+        }
+
+        if (hubName !== undefined) {
+            updateData.hubName = hubName.trim();
+        }
+
+        if (fullAddress !== undefined) {
+            updateData.fullAddress = fullAddress.trim();
+        }
+
+        if (contactPerson !== undefined) {
+            updateData.contactPerson = contactPerson?.trim() || null;
+        }
+
+        if (contactPhone !== undefined) {
+            updateData.contactPhone = contactPhone?.trim() || null;
+        }
+
+        if (isActive !== undefined) {
+            updateData.isActive = isActive;
+        }
+
+        const location = await VltdPickupLocation.findByIdAndUpdate(
+            id,
+            { $set: updateData },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
+
+        if (!location) {
+            return res.status(404).json({
+                success: false,
+                message: "Pickup location not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: location,
+            message: "Pickup location updated successfully"
+        });
+
+    } catch (err) {
+        console.error("updatePickupLocation err:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to update pickup location"
+        });
+    }
+};
+// --- GET ALL PICKUP LOCATIONS ---
+exports.getAllPickupLocations = async (req, res) => {
+    try {
+        const locations = await VltdPickupLocation
+            .find({})
+            .sort({ state: 1, city: 1 });
+
+        return res.status(200).json({
+            success: true,
+            data: locations,
+            message: "All pickup locations fetched successfully"
+        });
+
+    } catch (err) {
+        console.error("getAllPickupLocations err:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to fetch pickup locations"
+        });
+    }
+};
+
+// --- DELETE PICKUP LOCATION ---
+exports.deletePickupLocation = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid pickup location ID"
+            });
+        }
+
+        const location = await VltdPickupLocation.findByIdAndDelete(id);
+
+        if (!location) {
+            return res.status(404).json({
+                success: false,
+                message: "Pickup location not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: location,
+            message: "Pickup location deleted successfully"
+        });
+
+    } catch (err) {
+        console.error("deletePickupLocation err:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to delete pickup location"
+        });
+    }
+};
+
 // --- GET VLTD PRODUCT DETAILS ---
 exports.getVltdProduct = async (req, res) => {
     try {
@@ -197,7 +392,34 @@ exports.adminGetAllVltdOrders = async (req, res) => {
         return res.status(500).json({ success: false, message: err.message || "Failed to fetch orders" });
     }
 };
+exports.adminGetSingleVltdOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
 
+        const order = await VltdOrder.findById(id)
+            .populate("pickupLocation");
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "VLTD order not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: order,
+            message: "VLTD order fetched successfully for admin"
+        });
+    } catch (err) {
+        console.error("adminGetSingleVltdOrder err:", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to fetch VLTD order"
+        });
+    }
+};
 // --- ADMIN: UPDATE ORDER STATUS ---
 exports.adminUpdateOrderStatus = async (req, res) => {
     try {
