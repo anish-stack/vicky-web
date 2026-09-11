@@ -17,7 +17,10 @@ const reviewSchema = new mongoose.Schema({
 
 const carMechanicUserSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
-    phone: { type: String, required: true, unique: true, trim: true },
+    phone: {  type: String,
+      required: true,
+      unique: true,
+      trim: true },
     email: { type: String, trim: true, lowercase: true },
     password: { type: String, select: false },
 
@@ -80,7 +83,6 @@ const carMechanicUserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 carMechanicUserSchema.index({ "address.location": "2dsphere" });
-carMechanicUserSchema.index({ phone: 1 }, { unique: true });
 carMechanicUserSchema.index({ garageName: "text", specialty: "text" });
 
 module.exports = mongoose.model("CarMechanicUser", carMechanicUserSchema);

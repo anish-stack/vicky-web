@@ -7,7 +7,7 @@ const connectDB = require("./config/db");
 const errorHandler = require("./middleware/errorMiddleware");
 const { ipKeyGenerator } = require("express-rate-limit");
 
-dotenv.config();
+dotenv.config({ quiet: true });
 connectDB();
 
 const app = express();
