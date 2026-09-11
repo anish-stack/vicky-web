@@ -361,79 +361,182 @@ export default function CarMechanicRegister() {
     setGalleryPreviews((p) => p.filter((_, i) => i !== idx));
   };
 
-  const submitRegistration = async () => {
-    if (!validateStep(4)) return;
-    setSubmitting(true);
-    try {
-      const fd = new FormData();
-      fd.append("name", form.name);
-      fd.append("phone", form.phone);
-      if (form.email) fd.append("email", form.email);
-      fd.append("password", form.password);
-      fd.append("garageName", form.garageName);
-      fd.append("experienceYears", form.experienceYears || "0");
-      fd.append(
-        "specialty",
-        form.specialty || "All Types of Car Repair & Service",
-      );
-      if (form.about) fd.append("about", form.about);
-      fd.append(
-        "whyChooseUs",
-        JSON.stringify(form.whyChooseUs.filter((v) => v.trim())),
-      );
-      fd.append(
-        "address",
-        JSON.stringify({
-          line1: form.addressLine1,
-          city: form.city,
-          state: form.state,
-          pincode: form.pincode,
-          location: {
-            type: "Point",
-            coordinates: [
-              parseFloat(form.longitude) || 0,
-              parseFloat(form.latitude) || 0,
-            ],
-          },
-        }),
-      );
-      fd.append("workingHours", JSON.stringify(form.workingHours));
-      fd.append("servicesOffered", JSON.stringify(form.servicesOffered));
-      fd.append("brandsServiced", JSON.stringify(form.brandsServiced));
-      fd.append(
-        "vehicleTypesServiced",
-        JSON.stringify(form.vehicleTypesServiced),
-      );
-      fd.append("facilities", JSON.stringify(form.facilities));
+const submitRegistration = async () => {
+  console.log("========== REGISTRATION START ==========");
 
-      if (profileImage) fd.append("profileImage", profileImage);
-      if (coverImage) fd.append("coverImage", coverImage);
-      galleryFiles.forEach((f) => fd.append("galleryImages", f));
+  if (!validateStep(4)) {
+    console.log("❌ Validation failed for step 4");
+    return;
+  }
 
-      const res = await axios.post(`${API_BASE}/`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+  console.log("✅ Validation passed");
+  console.log("Form data:", {
+    name: form.name,
+    phone: form.phone,
+    email: form.email,
+    garageName: form.garageName,
+    experienceYears: form.experienceYears,
+    specialty: form.specialty,
+    about: form.about,
+    whyChooseUs: form.whyChooseUs,
+    addressLine1: form.addressLine1,
+    city: form.city,
+    state: form.state,
+    pincode: form.pincode,
+    latitude: form.latitude,
+    longitude: form.longitude,
+    workingHours: form.workingHours,
+    servicesOffered: form.servicesOffered,
+    brandsServiced: form.brandsServiced,
+    vehicleTypesServiced: form.vehicleTypesServiced,
+    facilities: form.facilities,
+  });
 
-      setMechanicId(res.data.data._id);
-      setStep(5);
-      Swal.fire({
-        icon: "success",
-        title: "OTP sent",
-        text: `OTP sent to ${form.phone}`,
-        timer: 1800,
-        showConfirmButton: false,
-      });
-    } catch (err: any) {
-      console.error("register err:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Registration failed",
-        text: err?.response?.data?.message || "Something went wrong",
-      });
-    } finally {
-      setSubmitting(false);
+  console.log("Profile image:", profileImage);
+  console.log("Cover image:", coverImage);
+  console.log("Gallery files:", galleryFiles);
+
+  setSubmitting(true);
+
+  try {
+    const fd = new FormData();
+
+    fd.append("name", form.name);
+    fd.append("phone", form.phone);
+
+    if (form.email) {
+      fd.append("email", form.email);
     }
-  };
+
+    fd.append("password", form.password);
+    fd.append("garageName", form.garageName);
+    fd.append("experienceYears", form.experienceYears || "0");
+
+    fd.append(
+      "specialty",
+      form.specialty || "All Types of Car Repair & Service",
+    );
+
+    if (form.about) {
+      fd.append("about", form.about);
+    }
+
+    fd.append(
+      "whyChooseUs",
+      JSON.stringify(form.whyChooseUs.filter((v) => v.trim())),
+    );
+
+    const addressData = {
+      line1: form.addressLine1,
+      city: form.city,
+      state: form.state,
+      pincode: form.pincode,
+      location: {
+        type: "Point",
+        coordinates: [
+          parseFloat(form.longitude) || 0,
+          parseFloat(form.latitude) || 0,
+        ],
+      },
+    };
+
+    fd.append("address", JSON.stringify(addressData));
+    fd.append("workingHours", JSON.stringify(form.workingHours));
+    fd.append("servicesOffered", JSON.stringify(form.servicesOffered));
+    fd.append("brandsServiced", JSON.stringify(form.brandsServiced));
+    fd.append(
+      "vehicleTypesServiced",
+      JSON.stringify(form.vehicleTypesServiced),
+    );
+    fd.append("facilities", JSON.stringify(form.facilities));
+
+    if (profileImage) {
+      fd.append("profileImage", profileImage);
+    }
+
+    if (coverImage) {
+      fd.append("coverImage", coverImage);
+    }
+
+    galleryFiles.forEach((f) => {
+      fd.append("galleryImages", f);
+    });
+
+    // ==========================================
+    // DEBUG FORMDATA
+    // ==========================================
+
+    console.log("========== FORMDATA ==========");
+
+    for (const [key, value] of fd.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}:`, {
+          name: value.name,
+          type: value.type,
+          size: value.size,
+        });
+      } else {
+        console.log(`${key}:`, value);
+      }
+    }
+
+    console.log("================================");
+    console.log("API URL:", `${API_BASE}/`);
+    console.log("Sending registration request...");
+
+    const res = await axios.post(`${API_BASE}/`, fd, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    // ==========================================
+    // SUCCESS RESPONSE
+    // ==========================================
+
+    console.log("========== REGISTRATION RESPONSE ==========");
+    console.log("Status:", res.status);
+    console.log("Response:", res.data);
+    console.log("Mechanic ID:", res.data?.data?._id);
+    console.log("===========================================");
+
+    setMechanicId(res.data.data._id);
+    setStep(5);
+
+    Swal.fire({
+      icon: "success",
+      title: "OTP sent",
+      text: `OTP sent to ${form.phone}`,
+      timer: 1800,
+      showConfirmButton: false,
+    });
+  } catch (err: any) {
+    // ==========================================
+    // ERROR DEBUG
+    // ==========================================
+
+    console.error("========== REGISTRATION ERROR ==========");
+    console.error("Full error:", err);
+    console.error("Message:", err?.message);
+    console.error("Response:", err?.response);
+    console.error("Response status:", err?.response?.status);
+    console.error("Response data:", err?.response?.data);
+    console.error("Request URL:", err?.config?.url);
+    console.error("Request method:", err?.config?.method);
+    console.error("========================================");
+
+    Swal.fire({
+      icon: "error",
+      title: "Registration failed",
+      text:
+        err?.response?.data?.message ||
+        "Something went wrong",
+    });
+  } finally {
+    console.log("Registration process finished");
+    setSubmitting(false);
+  }
+};
 
   const onOtpChange = (idx: number, val: string) => {
     if (!/^\d?$/.test(val)) return;
