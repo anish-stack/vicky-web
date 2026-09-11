@@ -13,13 +13,71 @@ connectDB();
 const app = express();
 // app.set("trust proxy", true);
 app.set("trust proxy", 1);
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+
+  "https://taxisafar.com",
+  "https://www.taxisafar.com",
+
+  "https://app.admin.taxisafar.com",
+  "https://www.app.admin.taxisafar.com",
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000","http://127.0.0.1:5173","http://localhost:5173","https://taxisafar.com","https://www.taxisafar.com","https://taxisafar.com","https://app.admin.taxisafar.com","https://www.app.admin.taxisafar.com"],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: function (origin, callback) {
+      // Allow server-to-server / Postman / curl requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.log("❌ CORS blocked origin:", origin);
+
+      return callback(
+        new Error(`CORS blocked for origin: ${origin}`)
+      );
+    },
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "Origin",
+      "X-Requested-With",
+    ],
+
+    credentials: true,
+
+    optionsSuccessStatus: 204,
   })
 );
+app.use((req, res, next) => {
+  console.log("=================================");
+  console.log("REQUEST:", req.method, req.originalUrl);
+  console.log("ORIGIN:", req.headers.origin);
+  console.log("HOST:", req.headers.host);
+  console.log("=================================");
+
+  next();
+});
+// Explicitly handle preflight
+app.options("*", cors());
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
