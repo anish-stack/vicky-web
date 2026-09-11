@@ -11,8 +11,8 @@ dotenv.config({ quiet: true });
 connectDB();
 
 const app = express();
-// app.set("trust proxy", true);
 app.set("trust proxy", 1);
+
 const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -26,58 +26,43 @@ const allowedOrigins = [
   "https://www.app.admin.taxisafar.com",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow server-to-server / Postman / curl requests
-      if (!origin) {
-        return callback(null, true);
-      }
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      console.log("❌ CORS blocked origin:", origin);
+    console.log("❌ CORS blocked origin:", origin);
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
 
-      return callback(
-        new Error(`CORS blocked for origin: ${origin}`)
-      );
-    },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "Origin",
+    "X-Requested-With",
+  ],
 
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "Origin",
-      "X-Requested-With",
-    ],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
 
-    credentials: true,
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 
-    optionsSuccessStatus: 204,
-  })
-);
 app.use((req, res, next) => {
   console.log("=================================");
   console.log("REQUEST:", req.method, req.originalUrl);
   console.log("ORIGIN:", req.headers.origin);
   console.log("HOST:", req.headers.host);
   console.log("=================================");
-
   next();
 });
-// Explicitly handle preflight
-app.options("*", cors());
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -89,7 +74,7 @@ const globalLimiter = rateLimit({
   max: 10000,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: "Too many requests. Please try again later." }
+  message: { success: false, message: "Too many requests. Please try again later." },
 });
 app.use(globalLimiter);
 
@@ -100,13 +85,12 @@ const otpLimiter = rateLimit({
     if (req.body?.phone) return req.body.phone;
     return ipKeyGenerator(req);
   },
-  message: { success: false, message: "Too many OTP requests. Please try again in 15 minutes." }
+  message: { success: false, message: "Too many OTP requests. Please try again in 15 minutes." },
 });
 
 app.use("/api/auth/send-login-otp", otpLimiter);
 app.use("/api/auth/resend-otp", otpLimiter);
 app.use("/api/auth/register", otpLimiter);
-
 
 app.get("/", (req, res) => {
   res.json({ success: true, message: "TaxiSafar partner API Running ✅", version: "1.0.0" });
