@@ -136,8 +136,7 @@ export default function CarMechanicRegister() {
     try {
       const orderRes = await axios.post(`${API_BASE}/${mechanicId}/kyc/create-order`);
       const responseData = orderRes?.data;
-      console.log(responseData)
-      const razorpayOrder = responseData?.order;
+      const razorpayOrder = responseData?.order?.order;
       const orderId = razorpayOrder?.id;
       const amount = razorpayOrder?.amount;
       const currency = razorpayOrder?.currency;
