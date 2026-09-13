@@ -101,8 +101,11 @@ app.use("/api/auth/mechanic", require("./routes/carMechanic.routes"));
 app.use("/api/auth/recovery-vehicle", require("./routes/recovery.routes"));
 app.use("/api/auth/vltd", require("./routes/vltd.routes"));
 app.use("/api/auth/partner-configs", require("./routes/partnerConfigRoutes"));
-
+app.use("/api/v1/fees", require("./routes/feeRoutes"));
 app.use("/api/contact", require("./routes/contact"));
+app.use("/api/washrooms", require("./routes/driverWashroom.routes"));
+app.use("/api/restaurant", require("./routes/driverRestaurant.routes"));
+
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found.` });

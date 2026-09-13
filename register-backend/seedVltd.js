@@ -22,7 +22,7 @@ const seedDatabase = async () => {
       devicePrice: 1399,
       
       // Hero Banner Main Image
-      heroBannerImage: "http://localhost:5001/uploads/vltd/hero-device.png",
+      heroBannerImage: "https://partners.taxisafar.com/uploads/vltd/hero-device.png",
 
       // Hero Banner Bottom Preview Strip Icons
       heroBadges: [
@@ -56,11 +56,11 @@ const seedDatabase = async () => {
 
       // What's in the Box Section (Only Image and Name, No Icons)
       boxItems: [
-        { image: "http://localhost:5001/uploads/vltd/box-device.png", name: "VLTD Device" },
-        { image: "http://localhost:5001/uploads/vltd/box-harness.png", name: "Wiring Harness" },
-        { image: "http://localhost:5001/uploads/vltd/box-relay.png", name: "Relay" },
-        { image: "http://localhost:5001/uploads/vltd/box-manual.png", name: "User Guide" },
-        { image: "http://localhost:5001/uploads/vltd/box-warranty.png", name: "Warranty Card" }
+        { image: "https://partners.taxisafar.com/uploads/vltd/box-device.png", name: "VLTD Device" },
+        { image: "https://partners.taxisafar.com/uploads/vltd/box-harness.png", name: "Wiring Harness" },
+        { image: "https://partners.taxisafar.com/uploads/vltd/box-relay.png", name: "Relay" },
+        { image: "https://partners.taxisafar.com/uploads/vltd/box-manual.png", name: "User Guide" },
+        { image: "https://partners.taxisafar.com/uploads/vltd/box-warranty.png", name: "Warranty Card" }
       ],
 
       rechargePlans: [

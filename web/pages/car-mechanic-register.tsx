@@ -13,13 +13,7 @@ import {
   Car,
   Compass,
   Upload,
-  ChevronDown,
-  ChevronUp,
-  Facebook,
-  Instagram,
-  Youtube,
-  Globe,
-  MessageCircle,
+
   CheckCircle2,
   Clock,
   Shield,
@@ -149,6 +143,7 @@ const STEPS = [
   "Services & Brands",
   "Photos",
   "Verify OTP",
+  "Aadhaar KYC",
 ] as const;
 
 export default function CarMechanicRegister() {
@@ -161,7 +156,172 @@ export default function CarMechanicRegister() {
     STEPS.length - 1,
   );
   const [step, setStepState] = useState(stepFromUrl);
+const [aadhaarNumber, setAadhaarNumber] = useState("");
+const [kycStage, setKycStage] = useState<"payment" | "aadhaar-input" | "aadhaar-otp" | "done">("payment");
+const [kycRequestId, setKycRequestId] = useState("");
+const [aadhaarOtp, setAadhaarOtp] = useState(["", "", "", "", "", ""]);
+const aadhaarOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
+const [payingKyc, setPayingKyc] = useState(false);
+const [sendingAadhaarOtp, setSendingAadhaarOtp] = useState(false);
+const [verifyingAadhaarOtp, setVerifyingAadhaarOtp] = useState(false);
+const [aadhaarResendTimer, setAadhaarResendTimer] = useState(0);
 
+
+useEffect(() => {
+  const script = document.createElement("script");
+  script.src = "https://checkout.razorpay.com/v1/checkout.js";
+  script.async = true;
+  document.body.appendChild(script);
+  return () => { document.body.removeChild(script); };
+}, []);
+
+useEffect(() => {
+  if (aadhaarResendTimer <= 0) return;
+  const t = setInterval(() => setAadhaarResendTimer((s) => s - 1), 1000);
+  return () => clearInterval(t);
+}, [aadhaarResendTimer]);
+
+
+
+const startKycPayment = async () => {
+  setPayingKyc(true);
+  try {
+    const orderRes = await axios.post(`${API_BASE}/${mechanicId}/kyc/create-order`);
+    const { orderId, amount, currency, key } = orderRes.data.data;
+
+    const rzp = new (window as any).Razorpay({
+      key,
+      amount,
+      currency,
+      order_id: orderId,
+      name: "TaxiSafar",
+      description: "Mechanic KYC Fee",
+      prefill: { name: form.name, contact: form.phone, email: form.email },
+      theme: { color: "#dc2626" },
+      handler: async (response: any) => {
+        try {
+          await axios.post(`${API_BASE}/${mechanicId}/kyc/verify-payment`, {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+          });
+          Swal.fire({
+            icon: "success",
+            title: "Payment successful",
+            text: "Now enter your Aadhaar number",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+          setKycStage("aadhaar-input");
+        } catch (err: any) {
+          Swal.fire({
+            icon: "error",
+            title: "Payment verification failed",
+            text: err?.response?.data?.message || "Please contact support",
+          });
+        } finally {
+          setPayingKyc(false);
+        }
+      },
+      modal: {
+        ondismiss: () => setPayingKyc(false),
+      },
+    });
+    rzp.open();
+  } catch (err: any) {
+    console.error("kyc order err:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Couldn't start payment",
+      text: err?.response?.data?.message || "Try again",
+    });
+    setPayingKyc(false);
+  }
+};
+
+
+// ── KYC: send aadhaar otp ──
+const sendAadhaarOtpHandler = async () => {
+  if (!/^\d{12}$/.test(aadhaarNumber)) {
+    Swal.fire({ icon: "warning", title: "Enter valid 12-digit Aadhaar number" });
+    return;
+  }
+  setSendingAadhaarOtp(true);
+  try {
+    const res = await axios.post(`${API_BASE}/${mechanicId}/kyc/aadhaar/send-otp`, {
+      aadhaarNumber,
+    });
+    setKycRequestId(res.data.data.request_id);
+    setKycStage("aadhaar-otp");
+    setAadhaarResendTimer(30);
+    Swal.fire({
+      icon: "success",
+      title: "OTP sent",
+      text: "Check your Aadhaar-linked mobile number",
+      timer: 1800,
+      showConfirmButton: false,
+    });
+  } catch (err: any) {
+    console.error("aadhaar otp send err:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Couldn't send OTP",
+      text: err?.response?.data?.message || "Check Aadhaar number and try again",
+    });
+  } finally {
+    setSendingAadhaarOtp(false);
+  }
+};
+
+// ── KYC: aadhaar otp field handlers ──
+const onAadhaarOtpChange = (idx: number, val: string) => {
+  if (!/^\d?$/.test(val)) return;
+  const next = [...aadhaarOtp];
+  next[idx] = val;
+  setAadhaarOtp(next);
+  if (val && idx < 5) aadhaarOtpRefs.current[idx + 1]?.focus();
+};
+const onAadhaarOtpKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (e.key === "Backspace" && !aadhaarOtp[idx] && idx > 0)
+    aadhaarOtpRefs.current[idx - 1]?.focus();
+};
+
+// ── KYC: verify aadhaar otp -> account done ──
+const verifyAadhaarOtpHandler = async () => {
+  const code = aadhaarOtp.join("");
+  if (code.length !== 6) {
+    Swal.fire({ icon: "warning", title: "Enter full 6-digit OTP" });
+    return;
+  }
+  setVerifyingAadhaarOtp(true);
+  try {
+    await axios.post(`${API_BASE}/${mechanicId}/kyc/aadhaar/verify-otp`, {
+      otp: code,
+    });
+    setKycStage("done");
+    setRegistered(true);
+    sessionStorage.removeItem(DRAFT_KEY);
+    Swal.fire({
+      icon: "success",
+      title: "KYC Verified!",
+      text: "Your garage profile is live.",
+    });
+  } catch (err: any) {
+    console.error("aadhaar verify err:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Aadhaar verification failed",
+      text: err?.response?.data?.message || "Invalid or expired OTP",
+    });
+  } finally {
+    setVerifyingAadhaarOtp(false);
+  }
+};
+
+const resendAadhaarOtp = async () => {
+  if (aadhaarResendTimer > 0) return;
+  await sendAadhaarOtpHandler();
+};
   const setStep = (s: number) => {
     setStepState(s);
     const params = new URLSearchParams(searchParams.toString());
@@ -553,36 +713,38 @@ const submitRegistration = async () => {
       otpRefs.current[idx - 1]?.focus();
   };
 
-  const verifyOtp = async () => {
-    const code = otp.join("");
-    if (code.length !== 6) {
-      Swal.fire({ icon: "warning", title: "Enter full 6-digit OTP" });
-      return;
-    }
-    setVerifying(true);
-    try {
-      await axios.post(`${API_BASE}/verify-otp`, {
-        phone: form.phone,
-        otp: code,
-      });
-      setRegistered(true);
-      sessionStorage.removeItem(DRAFT_KEY);
-      Swal.fire({
-        icon: "success",
-        title: "Verified!",
-        text: "Your garage profile is live.",
-      });
-    } catch (err: any) {
-      console.error("verify err:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Verification failed",
-        text: err?.response?.data?.message || "Invalid or expired OTP",
-      });
-    } finally {
-      setVerifying(false);
-    }
-  };
+
+const verifyOtp = async () => {
+  const code = otp.join("");
+  if (code.length !== 6) {
+    Swal.fire({ icon: "warning", title: "Enter full 6-digit OTP" });
+    return;
+  }
+  setVerifying(true);
+  try {
+    await axios.post(`${API_BASE}/verify-otp`, {
+      phone: form.phone,
+      otp: code,
+    });
+    Swal.fire({
+      icon: "success",
+      title: "Phone Verified!",
+      text: "Now complete Aadhaar KYC to activate your account.",
+      timer: 1800,
+      showConfirmButton: false,
+    });
+    setStep(6);
+  } catch (err: any) {
+    console.error("verify err:", err);
+    Swal.fire({
+      icon: "error",
+      title: "Verification failed",
+      text: err?.response?.data?.message || "Invalid or expired OTP",
+    });
+  } finally {
+    setVerifying(false);
+  }
+};
 
   const resendOtp = async () => {
     if (resendTimer > 0) return;
@@ -1280,7 +1442,122 @@ const submitRegistration = async () => {
           )}
         </div>
       </div>
+{/* STEP 6: AADHAAR KYC — add after STEP 5 block, before footer nav */}
+{step === 6 && (
+  <div className="space-y-6 text-center">
+    <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto">
+      <IdCard className="w-7 h-7 text-red-600" />
+    </div>
 
+    {kycStage === "payment" && (
+      <>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Complete KYC Fee</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Pay a one-time ₹99 KYC fee to unlock Aadhaar verification
+          </p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-sm text-gray-600">KYC Verification Fee</span>
+          <span className="text-lg font-bold text-gray-900">₹99</span>
+        </div>
+        <button
+          onClick={startKycPayment}
+          disabled={payingKyc}
+          className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          {payingKyc ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CreditCard className="w-4 h-4" />
+          )}
+          {payingKyc ? "Opening Razorpay..." : "Pay ₹99 & Continue"}
+        </button>
+      </>
+    )}
+
+    {kycStage === "aadhaar-input" && (
+      <>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Enter Aadhaar Number</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            We'll send an OTP to your Aadhaar-linked mobile number
+          </p>
+        </div>
+        <input
+          value={aadhaarNumber}
+          onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
+          placeholder="XXXX XXXX XXXX"
+          inputMode="numeric"
+          className={inputCls() + " text-center tracking-widest"}
+        />
+        <button
+          onClick={sendAadhaarOtpHandler}
+          disabled={sendingAadhaarOtp}
+          className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          {sendingAadhaarOtp ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <IdCard className="w-4 h-4" />
+          )}
+          {sendingAadhaarOtp ? "Sending OTP..." : "Send Aadhaar OTP"}
+        </button>
+      </>
+    )}
+
+    {kycStage === "aadhaar-otp" && (
+      <>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Verify Aadhaar OTP</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Enter the 6-digit code sent to your Aadhaar-linked mobile
+          </p>
+        </div>
+
+        <div className="flex justify-center gap-2">
+          {aadhaarOtp.map((d, i) => (
+            <input
+              key={i}
+              ref={(el) => (aadhaarOtpRefs.current[i] = el)}
+              value={d}
+              onChange={(e) => onAadhaarOtpChange(i, e.target.value)}
+              onKeyDown={(e) => onAadhaarOtpKeyDown(i, e)}
+              maxLength={1}
+              inputMode="numeric"
+              className="w-11 h-12 text-center text-lg font-semibold rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none"
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={verifyAadhaarOtpHandler}
+          disabled={verifyingAadhaarOtp}
+          className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+        >
+          {verifyingAadhaarOtp ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Check className="w-4 h-4" />
+          )}
+          {verifyingAadhaarOtp ? "Verifying..." : "Verify & Activate Account"}
+        </button>
+
+        <button
+          onClick={resendAadhaarOtp}
+          disabled={sendingAadhaarOtp || aadhaarResendTimer > 0}
+          className="text-sm text-red-600 font-medium disabled:text-gray-400"
+        >
+          {aadhaarResendTimer > 0
+            ? `Resend OTP in ${aadhaarResendTimer}s`
+            : sendingAadhaarOtp
+              ? "Resending..."
+              : "Resend OTP"}
+        </button>
+      </>
+    )}
+  </div>
+)}
       {/* footer nav */}
       {step < 5 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">

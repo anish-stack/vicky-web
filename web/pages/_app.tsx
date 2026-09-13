@@ -21,38 +21,47 @@ export default function App({ Component, pageProps }: AppProps) {
   }, []);
   const isTaxihero =
     host.endsWith(".taxihero.local") || host.endsWith(".taxihero.in");
+  const hideLayoutRoutes = [
+    "/recovery-person",
+    "/partner-register",
+    "/car-mechanic-register",
+  ];
+
   const isDriverThemeRoute =
     isTaxihero ||
     router.pathname === "/[driverId]/[themeId]" ||
     router.pathname === "/[slug]";
+
+  const shouldHideHeaderFooter =
+    isDriverThemeRoute || hideLayoutRoutes.includes(router.pathname);
 
   // if (!host) {
   //   return null; // or a minimal skeleton / loading spinner
   // }
   return (
     <>
-       <Script
-      src="https://www.googletagmanager.com/gtag/js?id=AW-11461628313"
-      strategy="afterInteractive"
-    />
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=AW-11461628313"
+        strategy="afterInteractive"
+      />
 
-    <Script id="google-ads" strategy="afterInteractive">
-      {`
+      <Script id="google-ads" strategy="afterInteractive">
+        {`
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         window.gtag = gtag;
         gtag('js', new Date());
         gtag('config', 'AW-11461628313');
       `}
-    </Script>
+      </Script>
       <CustomerProvider>
-        {!isDriverThemeRoute && <HeaderWithoutMenu />}
+      {!shouldHideHeaderFooter && <HeaderWithoutMenu />}
 
         <div style={{ minHeight: "100vh" }}>
           <Component {...pageProps} />
         </div>
 
-        {!isDriverThemeRoute && (
+        {!shouldHideHeaderFooter  && (
           <div>
             <Container className="position-relative subscribe-section">
               <div className="subscribe-footer">
@@ -197,7 +206,7 @@ export default function App({ Component, pageProps }: AppProps) {
                     <div className="contact mt-4">
                       <Row>
                         <Col xs={2}>
-                         <div className="icon">
+                          <div className="icon">
                             <img
                               src="/images/icons/phone.png"
                               width="28"

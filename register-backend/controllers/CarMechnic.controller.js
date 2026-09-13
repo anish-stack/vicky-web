@@ -7,11 +7,13 @@ const { SERVICE_LIST, CAR_BRANDS, VEHICLE_TYPES, FACILITIES } = require("../cons
 const { generateOTP, getOTPExpiry, isOTPExpired } = require("../utils/Otputils");
 const sendDltMessage = require("../utils/DltMessage");
 const base_url = "https://partners.taxisafar.com";
+const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
+const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
 
 const fileUrl = (req, filename) => {
-    if (!filename) return null;
+  if (!filename) return null;
 
-    return `${base_url}/uploads/mechanics/${filename}`;
+  return `${base_url}/uploads/mechanics/${filename}`;
 };
 const safeUnlink = (filePath) => {
   fs.unlink(filePath, (err) => { if (err && err.code !== "ENOENT") console.error("unlink err:", err); });
@@ -23,6 +25,222 @@ exports.getMechanicOptions = async (req, res) => {
     data: { services: SERVICE_LIST, brands: CAR_BRANDS, vehicleTypes: VEHICLE_TYPES, facilities: FACILITIES },
     message: "Options fetched"
   });
+};
+
+
+// STEP 1: create razorpay order for kyc fee (₹99)
+exports.createMechanicKycOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mechanic = await CarMechanicUser.findById(id);
+    if (!mechanic) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
+
+    if (mechanic.isKycFeeDone) {
+      return res.status(400).json({ success: false, data: null, message: "KYC fee already paid" });
+    }
+
+    const order = await createKycOrder(`kyc_${id}_${Date.now()}`, "kyc_fee_for_car_mechanic");
+
+    return res.json({
+      success: true,
+      data: { orderId: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID },
+      message: "Order created",
+    });
+  } catch (err) {
+    console.error("createMechanicKycOrder err:", err);
+    return res.status(500).json({ success: false, data: null, message: err.message || "Failed to create order" });
+  }
+};
+
+// STEP 2: verify payment -> unlock aadhaar otp step
+exports.verifyMechanicKycPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, data: null, message: "Missing payment details" });
+    }
+
+    const isValid = verifyRazorpaySignature({
+      order_id: razorpay_order_id,
+      payment_id: razorpay_payment_id,
+      signature: razorpay_signature,
+    });
+
+    if (!isValid) {
+      return res.status(400).json({ success: false, data: null, message: "Payment verification failed" });
+    }
+
+    const mechanic = await CarMechanicUser.findById(id);
+    if (!mechanic) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
+
+    mechanic.isKycFeeDone = true;
+    mechanic.howMuchItsPaid = 99;
+    mechanic.kycStatus = "payment done";
+    await mechanic.save();
+
+    return res.json({ success: true, data: mechanic, message: "Payment verified, KYC fee done" });
+  } catch (err) {
+    console.error("verifyMechanicKycPayment err:", err);
+    return res.status(500).json({ success: false, data: null, message: err.message || "Failed to verify payment" });
+  }
+};
+
+// STEP 3: send aadhaar otp (only if fee paid)
+exports.sendMechanicAadhaarOtp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { aadhaarNumber } = req.body;
+
+    // Validate Aadhaar number
+    if (!aadhaarNumber) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Aadhaar number is required",
+      });
+    }
+
+    // Find mechanic
+    const mechanic = await CarMechanicUser.findById(id);
+
+    if (!mechanic) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "Mechanic not found",
+      });
+    }
+
+    // KYC fee check
+    if (!mechanic.isKycFeeDone) {
+      return res.status(402).json({
+        success: false,
+        data: null,
+        message: "Please complete ₹99 KYC fee payment first",
+      });
+    }
+
+    // Already completed
+    if (mechanic.kycStatus === "kyc-success") {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "KYC already completed",
+      });
+    }
+
+    // Send OTP
+    const result = await sendAadhaarOtp(aadhaarNumber);
+
+    console.log("🔹 Aadhaar OTP Result:", result);
+
+    // QuickeKYC utility returns:
+    // {
+    //   success: true,
+    //   request_id: 16132853,
+    //   data: {
+    //     otp_sent: true
+    //   }
+    // }
+
+    if (!result?.success || !result?.data?.otp_sent) {
+      console.log("❌ Aadhaar OTP Send Failed:", result);
+
+      return res.status(result?.statusCode || 400).json({
+        success: false,
+        data: null,
+        message:
+          result?.message ||
+          "Couldn't send OTP. Please check the Aadhaar number and try again.",
+        response: result,
+      });
+    }
+
+    // Save Aadhaar request details
+    mechanic.aadharData = {
+      aadhaarNumber,
+      request_id: result.request_id,
+    };
+
+    // Optional: mark KYC as pending
+    mechanic.kycStatus = "pending";
+
+    await mechanic.save();
+
+    // Success response
+    return res.status(200).json({
+      success: true,
+      data: {
+        request_id: result.request_id,
+      },
+      message: "OTP sent to Aadhaar linked mobile number",
+    });
+  } catch (err) {
+    console.error("🔥 sendMechanicAadhaarOtp Error:", {
+      message: err.message,
+      response: err.response?.data,
+    });
+
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message:
+        "Unable to send OTP at the moment. Please try again shortly.",
+    });
+  }
+};
+
+
+// STEP 4: verify aadhaar otp -> finalize kyc
+exports.verifyMechanicAadhaarOtp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { otp } = req.body;
+
+    const mechanic = await CarMechanicUser.findById(id);
+    if (!mechanic) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
+
+    if (!mechanic.isKycFeeDone) {
+      return res.status(402).json({ success: false, data: null, message: "KYC fee not paid yet" });
+    }
+    const requestId = mechanic.aadharData?.request_id;
+    if (!requestId) {
+      return res.status(400).json({ success: false, data: null, message: "No OTP request found. Please resend OTP." });
+    }
+
+    if (!otp) {
+      return res.status(400).json({ success: false, data: null, message: "OTP is required" });
+    }
+
+    const result = await verifyAadhaarOtp(requestId, otp);
+
+    if (!result?.success || !result?.data) {
+      console.log("❌ Aadhaar OTP Verify Failed:", result);
+      mechanic.kycStatus = "kyc-failed";
+      await mechanic.save();
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: result.message || "OTP verification failed or timed out.",
+      });
+    }
+
+    mechanic.aadharData = { ...mechanic.aadharData, verifiedData: result.data };
+    mechanic.kycStatus = "kyc-success";
+    mechanic.isVerifiedMechanic = true;
+    await mechanic.save();
+
+    const data = mechanic.toObject();
+    delete data.otp;
+    delete data.otpExpiry;
+
+    return res.status(200).json({ success: true, data, message: "Aadhaar verified. Account activated." });
+  } catch (err) {
+    console.error("verifyMechanicAadhaarOtp err:", err.response?.data || err.message);
+    return res.status(500).json({ success: false, data: null, message: "Unable to verify OTP at the moment. Please try again shortly." });
+  }
 };
 
 // CREATE — creates mechanic (unverified) + sends OTP

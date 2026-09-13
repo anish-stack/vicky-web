@@ -10,7 +10,8 @@ const {
 } = require("../utils/sendWhatsapp");
 const { createPaymentLink, verifyWebhookSignature } = require("../utils/Razorpayutils");
 const sendDltMessage = require("../utils/DltMessage");
-const { validatePaymentVerification } = require("razorpay/dist/utils/razorpay-utils");
+const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
+const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
 
 const MAX_OTP_ATTEMPTS = 5;
 
@@ -22,10 +23,150 @@ const categoryLabel = {
 };
 
 
+// STEP 1: create ₹99 kyc order
+const KYC_FEE_BY_CATEGORY = {
+    tour_guide: { amount: 99 * 100, feeType: "kyc_fee_for_guide" },
+    rto_service: { amount: 99 * 100, feeType: "kyc_fee_for_rto" },
+    car_accessory: { amount: 99 * 100, feeType: "kyc_fee_for_car_access" },
+    car_mechanic: { amount: 99 * 100, feeType: "kyc_fee_for_mechanic" },
+};
+
+const KYC_FEE_BY_TYPE = Object.values(KYC_FEE_BY_CATEGORY).reduce((acc, cfg) => {
+    acc[cfg.feeType] = cfg;
+    return acc;
+}, {});
+
+exports.createUserKycOrder = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = await User.findById(userId);
+        const config = KYC_FEE_BY_CATEGORY[user.category] || { feeType: "kyc_fee_generic" };
+        console.log(config)
+
+        if (!user) return res.status(404).json({ success: false, message: "User not found." });
+        if (user.isKycFeeDone) return res.status(400).json({ success: false, message: "KYC fee already paid." });
+
+        const order = await createKycOrder(`kyc_${userId}_${Date.now()}`, config.feeType);
+        console.log(order)
+        res.status(200).json({
+            success: true,
+            order,
+            data: { orderId: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID },
+            message: "Order created."
+        });
+    } catch (err) {
+        console.error("createUserKycOrder error:", err);
+        res.status(500).json({ success: false, message: err.message || "Failed to create order." });
+    }
+};
+
+// STEP 2: verify payment -> unlock aadhaar otp
+exports.verifyUserKycPayment = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({ success: false, message: "Missing payment details." });
+        }
+
+        const isValid = verifyRazorpaySignature({ order_id: razorpay_order_id, payment_id: razorpay_payment_id, signature: razorpay_signature });
+        if (!isValid) return res.status(400).json({ success: false, message: "Payment verification failed." });
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+        user.isKycFeeDone = true;
+        user.howMuchItsPaid = 99;
+        user.kycStatus = "payment done";
+        await user.save();
+
+        res.status(200).json({ success: true, data: user, message: "Payment verified, KYC fee done." });
+    } catch (err) {
+        console.error("verifyUserKycPayment error:", err);
+        res.status(500).json({ success: false, message: err.message || "Failed to verify payment." });
+    }
+};
+
+// STEP 3: send aadhaar otp (only if fee paid)
+exports.sendUserAadhaarOtp = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { aadharNumber } = req.body;
+
+        if (!aadharNumber) return res.status(400).json({ success: false, message: "Aadhaar number is required." });
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ success: false, message: "User not found." });
+        if (!user.isKycFeeDone) return res.status(402).json({ success: false, message: "Please complete ₹99 KYC fee payment first." });
+        if (user.kycStatus === "kyc-success") return res.status(400).json({ success: false, message: "KYC already completed." });
+
+        const result = await sendAadhaarOtp(aadharNumber);
+
+        if (!result?.success || !result?.data?.otp_sent) {
+            console.log("❌ Aadhaar OTP Send Failed:", result);
+
+            return res.status(result?.statusCode || 400).json({
+                success: false,
+                data: null,
+                message:
+                    result?.message ||
+                    "Couldn't send OTP. Please check the Aadhaar number and try again.",
+                response: result,
+            });
+        }
+
+        user.aadharNumber = aadharNumber;
+        user.kycRequestId = result.request_id;
+        await user.save();
+
+        res.status(200).json({ success: true, data: { request_id: result.request_id }, message: "OTP sent to Aadhaar linked mobile number." });
+    } catch (err) {
+        console.error("sendUserAadhaarOtp error:", err.response?.data || err.message);
+        res.status(500).json({ success: false, message: "Unable to send OTP at the moment. Please try again shortly." });
+    }
+};
+
+// STEP 4: verify aadhaar otp -> finalize kyc, save data
+exports.verifyUserAadhaarOtp = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { otp } = req.body;
+
+        const user = await User.findById(userId).select("+kycRequestId +aadharNumber");
+        if (!user) return res.status(404).json({ success: false, message: "User not found." });
+        if (!user.isKycFeeDone) return res.status(402).json({ success: false, message: "KYC fee not paid yet." });
+        if (!user.kycRequestId) return res.status(400).json({ success: false, message: "No OTP request found. Please resend OTP." });
+        if (!otp) return res.status(400).json({ success: false, message: "OTP is required." });
+
+        const result = await verifyAadhaarOtp(user.kycRequestId, otp);
+        if (!result?.success || !result?.data) {
+            console.log("❌ Aadhaar OTP Verify Failed:", result);
+            user.kycStatus = "kyc-failed";
+            await user.save();
+            return res.status(400).json({
+                success: false,
+                data: null,
+                message: result.message || "OTP verification failed or timed out.",
+            });
+        }
+        user.aadharData = result.data;
+        user.aadharVerified = true;
+        user.kycStatus = "kyc-success";
+        await user.save();
+
+        const data = await User.findById(userId).select("-otp -otpExpires -otpAttempts");
+        res.status(200).json({ success: true, data, message: "Aadhaar verified. Account activated." });
+    } catch (err) {
+        console.error("verifyUserAadhaarOtp error:", err.response?.data || err.message);
+        res.status(500).json({ success: false, message: "Unable to verify OTP at the moment. Please try again shortly." });
+    }
+};
+
+
 exports.registerUser = async (req, res) => {
-    console.log("I am hit")
+
     const uploadedFiles = req.files || {};
-    console.log(uploadedFiles)
     try {
         const {
             name, email, phone, category, description,
@@ -746,53 +887,95 @@ exports.activateProfile = async (req, res) => {
 
 exports.getAllUsersByCategory = async (req, res) => {
     try {
-        const { category, city, state, page = 1, limit = 10, search } = req.query;
+        const {
+            category,
+            city,
+            state,
+            page = 1,
+            limit = 10,
+            search
+        } = req.query;
 
-        const filter = {
+        const filter = {};
 
-        };
+        if (category) {
+            filter.category = category;
+        }
 
-        if (category) filter.category = category;
-        if (city) filter.city = { $regex: new RegExp(city, "i") };
-        if (state) filter.state = { $regex: new RegExp(state, "i") };
+        if (city) {
+            filter.city = {
+                $regex: new RegExp(city, "i")
+            };
+        }
+
+        if (state) {
+            filter.state = {
+                $regex: new RegExp(state, "i")
+            };
+        }
 
         if (search) {
             filter.$or = [
-                { name: { $regex: new RegExp(search, "i") } },
-                { description: { $regex: new RegExp(search, "i") } }
+                {
+                    name: {
+                        $regex: new RegExp(search, "i")
+                    }
+                },
+                {
+                    description: {
+                        $regex: new RegExp(search, "i")
+                    }
+                }
             ];
         }
 
-        const skip = (Number(page) - 1) * Number(limit);
+        const pageNumber = Math.max(Number(page) || 1, 1);
+        const limitNumber = Math.max(Number(limit) || 10, 1);
+        const skip = (pageNumber - 1) * limitNumber;
 
         const [users, total] = await Promise.all([
             User.find(filter)
                 .populate("payment")
-                .select("-otp -otpExpires -otpAttempts -email")
-                .sort({ rating: -1, createdAt: -1 })
+                .select(
+                    "-otp " +
+                    "-otpExpires " +
+                    "-otpAttempts " +
+                    "-email " +
+                    "-aadharData.name " +
+                    "-aadharData.profile_image " +
+                    "-aadharData.zip_data"
+                )
+                .sort({
+                    rating: -1,
+                    createdAt: -1
+                })
                 .skip(skip)
-                .limit(Number(limit)),
+                .limit(limitNumber),
+
             User.countDocuments(filter)
         ]);
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             data: users,
             pagination: {
                 total,
-                page: Number(page),
-                limit: Number(limit),
-                totalPages: Math.ceil(total / Number(limit)),
+                page: pageNumber,
+                limit: limitNumber,
+                totalPages: Math.ceil(total / limitNumber),
                 hasNextPage: skip + users.length < total
             }
         });
 
     } catch (err) {
         console.error("getAllUsersByCategory error:", err);
-        res.status(500).json({ success: false, message: err.message || "Failed to fetch users." });
+
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to fetch users."
+        });
     }
 };
-
 exports.getUserProfile = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -805,10 +988,7 @@ exports.getUserProfile = async (req, res) => {
         // Check if requester is the profile owner (req.user set by protect middleware if token provided)
         const isOwner = req.user && req.user._id.toString() === userId;
 
-        // Non-owners can only see public/active profiles
-        if (!isOwner && (!user.verifiedByAdmin || !user.isPaid)) {
-            return res.status(404).json({ success: false, message: "Profile not found or not yet active." });
-        }
+    
 
         // Hide sensitive fields for non-owners
         const profile = user.toObject();

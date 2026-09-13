@@ -6,7 +6,7 @@ const recoveryVehicleSchema = new mongoose.Schema({
   garageName: { type: String, required: true }, // Service Name (e.g., "Sharma Recovery Service")
   phone: { type: String, required: true, unique: true },
   email: { type: String },
-  
+
   // Images
   profileImage: { type: String },
   galleryImages: { type: [String], default: [] }, // Slider images (1/5, etc.)
@@ -28,6 +28,73 @@ const recoveryVehicleSchema = new mongoose.Schema({
   reviewCount: { type: Number, default: 0 },
   tagline: { type: String, default: "Fast | Safe | Reliable" },
 
+  aadharData: {
+    aadhaarNumber: {
+      type: String,
+    },
+
+    request_id: {
+      type: String,
+      default: null
+    },
+
+    verifiedData: {
+      full_name: { type: String, default: null },
+      dob: { type: String, default: null },
+      gender: { type: String, default: null },
+
+      address: {
+        country: { type: String, default: null },
+        dist: { type: String, default: null },
+        state: { type: String, default: null },
+        po: { type: String, default: null },
+        loc: { type: String, default: null },
+        vtc: { type: String, default: null },
+        subdist: { type: String, default: null },
+        street: { type: String, default: null },
+        house: { type: String, default: null },
+        landmark: { type: String, default: null },
+      },
+
+      mobile_verified: {
+        type: Boolean,
+        default: false,
+      },
+
+      status: {
+        type: String,
+        default: null,
+      },
+    },
+  },
+  isKycFeeDone: {
+    type: Boolean,
+    default: false,
+  },
+
+  howMuchItsPaid: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+
+  kycStatus: {
+    type: String,
+    enum: [
+      "pending",
+      "payment done",
+      "kyc-failed",
+      "kyc-success",
+    ],
+    default: "pending",
+  },
+
+  kycPayment: {
+    orderId: { type: String, },
+    paymentId: { type: String, },
+    amount: { type: Number, },
+    paidAt: { type: Date, },
+  },
   // Location & Address
   address: {
     line1: { type: String },
@@ -44,15 +111,15 @@ const recoveryVehicleSchema = new mongoose.Schema({
   about: { type: String },
 
   // Our Services (Breakdown Recovery, Accident Recovery, Bike Recovery, etc.)
-  servicesOffered: { 
-    type: [String], 
-    default: ["Breakdown Recovery", "Accident Recovery", "Bike Recovery", "Jump Start Service", "Fuel Delivery"] 
+  servicesOffered: {
+    type: [String],
+    default: ["Breakdown Recovery", "Accident Recovery", "Bike Recovery", "Jump Start Service", "Fuel Delivery"]
   },
 
   // Vehicles We Recover (Hatchback, Sedan, SUV, MPV, Luxury Cars, Commercial)
-  vehiclesRecoveredTypes: { 
-    type: [String], 
-    default: ["Hatchback", "Sedan", "SUV", "MPV", "Luxury Cars", "Commercial"] 
+  vehiclesRecoveredTypes: {
+    type: [String],
+    default: ["Hatchback", "Sedan", "SUV", "MPV", "Luxury Cars", "Commercial"]
   },
 
   // Additional Details Row

@@ -61,6 +61,18 @@ const userSchema = new mongoose.Schema(
             type: String
         },
 
+        aadharNumber: { type: String, select: false },
+        aadharVerified: { type: Boolean, default: false },
+        aadharData: { type: mongoose.Schema.Types.Mixed, default: null },
+        kycRequestId: { type: String, select: false },
+
+        isKycFeeDone: { type: Boolean, default: false },
+        howMuchItsPaid: { type: Number, default: 0, min: 0 },
+        kycStatus: {
+            type: String,
+            enum: ["pending", "payment done", "kyc-failed", "kyc-success"],
+            default: "pending"
+        },
         address: {
             type: String
         },

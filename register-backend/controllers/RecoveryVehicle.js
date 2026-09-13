@@ -6,13 +6,16 @@ const RecoveryVehicleUser = require("../models/RecoveryVehicleUser");
 const RecoveryContactLog = require("../models/RecoveryContact");
 const { generateOTP, getOTPExpiry, isOTPExpired } = require("../utils/Otputils");
 const sendDltMessage = require("../utils/DltMessage");
+const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
+const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
+const feeModel = require("../models/fee.model");
 
 const base_url = "https://partners.taxisafar.com";
 
 const fileUrl = (req, filename) => {
-    if (!filename) return null;
+  if (!filename) return null;
 
-    return `${base_url}/uploads/mechanics/${filename}`;
+  return `${base_url}/uploads/mechanics/${filename}`;
 };
 const safeUnlink = (filePath) => {
   fs.unlink(filePath, (err) => { if (err && err.code !== "ENOENT") console.error("unlink err:", err); });
@@ -24,18 +27,254 @@ const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
    USER SIDE — SELF REGISTER / PROFILE / DISCOVERY
 ====================================================== */
 
+
+// STEP 1: create razorpay order for kyc fee 
+exports.createRecoveryKycOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const RecoveryPerson = await RecoveryVehicleUser.findById(id);
+    if (!RecoveryPerson) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
+
+    if (RecoveryPerson.isKycFeeDone) {
+      return res.status(400).json({ success: false, data: null, message: "KYC fee already paid" });
+    }
+
+    const order = await createKycOrder(`kyc_${id}_${Date.now()}`, "kyc_fee_for_recovery_vehicle");
+    console.log(order)
+    return res.json({
+      success: true,
+      order,
+      data: { orderId: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID },
+      message: "Order created",
+    });
+  } catch (err) {
+    console.error("createRecoveryKycOrder err:", err);
+    return res.status(500).json({ success: false, data: null, message: err.message || "Failed to create order" });
+  }
+};
+
+// STEP 2: verify payment -> unlock aadhaar otp step
+exports.verifyRecoveryKycPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, data: null, message: "Missing payment details" });
+    }
+
+    const isValid = verifyRazorpaySignature({
+      order_id: razorpay_order_id,
+      payment_id: razorpay_payment_id,
+      signature: razorpay_signature,
+    });
+
+    if (!isValid) {
+      return res.status(400).json({ success: false, data: null, message: "Payment verification failed" });
+    }
+    const RecoveryPerson = await RecoveryVehicleUser.findById(id);
+    if (!RecoveryPerson) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
+
+    const fee = await feeModel.findOne({ key: "kyc_fee_for_recovery_vehicle", });
+    if (!fee) {
+      return res.status(500).json({
+        success: false, data: null,
+        message: "Recovery vehicle KYC fee configuration not found",
+      });
+    }
+    RecoveryPerson.isKycFeeDone = true;
+    RecoveryPerson.howMuchItsPaid = fee.value;
+    RecoveryPerson.kycStatus = "payment done";
+    RecoveryPerson.kycPayment =
+    {
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      amount: fee.value,
+      paidAt: new Date(),
+    };
+    await RecoveryPerson.save();
+
+    return res.json({ success: true, data: RecoveryPerson, message: "Payment verified, KYC fee done" });
+  } catch (err) {
+    console.error("verifyMechanicKycPayment err:", err);
+    return res.status(500).json({ success: false, data: null, message: err.message || "Failed to verify payment" });
+  }
+};
+
+// STEP 3: send aadhaar otp (only if fee paid)
+exports.sendRecoveryAadhaarOtp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { aadhaarNumber } = req.body;
+
+    // Validate Aadhaar number
+    if (!aadhaarNumber) {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "Aadhaar number is required",
+      });
+    }
+
+    const RecoveryPerson = await RecoveryVehicleUser.findById(id);
+
+
+    if (!RecoveryPerson) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "Mechanic not found",
+      });
+    }
+
+    // KYC fee check
+    if (!RecoveryPerson.isKycFeeDone) {
+      return res.status(402).json({
+        success: false,
+        data: null,
+        message: "Please complete ₹99 KYC fee payment first",
+      });
+    }
+
+    // Already completed
+    if (RecoveryPerson.kycStatus === "kyc-success") {
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: "KYC already completed",
+      });
+    }
+
+    // Send OTP
+    const result = await sendAadhaarOtp(aadhaarNumber);
+
+    console.log("🔹 Aadhaar OTP Result:", result);
+
+    // QuickeKYC utility returns:
+    // {
+    //   success: true,
+    //   request_id: 16132853,
+    //   data: {
+    //     otp_sent: true
+    //   }
+    // }
+
+    if (!result?.success || !result?.data?.otp_sent) {
+      console.log("❌ Aadhaar OTP Send Failed:", result);
+
+      return res.status(result?.statusCode || 400).json({
+        success: false,
+        data: null,
+        message:
+          result?.message ||
+          "Couldn't send OTP. Please check the Aadhaar number and try again.",
+        response: result,
+      });
+    }
+
+    // Save Aadhaar request details
+    RecoveryPerson.aadharData = {
+      aadhaarNumber,
+      request_id: result.request_id,
+    };
+
+    // Optional: mark KYC as pending
+    RecoveryPerson.kycStatus = "pending";
+
+    await RecoveryPerson.save();
+
+    // Success response
+    return res.status(200).json({
+      success: true,
+      data: {
+        request_id: result.request_id,
+      },
+      message: "OTP sent to Aadhaar linked mobile number",
+    });
+  } catch (err) {
+    console.error("🔥 sendRecoveryAadhaarOtp Error:", {
+      message: err.message,
+      response: err.response?.data,
+    });
+
+    return res.status(500).json({
+      success: false,
+      data: null,
+      message:
+        "Unable to send OTP at the moment. Please try again shortly.",
+    });
+  }
+};
+
+
+// STEP 4: verify aadhaar otp -> finalize kyc
+exports.verifyRecoveryPersonAadhaarOtp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { otp } = req.body;
+    const RecoveryPerson = await RecoveryVehicleUser.findById(id);
+
+    if (!RecoveryPerson) return res.status(404).json({ success: false, data: null, message: "Recovery Person not found" });
+
+    if (!RecoveryPerson.isKycFeeDone) {
+      return res.status(402).json({ success: false, data: null, message: "KYC fee not paid yet" });
+    }
+    console.log(RecoveryPerson.aadharData)
+    const requestId = RecoveryPerson.aadharData?.request_id;
+    if (!requestId) {
+      return res.status(400).json({ success: false, data: null, message: "No OTP request found. Please resend OTP." });
+    }
+
+    if (!otp) {
+      return res.status(400).json({ success: false, data: null, message: "OTP is required" });
+    }
+
+    const result = await verifyAadhaarOtp(requestId, otp);
+
+    if (!result?.success || !result?.data) {
+      console.log("❌ Aadhaar OTP Verify Failed:", result);
+      RecoveryPerson.kycStatus = "kyc-failed";
+      await RecoveryPerson.save();
+      return res.status(400).json({
+        success: false,
+        data: null,
+        message: result.message || "OTP verification failed or timed out.",
+      });
+    }
+
+    RecoveryPerson.aadharData = { ...RecoveryPerson.aadharData, verifiedData: result.data };
+    RecoveryPerson.kycStatus = "kyc-success";
+    RecoveryPerson.isVerifiedMechanic = true;
+    await RecoveryPerson.save();
+
+    const data = RecoveryPerson.toObject();
+    delete data.otp;
+    delete data.otpExpiry;
+
+    return res.status(200).json({ success: true, data, message: "Aadhaar verified. Account activated." });
+  } catch (err) {
+    console.error("verifyRecoveryPersonAadhaarOtp err:", err.response?.data || err.message);
+    return res.status(500).json({ success: false, data: null, message: "Unable to verify OTP at the moment. Please try again shortly." });
+  }
+};
+
+
+
+
+
+
 exports.registerRecoveryVehicle = async (req, res) => {
   try {
-    const { 
-      name, 
-      garageName, 
-      phone, 
-      email, 
-      address, 
-      experienceYears, 
-      startingPrice, 
-      serviceArea, 
-      operatorName, 
+    const {
+      name,
+      garageName,
+      phone,
+      email,
+      address,
+      experienceYears,
+      startingPrice,
+      serviceArea,
+      operatorName,
       licenseNumber,
       tagline,
       about,
@@ -95,7 +334,7 @@ exports.registerRecoveryVehicle = async (req, res) => {
       if (profileImageUrl) provider.profileImage = profileImageUrl;
       if (galleryImageUrls.length > 0) provider.galleryImages = galleryImageUrls;
       if (parsedAddress) provider.address = { ...provider.address?.toObject?.() || provider.address, ...parsedAddress };
-      
+
       if (experienceYears !== undefined && experienceYears !== "") provider.experienceYears = Number(experienceYears);
       if (startingPrice !== undefined && startingPrice !== "") provider.startingPrice = Number(startingPrice);
       if (serviceArea !== undefined) provider.serviceArea = serviceArea;
@@ -104,7 +343,7 @@ exports.registerRecoveryVehicle = async (req, res) => {
       if (tagline !== undefined) provider.tagline = tagline;
       if (about !== undefined) provider.about = about;
       if (availabilitySummary !== undefined) provider.availabilitySummary = availabilitySummary;
-      
+
       // Update arrays if provided
       if (Array.isArray(parsedServices)) provider.servicesOffered = parsedServices;
       if (Array.isArray(parsedVehicles)) provider.vehiclesRecoveredTypes = parsedVehicles;

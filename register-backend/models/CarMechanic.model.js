@@ -17,10 +17,12 @@ const reviewSchema = new mongoose.Schema({
 
 const carMechanicUserSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
-    phone: {  type: String,
-      required: true,
-      unique: true,
-      trim: true },
+    phone: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
+    },
     email: { type: String, trim: true, lowercase: true },
     password: { type: String, select: false },
 
@@ -77,7 +79,66 @@ const carMechanicUserSchema = new mongoose.Schema({
     statusReason: { type: String, trim: true },
     statusUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
     statusUpdatedAt: { type: Date },
+    aadharData: {
+        aadhaarNumber: {
+            type: String,
+        },
 
+        request_id: {
+            type: String,
+            default: null
+        },
+
+        verifiedData: {
+            full_name: { type: String, default: null },
+            dob: { type: String, default: null },
+            gender: { type: String, default: null },
+
+            address: {
+                country: { type: String, default: null },
+                dist: { type: String, default: null },
+                state: { type: String, default: null },
+                po: { type: String, default: null },
+                loc: { type: String, default: null },
+                vtc: { type: String, default: null },
+                subdist: { type: String, default: null },
+                street: { type: String, default: null },
+                house: { type: String, default: null },
+                landmark: { type: String, default: null },
+            },
+
+            mobile_verified: {
+                type: Boolean,
+                default: false,
+            },
+
+            status: {
+                type: String,
+                default: null,
+            },
+        },
+    },
+    isKycFeeDone: {
+        type: Boolean,
+        default: false,
+    },
+
+    howMuchItsPaid: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+
+    kycStatus: {
+        type: String,
+        enum: [
+            "pending",
+            "payment done",
+            "kyc-failed",
+            "kyc-success",
+        ],
+        default: "pending",
+    },
     isOnline: { type: Boolean, default: false },
 
 }, { timestamps: true });

@@ -34,6 +34,12 @@ router.post("/register", providerUpload, ctrl.registerRecoveryVehicle);
 router.post("/verify-otp", ctrl.verifyOTP);
 router.post("/resend-otp", ctrl.resendOTP);
 
+router.post("/:id/kyc/create-order", ctrl.createRecoveryKycOrder);
+router.post("/:id/kyc/verify-payment", ctrl.verifyRecoveryKycPayment);
+router.post("/:id/kyc/aadhaar/send-otp", ctrl.sendRecoveryAadhaarOtp);
+router.post("/:id/kyc/aadhaar/verify-otp", ctrl.verifyRecoveryPersonAadhaarOtp);
+
+
 router.get("/profile/me", ctrl.getMyProfile);
 router.put("/profile/:id", providerUpload, ctrl.updateMyProfile);
 router.delete("/profile/:id/gallery-image", ctrl.removeGalleryImage);

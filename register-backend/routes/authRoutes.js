@@ -15,7 +15,11 @@ const {
     deactivateProfile,
     reactivateProfile,
     adminUpdatePartner,
-    deletePartner
+    deletePartner,
+    createUserKycOrder,
+    verifyUserKycPayment,
+    sendUserAadhaarOtp,
+    verifyUserAadhaarOtp
 } = require("../controllers/authController");
 
 const { protect, adminOnly } = require("../middleware/authMiddleware");
@@ -30,6 +34,8 @@ const {
 } = require("../middleware/Validationmiddleware");
 
 
+
+
 // Register new user (multipart/form-data with optional image uploads)
 router.post(
     "/register",
@@ -38,6 +44,11 @@ router.post(
     validate,
     registerUser
 );
+
+router.post("/:userId/kyc/create-order", createUserKycOrder);
+router.post("/:userId/kyc/verify-payment", verifyUserKycPayment);
+router.post("/:userId/kyc/aadhaar/send-otp", sendUserAadhaarOtp);
+router.post("/:userId/kyc/aadhaar/verify-otp", verifyUserAadhaarOtp);
 
 // Verify registration OTP
 router.post(

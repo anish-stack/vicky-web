@@ -7,6 +7,11 @@ const { mechanicImageUpload } = require("../middleware/mechanicUpload.middleware
 
 router.post("/", mechanicImageUpload, ctrl.createMechanic);
 router.put("/:id", mechanicImageUpload, ctrl.updateMechanic);
+// routes/mechanic.routes.js additions
+router.post("/:id/kyc/create-order", ctrl.createMechanicKycOrder);
+router.post("/:id/kyc/verify-payment", ctrl.verifyMechanicKycPayment);
+router.post("/:id/kyc/aadhaar/send-otp", ctrl.sendMechanicAadhaarOtp);
+router.post("/:id/kyc/aadhaar/verify-otp", ctrl.verifyMechanicAadhaarOtp);
 
 router.post("/verify-otp", ctrl.verifyMechanicOtp);
 router.post("/resend-otp", ctrl.resendMechanicOtp);
