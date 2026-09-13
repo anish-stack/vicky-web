@@ -43,6 +43,7 @@ exports.createMechanicKycOrder = async (req, res) => {
 
     return res.json({
       success: true,
+      order,
       data: { orderId: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID },
       message: "Order created",
     });
