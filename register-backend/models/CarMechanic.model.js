@@ -93,7 +93,7 @@ const carMechanicUserSchema = new mongoose.Schema({
             full_name: { type: String, default: null },
             dob: { type: String, default: null },
             gender: { type: String, default: null },
-
+             profile_image: { type: String, default: null },  
             address: {
                 country: { type: String, default: null },
                 dist: { type: String, default: null },

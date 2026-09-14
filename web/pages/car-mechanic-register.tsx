@@ -4,10 +4,8 @@ import axios from "axios";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
-  MapPin, Phone, Mail, User, Building2, Wrench, Car, Compass, Upload,
-  CheckCircle2, Clock, Shield, Star, ArrowRight, ArrowLeft, Camera,
-  CreditCard, AlertCircle, Loader2, IdCard, FileImage, X, Check, Map,
-  LocateFixed, BadgeCheck, ShieldCheck, Award,
+  MapPin, Phone, User, Building2, Compass, CheckCircle2, Clock, Map,
+  CreditCard, AlertCircle, Loader2, IdCard, Check, BadgeCheck, ShieldCheck, Award,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import INDIAN_STATES_CITIES, { STATE_LIST } from "@/data/indianStatesCities";
@@ -18,52 +16,24 @@ const FEE_API = "https://partners.taxisafar.com/api/v1/fees/key/kyc_fee_for_car_
 const IMAGE_BASE = "https://partners.taxisafar.com";
 const DRAFT_KEY = "mechanic_register_draft";
 const MECH_ID_KEY = "mechanic_register_id";
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-
-const ABOUT_TEMPLATES = [
-  "{garage} is a trusted local garage known for honest work and quick service. We fix cars right the first time, using genuine parts and fair pricing.",
-  "At {garage}, we have been serving customers with reliable car repair and maintenance. Our team works hard to keep your vehicle running smooth and safe.",
-  "{garage} is a multi-brand car service center offering quality repairs at affordable rates. Customer satisfaction is our top priority, every single time.",
-  "Welcome to {garage} — your neighborhood garage for all car problems. We believe in honest diagnosis, fair rates and quick turnaround for every customer.",
-];
-
-const WHY_CHOOSE_POOL = [
-  "Honest & Fair Pricing", "Experienced Mechanics", "Genuine Spare Parts",
-  "Quick Service", "Customer Satisfaction Guaranteed", "Doorstep Service Available",
-  "All Brands Serviced", "Trusted by Local Customers", "Affordable Rates", "On-Time Delivery",
-];
-
-const generateAbout = (garageName: string) => {
-  const name = garageName.trim() || "Our Garage";
-  const template = ABOUT_TEMPLATES[Math.floor(Math.random() * ABOUT_TEMPLATES.length)];
-  return template.replace("{garage}", name);
-};
-
-const generateWhyChooseUs = () => [...WHY_CHOOSE_POOL].sort(() => Math.random() - 0.5).slice(0, 3);
-
-type Option = { title: string; image: string };
-type WorkingHour = { day: string; isOpen: boolean; openTime: string; closeTime: string };
 
 type FormState = {
-  name: string; phone: string; email: string; password: string; garageName: string;
-  experienceYears: string; specialty: string; about: string; whyChooseUs: string[];
-  addressLine1: string; city: string; state: string; pincode: string;
-  latitude: string; longitude: string; workingHours: WorkingHour[];
-  servicesOffered: string[]; brandsServiced: string[]; vehicleTypesServiced: string[];
-  facilities: string[]; agreedToTerms: boolean;
+  name: string;
+  phone: string;
+  garageName: string;
+  addressLine1: string;
+  city: string;
+  state: string;
+  pincode: string;
+  agreedToTerms: boolean;
 };
-
-const defaultWorkingHours = (): WorkingHour[] =>
-  DAYS.map((day) => ({ day, isOpen: day !== "Sun", openTime: "09:00", closeTime: "20:00" }));
 
 const initialForm: FormState = {
-  name: "", phone: "", email: "", password: "", garageName: "", experienceYears: "",
-  specialty: "", about: "", whyChooseUs: ["", "", ""], addressLine1: "", city: "",
-  state: "", pincode: "", latitude: "", longitude: "", workingHours: defaultWorkingHours(),
-  servicesOffered: [], brandsServiced: [], vehicleTypesServiced: [], facilities: [], agreedToTerms: false,
+  name: "", phone: "", garageName: "", addressLine1: "",
+  city: "", state: "", pincode: "", agreedToTerms: false,
 };
 
-const STEPS = ["Basic Info", "Address", "Working Hours", "Services & Brands", "Photos", "Verify OTP", "Aadhaar KYC"] as const;
+const STEPS = ["Your Details", "Verify OTP", "Aadhaar KYC"] as const;
 
 export default function CarMechanicRegister() {
   const router = useRouter();
@@ -73,9 +43,21 @@ export default function CarMechanicRegister() {
   const stepFromUrl = Math.min(Math.max(parseInt(searchParams.get("step") || "0", 10) || 0, 0), STEPS.length - 1);
   const [step, setStepState] = useState(stepFromUrl);
 
+  const [form, setForm] = useState<FormState>(initialForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [registered, setRegistered] = useState(false);
+
+  const [mechanicId, setMechanicId] = useState<string>("");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [verifying, setVerifying] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  // kyc: aadhaar-input -> payment -> aadhaar-otp -> done
+  const [kycStage, setKycStage] = useState<"aadhaar-input" | "payment" | "aadhaar-otp" | "done">("aadhaar-input");
   const [aadhaarNumber, setAadhaarNumber] = useState("");
-  const [kycStage, setKycStage] = useState<"payment" | "aadhaar-input" | "aadhaar-otp" | "done">("payment");
-  const [kycRequestId, setKycRequestId] = useState("");
   const [aadhaarOtp, setAadhaarOtp] = useState(["", "", "", "", "", ""]);
   const aadhaarOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [payingKyc, setPayingKyc] = useState(false);
@@ -83,14 +65,12 @@ export default function CarMechanicRegister() {
   const [verifyingAadhaarOtp, setVerifyingAadhaarOtp] = useState(false);
   const [aadhaarResendTimer, setAadhaarResendTimer] = useState(0);
 
-  // ── kyc fee (live from API) ──
   const [kycFee, setKycFee] = useState<number>(99);
   const [kycFeeLoading, setKycFeeLoading] = useState(true);
 
-  // ── real user data (synced from backend) ──
   const [userData, setUserData] = useState<any>(null);
-  const [userDataLoading, setUserDataLoading] = useState(false);
 
+  // ── fee ──
   useEffect(() => {
     (async () => {
       try {
@@ -104,19 +84,7 @@ export default function CarMechanicRegister() {
     })();
   }, []);
 
-  const fetchUserData = async (id: string) => {
-    if (!id) return;
-    setUserDataLoading(true);
-    try {
-      const res = await axios.get(`${USER_API}/${id}`);
-      setUserData(res.data?.data || null);
-    } catch (err) {
-      console.error("user fetch err:", err);
-    } finally {
-      setUserDataLoading(false);
-    }
-  };
-
+  // ── razorpay sdk ──
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -125,12 +93,171 @@ export default function CarMechanicRegister() {
     return () => { document.body.removeChild(script); };
   }, []);
 
+  // ── restore draft ──
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (raw) setForm((f) => ({ ...f, ...JSON.parse(raw) }));
+      const savedId = sessionStorage.getItem(MECH_ID_KEY) || searchParams.get("mid") || "";
+      if (savedId) {
+        setMechanicId(savedId);
+        fetchUserData(savedId);
+      }
+    } catch (_) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch (_) {}
+  }, [form]);
+
+  useEffect(() => {
+    if (!mechanicId) return;
+    try { sessionStorage.setItem(MECH_ID_KEY, mechanicId); } catch (_) {}
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("mid", mechanicId);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mechanicId]);
+
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const t = setInterval(() => setResendTimer((s) => s - 1), 1000);
+    return () => clearInterval(t);
+  }, [resendTimer]);
+
   useEffect(() => {
     if (aadhaarResendTimer <= 0) return;
     const t = setInterval(() => setAadhaarResendTimer((s) => s - 1), 1000);
     return () => clearInterval(t);
   }, [aadhaarResendTimer]);
 
+  const fetchUserData = async (id: string) => {
+    if (!id) return;
+    try {
+      const res = await axios.get(`${USER_API}/${id}`);
+      const u = res.data?.data || null;
+      setUserData(u);
+      if (u?.isKycFeeDone && kycStage === "aadhaar-input") setKycStage("payment");
+    } catch (err) {
+      console.error("user fetch err:", err);
+    }
+  };
+
+  const setStep = (s: number) => {
+    setStepState(s);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("step", String(s));
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const update = (key: keyof FormState, value: any) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => ({ ...e, [key]: "" }));
+  };
+
+  const cities = form.state ? INDIAN_STATES_CITIES[form.state] || [] : [];
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = "Name required";
+    if (!/^[6-9]\d{9}$/.test(form.phone)) e.phone = "Enter valid 10-digit phone";
+    if (!form.garageName.trim()) e.garageName = "Garage name required";
+    if (!form.addressLine1.trim()) e.addressLine1 = "Address required";
+    if (!form.state) e.state = "Select state";
+    if (!form.city) e.city = "Select city";
+    if (!/^\d{6}$/.test(form.pincode)) e.pincode = "Enter valid 6-digit pincode";
+    if (!form.agreedToTerms) e.agreedToTerms = "Please accept the terms to continue";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const submitRegistration = async () => {
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append("name", form.name);
+      fd.append("phone", form.phone);
+      fd.append("garageName", form.garageName);
+      fd.append("address", JSON.stringify({
+        line1: form.addressLine1,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        location: { type: "Point", coordinates: [0, 0] },
+      }));
+
+      const res = await axios.post(`${API_BASE}/`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+
+      const newId = res.data?.data?._id;
+      setMechanicId(newId);
+      fetchUserData(newId);
+      setStep(1);
+
+      Swal.fire({ icon: "success", title: "OTP sent", text: `OTP sent to ${form.phone}`, timer: 1800, showConfirmButton: false });
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Registration failed", text: err?.response?.data?.message || "Something went wrong" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── phone otp ──
+  const onOtpChange = (idx: number, val: string) => {
+    if (!/^\d?$/.test(val)) return;
+    const next = [...otp];
+    next[idx] = val;
+    setOtp(next);
+    if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
+  };
+  const onOtpKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus();
+  };
+
+  const verifyOtp = async () => {
+    const code = otp.join("");
+    if (code.length !== 6) {
+      Swal.fire({ icon: "warning", title: "Enter full 6-digit OTP" });
+      return;
+    }
+    setVerifying(true);
+    try {
+      await axios.post(`${API_BASE}/verify-otp`, { phone: form.phone, otp: code });
+      Swal.fire({ icon: "success", title: "Phone Verified!", text: "Now complete Aadhaar KYC.", timer: 1600, showConfirmButton: false });
+      fetchUserData(mechanicId);
+      setStep(2);
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Verification failed", text: err?.response?.data?.message || "Invalid or expired OTP" });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (resendTimer > 0) return;
+    setResending(true);
+    try {
+      await axios.post(`${API_BASE}/resend-otp`, { phone: form.phone });
+      setResendTimer(30);
+      Swal.fire({ icon: "success", title: "OTP resent", timer: 1500, showConfirmButton: false });
+    } catch (err: any) {
+      Swal.fire({ icon: "error", title: "Failed to resend", text: err?.response?.data?.message || "Try again" });
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // ── kyc: aadhaar number first ──
+  const confirmAadhaarNumber = () => {
+    if (!/^\d{12}$/.test(aadhaarNumber)) {
+      Swal.fire({ icon: "warning", title: "Enter valid 12-digit Aadhaar number" });
+      return;
+    }
+    setKycStage("payment");
+  };
+
+  // ── kyc: payment ──
   const startKycPayment = async () => {
     setPayingKyc(true);
     try {
@@ -148,7 +275,7 @@ export default function CarMechanicRegister() {
       const rzp = new (window as any).Razorpay({
         key, amount, currency, order_id: orderId,
         name: "TaxiSafar", description: "Mechanic KYC Fee",
-        prefill: { name: form.name || "", contact: form.phone || "", email: form.email || "" },
+        prefill: { name: form.name || "", contact: form.phone || "" },
         theme: { color: "#dc2626" },
         handler: async (response: any) => {
           try {
@@ -157,9 +284,8 @@ export default function CarMechanicRegister() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
-            Swal.fire({ icon: "success", title: "Payment successful", text: "Now enter your Aadhaar number", timer: 1500, showConfirmButton: false });
-            setKycStage("aadhaar-input");
             fetchUserData(mechanicId);
+            await sendAadhaarOtpHandler();
           } catch (err: any) {
             Swal.fire({ icon: "error", title: "Payment verification failed", text: err?.response?.data?.message || "Please contact support" });
           } finally {
@@ -175,15 +301,16 @@ export default function CarMechanicRegister() {
     }
   };
 
+  // ── kyc: aadhaar otp ──
   const sendAadhaarOtpHandler = async () => {
     if (!/^\d{12}$/.test(aadhaarNumber)) {
       Swal.fire({ icon: "warning", title: "Enter valid 12-digit Aadhaar number" });
+      setKycStage("aadhaar-input");
       return;
     }
     setSendingAadhaarOtp(true);
     try {
-      const res = await axios.post(`${API_BASE}/${mechanicId}/kyc/aadhaar/send-otp`, { aadhaarNumber });
-      setKycRequestId(res.data.data.request_id);
+      await axios.post(`${API_BASE}/${mechanicId}/kyc/aadhaar/send-otp`, { aadhaarNumber });
       setKycStage("aadhaar-otp");
       setAadhaarResendTimer(30);
       Swal.fire({ icon: "success", title: "OTP sent", text: "Check your Aadhaar-linked mobile number", timer: 1800, showConfirmButton: false });
@@ -233,252 +360,6 @@ export default function CarMechanicRegister() {
     await sendAadhaarOtpHandler();
   };
 
-  const setStep = (s: number) => {
-    setStepState(s);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("step", String(s));
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  };
-
-  const [form, setForm] = useState<FormState>(initialForm);
-  const [options, setOptions] = useState<{ services: Option[]; brands: Option[]; vehicleTypes: Option[]; facilities: Option[] } | null>(null);
-  const [optionsLoading, setOptionsLoading] = useState(true);
-  const [locating, setLocating] = useState(false);
-
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [profilePreview, setProfilePreview] = useState<string>("");
-  const [coverImage, setCoverImage] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string>("");
-  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
-  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
-
-  const [mechanicId, setMechanicId] = useState<string>("");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [resendTimer, setResendTimer] = useState(0);
-
-  const [submitting, setSubmitting] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [registered, setRegistered] = useState(false);
-
-  const profileInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
-
-  // ── restore draft + mechanicId (page revive) ──
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(DRAFT_KEY);
-      if (raw) setForm((f) => ({ ...f, ...JSON.parse(raw) }));
-      const savedId = sessionStorage.getItem(MECH_ID_KEY) || searchParams.get("mid") || "";
-      if (savedId) {
-        setMechanicId(savedId);
-        fetchUserData(savedId);
-      }
-    } catch (_) {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch (_) {}
-  }, [form]);
-
-  // persist mechanicId to sessionStorage + url whenever it changes
-  useEffect(() => {
-    if (!mechanicId) return;
-    try { sessionStorage.setItem(MECH_ID_KEY, mechanicId); } catch (_) {}
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("mid", mechanicId);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mechanicId]);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/options/all`);
-        setOptions(res.data.data);
-      } catch (err) {
-        console.error("options fetch err:", err);
-      } finally {
-        setOptionsLoading(false);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const t = setInterval(() => setResendTimer((s) => s - 1), 1000);
-    return () => clearInterval(t);
-  }, [resendTimer]);
-
-  const update = (key: keyof FormState, value: any) => {
-    setForm((f) => ({ ...f, [key]: value }));
-    setErrors((e) => ({ ...e, [key]: "" }));
-  };
-
-  const toggleMulti = (key: keyof FormState, value: string) => {
-    setForm((f) => {
-      const arr = f[key] as string[];
-      const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
-      return { ...f, [key]: next };
-    });
-  };
-
-  const setAllMulti = (key: keyof FormState, items: Option[], selectAll: boolean) => {
-    update(key, selectAll ? items.map((i) => i.title) : []);
-  };
-
-  const updateWorkingHour = (day: string, key: keyof WorkingHour, value: any) => {
-    setForm((f) => ({ ...f, workingHours: f.workingHours.map((wh) => (wh.day === day ? { ...wh, [key]: value } : wh)) }));
-  };
-
-  const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      Swal.fire({ icon: "warning", title: "Location not supported on this device" });
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { update("latitude", String(pos.coords.latitude)); update("longitude", String(pos.coords.longitude)); setLocating(false); },
-      () => { Swal.fire({ icon: "error", title: "Couldn't get location", text: "Please allow location access or enter address manually" }); setLocating(false); },
-    );
-  };
-
-  const cities = form.state ? INDIAN_STATES_CITIES[form.state] || [] : [];
-
-  const validateStep = (s: number) => {
-    const e: Record<string, string> = {};
-    if (s === 0) {
-      if (!form.name.trim()) e.name = "Name required";
-      if (!/^[6-9]\d{9}$/.test(form.phone)) e.phone = "Enter valid 10-digit phone";
-      if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Invalid email";
-      if (!form.password || form.password.length < 6) e.password = "Min 6 characters";
-      if (!form.garageName.trim()) e.garageName = "Garage name required";
-    }
-    if (s === 1) {
-      if (!form.addressLine1.trim()) e.addressLine1 = "Address required";
-      if (!form.state) e.state = "Select state";
-      if (!form.city) e.city = "Select city";
-      if (!/^\d{6}$/.test(form.pincode)) e.pincode = "Enter valid 6-digit pincode";
-    }
-    if (s === 3) {
-      if (form.servicesOffered.length === 0) e.servicesOffered = "Select at least 1 service";
-      if (form.brandsServiced.length === 0) e.brandsServiced = "Select at least 1 brand";
-    }
-    if (s === 4) {
-      if (!form.agreedToTerms) e.agreedToTerms = "Please accept the terms to continue";
-    }
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const goNext = () => { if (!validateStep(step)) return; setStep(Math.min(step + 1, STEPS.length - 1)); };
-  const goBack = () => setStep(Math.max(step - 1, 0));
-
-  const onPickProfile = (f: File | null) => { setProfileImage(f); setProfilePreview(f ? URL.createObjectURL(f) : ""); };
-  const onPickCover = (f: File | null) => { setCoverImage(f); setCoverPreview(f ? URL.createObjectURL(f) : ""); };
-  const onPickGallery = (files: FileList | null) => {
-    if (!files) return;
-    const list = Array.from(files).slice(0, 10 - galleryFiles.length);
-    setGalleryFiles((g) => [...g, ...list]);
-    setGalleryPreviews((p) => [...p, ...list.map((f) => URL.createObjectURL(f))]);
-  };
-  const removeGalleryImg = (idx: number) => {
-    setGalleryFiles((g) => g.filter((_, i) => i !== idx));
-    setGalleryPreviews((p) => p.filter((_, i) => i !== idx));
-  };
-
-  const submitRegistration = async () => {
-    if (!validateStep(4)) return;
-    setSubmitting(true);
-    try {
-      const fd = new FormData();
-      fd.append("name", form.name);
-      fd.append("phone", form.phone);
-      if (form.email) fd.append("email", form.email);
-      fd.append("password", form.password);
-      fd.append("garageName", form.garageName);
-      fd.append("experienceYears", form.experienceYears || "0");
-      fd.append("specialty", form.specialty || "All Types of Car Repair & Service");
-      if (form.about) fd.append("about", form.about);
-      fd.append("whyChooseUs", JSON.stringify(form.whyChooseUs.filter((v) => v.trim())));
-
-      const addressData = {
-        line1: form.addressLine1, city: form.city, state: form.state, pincode: form.pincode,
-        location: { type: "Point", coordinates: [parseFloat(form.longitude) || 0, parseFloat(form.latitude) || 0] },
-      };
-      fd.append("address", JSON.stringify(addressData));
-      fd.append("workingHours", JSON.stringify(form.workingHours));
-      fd.append("servicesOffered", JSON.stringify(form.servicesOffered));
-      fd.append("brandsServiced", JSON.stringify(form.brandsServiced));
-      fd.append("vehicleTypesServiced", JSON.stringify(form.vehicleTypesServiced));
-      fd.append("facilities", JSON.stringify(form.facilities));
-      if (profileImage) fd.append("profileImage", profileImage);
-      if (coverImage) fd.append("coverImage", coverImage);
-      galleryFiles.forEach((f) => fd.append("galleryImages", f));
-
-      const res = await axios.post(`${API_BASE}/`, fd, { headers: { "Content-Type": "multipart/form-data" } });
-
-      const newId = res.data?.data?._id;
-      setMechanicId(newId);
-      fetchUserData(newId);
-      setStep(5);
-
-      Swal.fire({ icon: "success", title: "OTP sent", text: `OTP sent to ${form.phone}`, timer: 1800, showConfirmButton: false });
-    } catch (err: any) {
-      Swal.fire({ icon: "error", title: "Registration failed", text: err?.response?.data?.message || "Something went wrong" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onOtpChange = (idx: number, val: string) => {
-    if (!/^\d?$/.test(val)) return;
-    const next = [...otp];
-    next[idx] = val;
-    setOtp(next);
-    if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
-  };
-  const onOtpKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus();
-  };
-
-  const verifyOtp = async () => {
-    const code = otp.join("");
-    if (code.length !== 6) {
-      Swal.fire({ icon: "warning", title: "Enter full 6-digit OTP" });
-      return;
-    }
-    setVerifying(true);
-    try {
-      await axios.post(`${API_BASE}/verify-otp`, { phone: form.phone, otp: code });
-      Swal.fire({ icon: "success", title: "Phone Verified!", text: "Now complete Aadhaar KYC to activate your account.", timer: 1800, showConfirmButton: false });
-      fetchUserData(mechanicId);
-      setStep(6);
-    } catch (err: any) {
-      Swal.fire({ icon: "error", title: "Verification failed", text: err?.response?.data?.message || "Invalid or expired OTP" });
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const resendOtp = async () => {
-    if (resendTimer > 0) return;
-    setResending(true);
-    try {
-      await axios.post(`${API_BASE}/resend-otp`, { phone: form.phone });
-      setResendTimer(30);
-      Swal.fire({ icon: "success", title: "OTP resent", timer: 1500, showConfirmButton: false });
-    } catch (err: any) {
-      Swal.fire({ icon: "error", title: "Failed to resend", text: err?.response?.data?.message || "Try again" });
-    } finally {
-      setResending(false);
-    }
-  };
-
   if (registered) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -488,7 +369,7 @@ export default function CarMechanicRegister() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Registration Complete</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Your garage <span className="font-medium">{form.garageName}</span> is now listed. Our team will verify your profile shortly.
+            Your garage <span className="font-medium">{form.garageName}</span> is now listed. Our team will call you to complete your profile details.
           </p>
           <button onClick={() => (window.location.href = pathname)} className="w-full h-11 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition">Done</button>
         </div>
@@ -496,15 +377,16 @@ export default function CarMechanicRegister() {
     );
   }
 
-  // ── left sidebar summary card ──
   const displayName = userData?.name || form.name || "Your Garage";
   const displayPhone = userData?.phone || form.phone;
-  const profileImgUrl = userData?.profileImage ? `${IMAGE_BASE}${userData.profileImage}` : profilePreview;
+  const profileImgUrl = userData?.profileImage
+    ? (String(userData.profileImage).startsWith("http") ? userData.profileImage : `${IMAGE_BASE}${userData.profileImage}`)
+    : "";
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-red-600 flex items-center justify-center text-white font-bold">TS</div>
           <div>
             <h1 className="text-base font-bold text-gray-900">Register as Mechanic Partner</h1>
@@ -513,8 +395,8 @@ export default function CarMechanicRegister() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 pt-6">
-        <div className="flex items-center justify-between mb-8">
+      <div className="max-w-5xl mx-auto px-4 pt-6">
+        <div className="flex items-center justify-between mb-8 max-w-md mx-auto">
           {STEPS.map((label, i) => (
             <div key={label} className="flex-1 flex flex-col items-center relative">
               {i !== 0 && <div className={`absolute top-4 right-1/2 w-full h-0.5 -z-10 ${i <= step ? "bg-red-600" : "bg-gray-200"}`} />}
@@ -523,14 +405,14 @@ export default function CarMechanicRegister() {
               }`}>
                 {i < step ? <Check className="w-4 h-4" /> : i + 1}
               </div>
-              <span className="text-[10px] mt-1 text-gray-500 text-center hidden sm:block">{label}</span>
+              <span className="text-[10px] mt-1 text-gray-500 text-center">{label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-        {/* ── LEFT: summary sidebar ── */}
+      <div className="max-w-5xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
+        {/* ── LEFT: summary ── */}
         <div className="space-y-4">
           <div className="bg-white rounded-2xl shadow-sm border p-5 sticky top-24">
             <div className="flex flex-col items-center text-center">
@@ -538,7 +420,7 @@ export default function CarMechanicRegister() {
                 {profileImgUrl ? <img src={profileImgUrl} className="w-full h-full object-cover" alt="profile" /> : <User className="w-8 h-8 text-gray-400" />}
               </div>
               <h3 className="font-bold text-gray-900">{displayName}</h3>
-              {displayPhone && <p className="text-xs text-gray-400 mono">{displayPhone}</p>}
+              {displayPhone && <p className="text-xs text-gray-400">{displayPhone}</p>}
               {mechanicId && (
                 <span className="mt-2 text-[10px] font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded-lg break-all">ID: {mechanicId}</span>
               )}
@@ -547,11 +429,7 @@ export default function CarMechanicRegister() {
             <div className="mt-5 space-y-2.5 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-gray-500 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Mobile</span>
-                {userData?.isMobileVerified ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Aadhaar</span>
-                {userData?.aadharVerified ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
+                {userData?.isPhoneVerified ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-gray-500 flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5" /> KYC Fee</span>
@@ -562,23 +440,26 @@ export default function CarMechanicRegister() {
                 )}
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Admin Verified</span>
-                {userData?.verifiedByAdmin ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
+                <span className="text-gray-500 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Aadhaar</span>
+                {userData?.kycStatus === "kyc-success" ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Verified Mechanic</span>
+                {userData?.isVerifiedMechanic ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
               </div>
             </div>
 
-            {userData?.aadharData && (
+            {userData?.aadharData?.verifiedData?.full_name && (
               <div className="mt-5 pt-4 border-t space-y-1 text-xs text-gray-500">
                 <p className="font-semibold text-gray-700 mb-1">Aadhaar Record</p>
-                <p>{userData.aadharData.full_name}</p>
-                <p className="mono">{userData.aadharData.aadhaar_number}</p>
-                <p>{userData.aadharData.address?.dist}, {userData.aadharData.address?.state}</p>
+                <p>{userData.aadharData.verifiedData.full_name}</p>
+                <p>{userData.aadharData.verifiedData.address?.dist}, {userData.aadharData.verifiedData.address?.state}</p>
               </div>
             )}
 
             <div className="mt-5 pt-4 border-t">
               <p className="text-xs text-gray-400">
-                Fill the form on the right step-by-step. Your progress and account ID are saved automatically — safe to refresh anytime.
+                Only basic details needed. Photos, services and timings are filled by our support team on call after verification. Progress saved — safe to refresh.
               </p>
             </div>
           </div>
@@ -589,188 +470,58 @@ export default function CarMechanicRegister() {
           <div className="bg-white rounded-2xl shadow-sm border p-6">
             {step === 0 && (
               <div className="space-y-4">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Basic Information</h2>
-                <p className="text-sm text-gray-400 mb-4">Tell us about you and your garage</p>
+                <h2 className="text-lg font-bold text-gray-900 mb-1">Your Details</h2>
+                <p className="text-sm text-gray-400 mb-4">Takes less than a minute</p>
 
                 <Field label="Full Name" icon={<User className="w-4 h-4" />} error={errors.name}>
                   <input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Rohit Sharma" className={inputCls(errors.name)} />
                 </Field>
 
                 <Field label="Phone Number" icon={<Phone className="w-4 h-4" />} error={errors.phone}>
-                  <input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" className={inputCls(errors.phone)} />
-                </Field>
-
-                <Field label="Email (optional)" icon={<Mail className="w-4 h-4" />} error={errors.email}>
-                  <input value={form.email} onChange={(e) => update("email", e.target.value)} placeholder="you@example.com" className={inputCls(errors.email)} />
-                </Field>
-
-                <Field label="Password" icon={<Shield className="w-4 h-4" />} error={errors.password}>
-                  <input type="password" value={form.password} onChange={(e) => update("password", e.target.value)} placeholder="Min 6 characters" className={inputCls(errors.password)} />
+                  <input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" inputMode="numeric" className={inputCls(errors.phone)} />
                 </Field>
 
                 <Field label="Garage / Shop Name" icon={<Building2 className="w-4 h-4" />} error={errors.garageName}>
                   <input value={form.garageName} onChange={(e) => update("garageName", e.target.value)} placeholder="Auto Care Garage" className={inputCls(errors.garageName)} />
                 </Field>
 
-                <Field label="Experience (years)" icon={<Star className="w-4 h-4" />}>
-                  <input type="number" min={0} value={form.experienceYears} onChange={(e) => update("experienceYears", e.target.value)} placeholder="8" className={inputCls()} />
-                </Field>
-
-                <Field label="Specialty" icon={<Wrench className="w-4 h-4" />}>
-                  <input value={form.specialty} onChange={(e) => update("specialty", e.target.value)} placeholder="All Types of Car Repair & Service" className={inputCls()} />
-                </Field>
-
-                <Field label="About your garage" icon={<Building2 className="w-4 h-4" />}>
-                  <div className="flex gap-2 mb-1.5">
-                    <textarea value={form.about} onChange={(e) => update("about", e.target.value)} rows={3} placeholder="Trusted multi-brand car service center..." className={inputCls() + " resize-none"} />
-                  </div>
-                  <button type="button" onClick={() => update("about", generateAbout(form.garageName))} className="text-xs text-red-600 font-medium flex items-center gap-1">✨ Auto-generate</button>
-                </Field>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700 block">Why choose you? (up to 3)</label>
-                    <button type="button" onClick={() => update("whyChooseUs", generateWhyChooseUs())} className="text-xs text-red-600 font-medium flex items-center gap-1">✨ Auto-generate</button>
-                  </div>
-                  {form.whyChooseUs.map((v, i) => (
-                    <input key={i} value={v} onChange={(e) => { const next = [...form.whyChooseUs]; next[i] = e.target.value; update("whyChooseUs", next); }} placeholder={`Reason ${i + 1}`} className={inputCls() + " mb-2"} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {step === 1 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Garage Address</h2>
-                <p className="text-sm text-gray-400 mb-4">Where can customers find you</p>
-
                 <Field label="Address Line" icon={<MapPin className="w-4 h-4" />} error={errors.addressLine1}>
                   <input value={form.addressLine1} onChange={(e) => update("addressLine1", e.target.value)} placeholder="Plot No. 45, Industrial Area, Sahibabad" className={inputCls(errors.addressLine1)} />
                 </Field>
 
-                <Field label="State" icon={<Compass className="w-4 h-4" />} error={errors.state}>
-                  <select value={form.state} onChange={(e) => { update("state", e.target.value); update("city", ""); }} className={inputCls(errors.state)}>
-                    <option value="">Select State</option>
-                    {STATE_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="State" icon={<Compass className="w-4 h-4" />} error={errors.state}>
+                    <select value={form.state} onChange={(e) => { update("state", e.target.value); update("city", ""); }} className={inputCls(errors.state)}>
+                      <option value="">Select State</option>
+                      {STATE_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </Field>
 
-                <Field label="City" icon={<MapPin className="w-4 h-4" />} error={errors.city}>
-                  <select value={form.city} onChange={(e) => update("city", e.target.value)} disabled={!form.state} className={inputCls(errors.city) + (!form.state ? " opacity-50 cursor-not-allowed" : "")}>
-                    <option value="">Select City</option>
-                    {cities.map((c: string) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
+                  <Field label="City" icon={<MapPin className="w-4 h-4" />} error={errors.city}>
+                    <select value={form.city} onChange={(e) => update("city", e.target.value)} disabled={!form.state} className={inputCls(errors.city) + (!form.state ? " opacity-50 cursor-not-allowed" : "")}>
+                      <option value="">Select City</option>
+                      {cities.map((c: string) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </Field>
+                </div>
 
                 <Field label="Pincode" icon={<Map className="w-4 h-4" />} error={errors.pincode}>
-                  <input value={form.pincode} onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="201010" className={inputCls(errors.pincode)} />
+                  <input value={form.pincode} onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="201010" inputMode="numeric" className={inputCls(errors.pincode)} />
                 </Field>
-
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1.5"><LocateFixed className="w-4 h-4" /> Garage Location (for map pin)</label>
-                  <div className="flex gap-2">
-                    <input value={form.latitude} onChange={(e) => update("latitude", e.target.value)} placeholder="Latitude" className={inputCls()} />
-                    <input value={form.longitude} onChange={(e) => update("longitude", e.target.value)} placeholder="Longitude" className={inputCls()} />
-                    <button type="button" onClick={useCurrentLocation} disabled={locating} className="h-11 px-3 rounded-xl border border-gray-300 text-xs font-medium flex items-center gap-1.5 shrink-0 disabled:opacity-60">
-                      {locating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LocateFixed className="w-3.5 h-3.5" />} Use Current
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">Helps customers find your exact garage on the map</p>
-                </div>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Working Hours</h2>
-                <p className="text-sm text-gray-400 mb-4">Set the days and hours your garage is open</p>
-                <div className="space-y-2">
-                  {form.workingHours.map((wh) => (
-                    <div key={wh.day} className="flex items-center gap-3 p-2.5 rounded-xl border border-gray-200">
-                      <span className="w-10 text-sm font-medium text-gray-700">{wh.day}</span>
-                      <label className="flex items-center gap-1.5 text-xs text-gray-600">
-                        <input type="checkbox" checked={wh.isOpen} onChange={(e) => updateWorkingHour(wh.day, "isOpen", e.target.checked)} /> Open
-                      </label>
-                      <input type="time" value={wh.openTime} disabled={!wh.isOpen} onChange={(e) => updateWorkingHour(wh.day, "openTime", e.target.value)} className="h-9 px-2 rounded-lg border border-gray-300 text-xs disabled:opacity-40" />
-                      <span className="text-xs text-gray-400">to</span>
-                      <input type="time" value={wh.closeTime} disabled={!wh.isOpen} onChange={(e) => updateWorkingHour(wh.day, "closeTime", e.target.value)} className="h-9 px-2 rounded-lg border border-gray-300 text-xs disabled:opacity-40" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 mb-1">Services & Coverage</h2>
-                  <p className="text-sm text-gray-400">Select what your garage offers</p>
-                </div>
-                {optionsLoading ? (
-                  <div className="flex items-center justify-center py-12 text-gray-400"><Loader2 className="w-6 h-6 animate-spin" /></div>
-                ) : (
-                  <>
-                    <MultiSelectGrid title="Services Offered" items={options?.services || []} selected={form.servicesOffered} onToggle={(v) => toggleMulti("servicesOffered", v)} onSelectAll={(v) => setAllMulti("servicesOffered", options?.services || [], v)} error={errors.servicesOffered} />
-                    <MultiSelectGrid title="Brands Serviced" items={options?.brands || []} selected={form.brandsServiced} onToggle={(v) => toggleMulti("brandsServiced", v)} onSelectAll={(v) => setAllMulti("brandsServiced", options?.brands || [], v)} error={errors.brandsServiced} />
-                    <MultiSelectGrid title="Vehicle Types Serviced" items={options?.vehicleTypes || []} selected={form.vehicleTypesServiced} onToggle={(v) => toggleMulti("vehicleTypesServiced", v)} onSelectAll={(v) => setAllMulti("vehicleTypesServiced", options?.vehicleTypes || [], v)} />
-                    <MultiSelectGrid title="Facilities" items={options?.facilities || []} selected={form.facilities} onToggle={(v) => toggleMulti("facilities", v)} onSelectAll={(v) => setAllMulti("facilities", options?.facilities || [], v)} />
-                  </>
-                )}
-              </div>
-            )}
-
-            {step === 4 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 mb-1">Garage Photos</h2>
-                  <p className="text-sm text-gray-400">Profile & garage photos help build trust</p>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div onClick={() => profileInputRef.current?.click()} className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50 relative shrink-0">
-                    {profilePreview ? <img src={profilePreview} className="w-full h-full object-cover" alt="profile" /> : <Camera className="w-6 h-6 text-gray-400" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Profile Photo</p>
-                    <p className="text-xs text-gray-400">Mechanic / owner photo</p>
-                  </div>
-                  <input ref={profileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPickProfile(e.target.files?.[0] || null)} />
-                </div>
-
-                <div onClick={() => coverInputRef.current?.click()} className="h-36 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50 relative">
-                  {coverPreview ? <img src={coverPreview} className="w-full h-full object-cover" alt="cover" /> : (
-                    <div className="text-center text-gray-400"><FileImage className="w-6 h-6 mx-auto mb-1" /><p className="text-xs">Garage cover photo</p></div>
-                  )}
-                  <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPickCover(e.target.files?.[0] || null)} />
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Gallery (up to 10)</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {galleryPreviews.map((src, i) => (
-                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
-                        <img src={src} className="w-full h-full object-cover" alt={`gallery-${i}`} />
-                        <button onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"><X className="w-3 h-3" /></button>
-                      </div>
-                    ))}
-                    {galleryFiles.length < 10 && (
-                      <div onClick={() => galleryInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer bg-gray-50">
-                        <Upload className="w-5 h-5 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onPickGallery(e.target.files)} />
-                </div>
 
                 <label className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
                   <input type="checkbox" checked={form.agreedToTerms} onChange={(e) => update("agreedToTerms", e.target.checked)} className="mt-0.5" />
-                  <span>I confirm the details provided are accurate and I agree to TaxiSafar's Partner Terms & Conditions and Privacy Policy.</span>
+                  <span>I confirm the details are accurate and agree to TaxiSafar's Partner Terms &amp; Privacy Policy.</span>
                 </label>
                 {errors.agreedToTerms && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.agreedToTerms}</p>}
+
+                <button onClick={submitRegistration} disabled={submitting} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {submitting ? "Submitting..." : "Submit & Get OTP"}
+                </button>
               </div>
             )}
 
-            {step === 5 && (
+            {step === 1 && (
               <div className="space-y-6 text-center">
                 <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto"><Phone className="w-7 h-7 text-red-600" /></div>
                 <div>
@@ -791,37 +542,44 @@ export default function CarMechanicRegister() {
               </div>
             )}
 
-            {step === 6 && (
+            {step === 2 && (
               <div className="space-y-6 text-center">
                 <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto"><IdCard className="w-7 h-7 text-red-600" /></div>
-
-                {kycStage === "payment" && (
-                  <>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">Complete KYC Fee</h2>
-                      <p className="text-sm text-gray-400 mt-1">Pay a one-time KYC fee to unlock Aadhaar verification</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">
-                      <span className="text-sm text-gray-600">KYC Verification Fee</span>
-                      <span className="text-lg font-bold text-gray-900">{kycFeeLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `₹${kycFee}`}</span>
-                    </div>
-                    <button onClick={startKycPayment} disabled={payingKyc || kycFeeLoading} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                      {payingKyc ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                      {payingKyc ? "Opening Razorpay..." : `Pay ₹${kycFee} & Continue`}
-                    </button>
-                  </>
-                )}
 
                 {kycStage === "aadhaar-input" && (
                   <>
                     <div>
                       <h2 className="text-lg font-bold text-gray-900">Enter Aadhaar Number</h2>
-                      <p className="text-sm text-gray-400 mt-1">We'll send an OTP to your Aadhaar-linked mobile number</p>
+                      <p className="text-sm text-gray-400 mt-1">Your photo, name and address are pulled from Aadhaar automatically</p>
                     </div>
                     <input value={aadhaarNumber} onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="XXXX XXXX XXXX" inputMode="numeric" className={inputCls() + " text-center tracking-widest"} />
-                    <button onClick={sendAadhaarOtpHandler} disabled={sendingAadhaarOtp} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                      {sendingAadhaarOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : <IdCard className="w-4 h-4" />} {sendingAadhaarOtp ? "Sending OTP..." : "Send Aadhaar OTP"}
+                    <button onClick={confirmAadhaarNumber} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2">
+                      <IdCard className="w-4 h-4" /> Continue
                     </button>
+                  </>
+                )}
+
+                {kycStage === "payment" && (
+                  <>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900">Pay KYC Fee</h2>
+                      <p className="text-sm text-gray-400 mt-1">One-time fee. OTP is sent to your Aadhaar-linked mobile right after payment.</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Aadhaar</span>
+                        <span className="text-sm font-medium text-gray-900 tracking-wider">XXXX XXXX {aadhaarNumber.slice(-4)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">KYC Verification Fee</span>
+                        <span className="text-lg font-bold text-gray-900">{kycFeeLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `₹${kycFee}`}</span>
+                      </div>
+                    </div>
+                    <button onClick={startKycPayment} disabled={payingKyc || kycFeeLoading} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                      {payingKyc ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                      {payingKyc ? "Processing..." : `Pay ₹${kycFee} & Send OTP`}
+                    </button>
+                    <button onClick={() => setKycStage("aadhaar-input")} disabled={payingKyc} className="text-sm text-gray-500 font-medium disabled:text-gray-300">Change Aadhaar number</button>
                   </>
                 )}
 
@@ -849,23 +607,6 @@ export default function CarMechanicRegister() {
           </div>
         </div>
       </div>
-
-      {step < 5 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4">
-          <div className="max-w-6xl mx-auto lg:pl-[344px] flex gap-3">
-            {step > 0 && (
-              <button onClick={goBack} className="h-12 px-5 rounded-xl border border-gray-300 text-gray-700 font-medium flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back</button>
-            )}
-            {step < 4 ? (
-              <button onClick={goNext} className="flex-1 h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2">Continue <ArrowRight className="w-4 h-4" /></button>
-            ) : (
-              <button onClick={submitRegistration} disabled={submitting} className="flex-1 h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {submitting ? "Submitting..." : "Submit & Get OTP"}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -882,32 +623,4 @@ function Field({ label, icon, error, children }: { label: string; icon?: React.R
 
 function inputCls(error?: string) {
   return `w-full h-11 px-3.5 rounded-xl border text-sm outline-none transition ${error ? "border-red-400 focus:ring-2 focus:ring-red-100" : "border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"}`;
-}
-
-function MultiSelectGrid({ title, items, selected, onToggle, onSelectAll, error }: { title: string; items: Option[]; selected: string[]; onToggle: (v: string) => void; onSelectAll: (all: boolean) => void; error?: string }) {
-  const allSelected = items.length > 0 && selected.length === items.length;
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold text-gray-800">{title}</p>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">{selected.length} selected</span>
-          <button type="button" onClick={() => onSelectAll(!allSelected)} className="text-xs text-red-600 font-medium">{allSelected ? "Clear All" : "Select All"}</button>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-        {items.map((item) => {
-          const active = selected.includes(item.title);
-          return (
-            <button key={item.title} type="button" onClick={() => onToggle(item.title)} className={`relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border text-center transition ${active ? "border-red-500 bg-red-50" : "border-gray-200 bg-white"}`}>
-              {active && <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-600 flex items-center justify-center"><Check className="w-2.5 h-2.5 text-white" /></div>}
-              <img src={item.image} alt={item.title} className="w-8 h-8 rounded-full object-cover" />
-              <span className="text-[11px] font-medium text-gray-700 leading-tight">{item.title}</span>
-            </button>
-          );
-        })}
-      </div>
-      {error && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {error}</p>}
-    </div>
-  );
 }

@@ -15,6 +15,20 @@ const fileUrl = (req, filename) => {
 
   return `${base_url}/uploads/mechanics/${filename}`;
 };
+
+
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "mechanics");
+
+const saveAadhaarPhoto = (base64, id) => {
+  if (!base64) return null;
+  try {
+    const clean = String(base64).replace(/^data:image\/\w+;base64,/, "");
+    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    const filename = `aadhaar_${id}_${Date.now()}.jpg`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(clean, "base64"));
+    return `${base_url}/uploads/mechanics/${filename}`;
+  } catch (e) { console.error("aadhaar photo save err:", e.message); return null; }
+};
 const safeUnlink = (filePath) => {
   fs.unlink(filePath, (err) => { if (err && err.code !== "ENOENT") console.error("unlink err:", err); });
 };
@@ -228,9 +242,17 @@ exports.verifyMechanicAadhaarOtp = async (req, res) => {
       });
     }
 
+    const photo = result.data.profile_image || result.data.photo || result.data.image || null;
+    const photoUrl = saveAadhaarPhoto(photo, mechanic._id);
+    if (photoUrl) {
+      mechanic.aadharData.verifiedData.profile_image = photoUrl;
+      if (!mechanic.profileImage) mechanic.profileImage = photoUrl;   // auto profile pic
+    }
+    if (!mechanic.name && result.data.full_name) mechanic.name = result.data.full_name;
     mechanic.aadharData = { ...mechanic.aadharData, verifiedData: result.data };
     mechanic.kycStatus = "kyc-success";
     mechanic.isVerifiedMechanic = true;
+    mechanic.markModified("aadharData");
     await mechanic.save();
 
     const data = mechanic.toObject();
