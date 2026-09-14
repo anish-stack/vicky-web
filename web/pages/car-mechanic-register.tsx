@@ -4,18 +4,22 @@ import axios from "axios";
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
-  MapPin, Phone, User, Building2, Compass, CheckCircle2, Clock, Map,
-  CreditCard, AlertCircle, Loader2, IdCard, Check, BadgeCheck, ShieldCheck, Award,
+  MapPin, Phone, User, Building2, Compass, CheckCircle2, Map, Upload, X,
+  CreditCard, AlertCircle, Loader2, IdCard, Check, FileImage,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import INDIAN_STATES_CITIES, { STATE_LIST } from "@/data/indianStatesCities";
 
 const API_BASE = "https://partners.taxisafar.com/api/auth/mechanic";
-const USER_API = "https://partners.taxisafar.com/api/auth/users";
 const FEE_API = "https://partners.taxisafar.com/api/v1/fees/key/kyc_fee_for_car_mechanic";
-const IMAGE_BASE = "https://partners.taxisafar.com";
 const DRAFT_KEY = "mechanic_register_draft";
 const MECH_ID_KEY = "mechanic_register_id";
+
+const LOGO_SRC = "/taxisafar-logo.jpg";
+const TERMS_URL = "https://taxisafar.com/terms-of-use";
+const PRIVACY_URL = "https://taxisafar.com/privacy-policy";
+
+const MAX_GALLERY = 6;
 
 type FormState = {
   name: string;
@@ -48,6 +52,14 @@ export default function CarMechanicRegister() {
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  // ── garage photos ──
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string>("");
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+
   const [mechanicId, setMechanicId] = useState<string>("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -67,8 +79,6 @@ export default function CarMechanicRegister() {
 
   const [kycFee, setKycFee] = useState<number>(99);
   const [kycFeeLoading, setKycFeeLoading] = useState(true);
-
-  const [userData, setUserData] = useState<any>(null);
 
   // ── fee ──
   useEffect(() => {
@@ -99,10 +109,7 @@ export default function CarMechanicRegister() {
       const raw = sessionStorage.getItem(DRAFT_KEY);
       if (raw) setForm((f) => ({ ...f, ...JSON.parse(raw) }));
       const savedId = sessionStorage.getItem(MECH_ID_KEY) || searchParams.get("mid") || "";
-      if (savedId) {
-        setMechanicId(savedId);
-        fetchUserData(savedId);
-      }
+      if (savedId) setMechanicId(savedId);
     } catch (_) {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -132,18 +139,6 @@ export default function CarMechanicRegister() {
     return () => clearInterval(t);
   }, [aadhaarResendTimer]);
 
-  const fetchUserData = async (id: string) => {
-    if (!id) return;
-    try {
-      const res = await axios.get(`${USER_API}/${id}`);
-      const u = res.data?.data || null;
-      setUserData(u);
-      if (u?.isKycFeeDone && kycStage === "aadhaar-input") setKycStage("payment");
-    } catch (err) {
-      console.error("user fetch err:", err);
-    }
-  };
-
   const setStep = (s: number) => {
     setStepState(s);
     const params = new URLSearchParams(searchParams.toString());
@@ -157,6 +152,22 @@ export default function CarMechanicRegister() {
   };
 
   const cities = form.state ? INDIAN_STATES_CITIES[form.state] || [] : [];
+
+  // ── photo pickers ──
+  const onPickCover = (f: File | null) => {
+    setCoverImage(f);
+    setCoverPreview(f ? URL.createObjectURL(f) : "");
+  };
+  const onPickGallery = (files: FileList | null) => {
+    if (!files) return;
+    const list = Array.from(files).slice(0, MAX_GALLERY - galleryFiles.length);
+    setGalleryFiles((g) => [...g, ...list]);
+    setGalleryPreviews((p) => [...p, ...list.map((f) => URL.createObjectURL(f))]);
+  };
+  const removeGalleryImg = (idx: number) => {
+    setGalleryFiles((g) => g.filter((_, i) => i !== idx));
+    setGalleryPreviews((p) => p.filter((_, i) => i !== idx));
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -187,12 +198,13 @@ export default function CarMechanicRegister() {
         pincode: form.pincode,
         location: { type: "Point", coordinates: [0, 0] },
       }));
+      if (coverImage) fd.append("coverImage", coverImage);
+      galleryFiles.forEach((f) => fd.append("galleryImages", f));
 
       const res = await axios.post(`${API_BASE}/`, fd, { headers: { "Content-Type": "multipart/form-data" } });
 
       const newId = res.data?.data?._id;
       setMechanicId(newId);
-      fetchUserData(newId);
       setStep(1);
 
       Swal.fire({ icon: "success", title: "OTP sent", text: `OTP sent to ${form.phone}`, timer: 1800, showConfirmButton: false });
@@ -225,7 +237,6 @@ export default function CarMechanicRegister() {
     try {
       await axios.post(`${API_BASE}/verify-otp`, { phone: form.phone, otp: code });
       Swal.fire({ icon: "success", title: "Phone Verified!", text: "Now complete Aadhaar KYC.", timer: 1600, showConfirmButton: false });
-      fetchUserData(mechanicId);
       setStep(2);
     } catch (err: any) {
       Swal.fire({ icon: "error", title: "Verification failed", text: err?.response?.data?.message || "Invalid or expired OTP" });
@@ -284,7 +295,6 @@ export default function CarMechanicRegister() {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
-            fetchUserData(mechanicId);
             await sendAadhaarOtpHandler();
           } catch (err: any) {
             Swal.fire({ icon: "error", title: "Payment verification failed", text: err?.response?.data?.message || "Please contact support" });
@@ -360,43 +370,40 @@ export default function CarMechanicRegister() {
     await sendAadhaarOtpHandler();
   };
 
+  const Header = (
+    <div className="bg-white border-b sticky top-0 z-10">
+      <div className="max-w-2xl mx-auto px-4 py-3 flex flex-col items-center">
+        <img src={LOGO_SRC} alt="TaxiSafar" className="h-16 w-auto object-contain" />
+      </div>
+    </div>
+  );
+
   if (registered) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-9 h-9 text-green-600" />
+      <div className="min-h-screen bg-gray-50">
+        {Header}
+        <div className="flex items-center justify-center px-4 py-16">
+          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-9 h-9 text-green-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Registration Complete</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Your garage <span className="font-medium">{form.garageName}</span> is now listed. Our team will call you to complete the remaining profile details.
+            </p>
+            <button onClick={() => (window.location.href = pathname)} className="w-full h-11 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition">Done</button>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Registration Complete</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Your garage <span className="font-medium">{form.garageName}</span> is now listed. Our team will call you to complete your profile details.
-          </p>
-          <button onClick={() => (window.location.href = pathname)} className="w-full h-11 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition">Done</button>
         </div>
       </div>
     );
   }
 
-  const displayName = userData?.name || form.name || "Your Garage";
-  const displayPhone = userData?.phone || form.phone;
-  const profileImgUrl = userData?.profileImage
-    ? (String(userData.profileImage).startsWith("http") ? userData.profileImage : `${IMAGE_BASE}${userData.profileImage}`)
-    : "";
-
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-red-600 flex items-center justify-center text-white font-bold">TS</div>
-          <div>
-            <h1 className="text-base font-bold text-gray-900">Register as Mechanic Partner</h1>
-            <p className="text-xs text-gray-400">TaxiSafar Auto Care Network</p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 pb-16">
+      {Header}
 
-      <div className="max-w-5xl mx-auto px-4 pt-6">
-        <div className="flex items-center justify-between mb-8 max-w-md mx-auto">
+      <div className="max-w-2xl mx-auto px-4 pt-6">
+        <div className="flex items-center justify-between mb-6">
           {STEPS.map((label, i) => (
             <div key={label} className="flex-1 flex flex-col items-center relative">
               {i !== 0 && <div className={`absolute top-4 right-1/2 w-full h-0.5 -z-10 ${i <= step ? "bg-red-600" : "bg-gray-200"}`} />}
@@ -409,202 +416,185 @@ export default function CarMechanicRegister() {
             </div>
           ))}
         </div>
-      </div>
 
-      <div className="max-w-5xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
-        {/* ── LEFT: summary ── */}
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl shadow-sm border p-5 sticky top-24">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full border-4 border-red-50 bg-gray-100 overflow-hidden flex items-center justify-center mb-3">
-                {profileImgUrl ? <img src={profileImgUrl} className="w-full h-full object-cover" alt="profile" /> : <User className="w-8 h-8 text-gray-400" />}
+        <div className="bg-white rounded-2xl shadow-sm border p-5 sm:p-6">
+          {step === 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">Your Details</h2>
+              <p className="text-sm text-gray-400 mb-4">Takes less than a minute</p>
+
+              <Field label="Full Name" icon={<User className="w-4 h-4" />} error={errors.name}>
+                <input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Rohit Sharma" className={inputCls(errors.name)} />
+              </Field>
+
+              <Field label="Phone Number" icon={<Phone className="w-4 h-4" />} error={errors.phone}>
+                <input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" inputMode="numeric" className={inputCls(errors.phone)} />
+              </Field>
+
+              <Field label="Workshop / Shop Name" icon={<Building2 className="w-4 h-4" />} error={errors.garageName}>
+                <input value={form.garageName} onChange={(e) => update("garageName", e.target.value)} placeholder="Auto Care Garage" className={inputCls(errors.garageName)} />
+              </Field>
+
+            
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="State" icon={<Compass className="w-4 h-4" />} error={errors.state}>
+                  <select value={form.state} onChange={(e) => { update("state", e.target.value); update("city", ""); }} className={inputCls(errors.state)}>
+                    <option value="">Select State</option>
+                    {STATE_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </Field>
+
+                <Field label="City" icon={<MapPin className="w-4 h-4" />} error={errors.city}>
+                  <select value={form.city} onChange={(e) => update("city", e.target.value)} disabled={!form.state} className={inputCls(errors.city) + (!form.state ? " opacity-50 cursor-not-allowed" : "")}>
+                    <option value="">Select City</option>
+                    {cities.map((c: string) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
               </div>
-              <h3 className="font-bold text-gray-900">{displayName}</h3>
-              {displayPhone && <p className="text-xs text-gray-400">{displayPhone}</p>}
-              {mechanicId && (
-                <span className="mt-2 text-[10px] font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded-lg break-all">ID: {mechanicId}</span>
+              <Field label="Address Line" icon={<MapPin className="w-4 h-4" />} error={errors.addressLine1}>
+                <input value={form.addressLine1} onChange={(e) => update("addressLine1", e.target.value)} placeholder="Plot No. 45, Industrial Area, Sahibabad" className={inputCls(errors.addressLine1)} />
+              </Field>
+
+              <Field label="Pincode" icon={<Map className="w-4 h-4" />} error={errors.pincode}>
+                <input value={form.pincode} onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="201010" inputMode="numeric" className={inputCls(errors.pincode)} />
+              </Field>
+
+              {/* ── garage photos ── */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><FileImage className="w-4 h-4" /> Garage Photos</label>
+                  <span className="text-[11px] text-gray-400">Optional</span>
+                </div>
+
+                {/* <div onClick={() => coverInputRef.current?.click()} className="h-32 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50">
+                  {coverPreview ? <img src={coverPreview} className="w-full h-full object-cover" alt="cover" /> : (
+                    <div className="text-center text-gray-400">
+                      <Upload className="w-5 h-5 mx-auto mb-1" />
+                      <p className="text-xs">Upload garage front / cover photo</p>
+                    </div>
+                  )}
+                </div>
+                <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPickCover(e.target.files?.[0] || null)} /> */}
+
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  {galleryPreviews.map((src, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+                      <img src={src} className="w-full h-full object-cover" alt={`garage-${i}`} />
+                      <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {galleryFiles.length < MAX_GALLERY && (
+                    <div onClick={() => galleryInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer bg-gray-50">
+                      <Upload className="w-4 h-4 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onPickGallery(e.target.files)} />
+                <p className="text-[11px] text-gray-400 mt-1.5">Up to {MAX_GALLERY} photos. Your profile photo is taken from Aadhaar automatically.</p>
+              </div>
+
+              <label className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
+                <input type="checkbox" checked={form.agreedToTerms} onChange={(e) => update("agreedToTerms", e.target.checked)} className="mt-0.5" />
+                <span>
+                  I confirm the details are accurate and agree to TaxiSafar's{" "}
+                  <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-red-600 font-medium underline underline-offset-2">Terms &amp; Conditions</a>
+                  {" "}and{" "}
+                  <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-red-600 font-medium underline underline-offset-2">Privacy Policy</a>.
+                </span>
+              </label>
+              {errors.agreedToTerms && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.agreedToTerms}</p>}
+
+              <button onClick={submitRegistration} disabled={submitting} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {submitting ? "Submitting..." : "Submit & Get OTP"}
+              </button>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto"><Phone className="w-7 h-7 text-red-600" /></div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Verify your phone</h2>
+                <p className="text-sm text-gray-400 mt-1">Enter the 6-digit code sent to <span className="font-medium text-gray-600">{form.phone}</span></p>
+              </div>
+              <div className="flex justify-center gap-2">
+                {otp.map((d, i) => (
+                  <input key={i} ref={(el) => (otpRefs.current[i] = el)} value={d} onChange={(e) => onOtpChange(i, e.target.value)} onKeyDown={(e) => onOtpKeyDown(i, e)} maxLength={1} inputMode="numeric" className="w-11 h-12 text-center text-lg font-semibold rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none" />
+                ))}
+              </div>
+              <button onClick={verifyOtp} disabled={verifying} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                {verifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {verifying ? "Verifying..." : "Verify & Continue"}
+              </button>
+              <button onClick={resendOtp} disabled={resending || resendTimer > 0} className="text-sm text-red-600 font-medium disabled:text-gray-400">
+                {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : resending ? "Resending..." : "Resend OTP"}
+              </button>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto"><IdCard className="w-7 h-7 text-red-600" /></div>
+
+              {kycStage === "aadhaar-input" && (
+                <>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Enter Aadhaar Number</h2>
+                    <p className="text-sm text-gray-400 mt-1">Your photo, name and address are pulled from Aadhaar automatically</p>
+                  </div>
+                  <input value={aadhaarNumber} onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="XXXX XXXX XXXX" inputMode="numeric" className={inputCls() + " text-center tracking-widest"} />
+                  <button onClick={confirmAadhaarNumber} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2">
+                    <IdCard className="w-4 h-4" /> Continue
+                  </button>
+                </>
+              )}
+
+              {kycStage === "payment" && (
+                <>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Pay KYC Fee</h2>
+                    <p className="text-sm text-gray-400 mt-1">One-time fee. OTP is sent to your Aadhaar-linked mobile right after payment.</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Aadhaar</span>
+                      <span className="text-sm font-medium text-gray-900 tracking-wider">XXXX XXXX {aadhaarNumber.slice(-4)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">KYC Verification Fee</span>
+                      <span className="text-lg font-bold text-gray-900">{kycFeeLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `₹${kycFee}`}</span>
+                    </div>
+                  </div>
+                  <button onClick={startKycPayment} disabled={payingKyc || kycFeeLoading} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                    {payingKyc ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                    {payingKyc ? "Processing..." : `Pay ₹${kycFee} & Send OTP`}
+                  </button>
+                  <button onClick={() => setKycStage("aadhaar-input")} disabled={payingKyc} className="text-sm text-gray-500 font-medium disabled:text-gray-300">Change Aadhaar number</button>
+                </>
+              )}
+
+              {kycStage === "aadhaar-otp" && (
+                <>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Verify Aadhaar OTP</h2>
+                    <p className="text-sm text-gray-400 mt-1">Enter the 6-digit code sent to your Aadhaar-linked mobile</p>
+                  </div>
+                  <div className="flex justify-center gap-2">
+                    {aadhaarOtp.map((d, i) => (
+                      <input key={i} ref={(el) => (aadhaarOtpRefs.current[i] = el)} value={d} onChange={(e) => onAadhaarOtpChange(i, e.target.value)} onKeyDown={(e) => onAadhaarOtpKeyDown(i, e)} maxLength={1} inputMode="numeric" className="w-11 h-12 text-center text-lg font-semibold rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none" />
+                    ))}
+                  </div>
+                  <button onClick={verifyAadhaarOtpHandler} disabled={verifyingAadhaarOtp} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                    {verifyingAadhaarOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {verifyingAadhaarOtp ? "Verifying..." : "Verify & Activate Account"}
+                  </button>
+                  <button onClick={resendAadhaarOtp} disabled={sendingAadhaarOtp || aadhaarResendTimer > 0} className="text-sm text-red-600 font-medium disabled:text-gray-400">
+                    {aadhaarResendTimer > 0 ? `Resend OTP in ${aadhaarResendTimer}s` : sendingAadhaarOtp ? "Resending..." : "Resend OTP"}
+                  </button>
+                </>
               )}
             </div>
-
-            <div className="mt-5 space-y-2.5 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Mobile</span>
-                {userData?.isPhoneVerified ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5" /> KYC Fee</span>
-                {userData?.isKycFeeDone ? (
-                  <span className="text-emerald-600 font-semibold text-xs">Paid ₹{userData.howMuchItsPaid}</span>
-                ) : (
-                  <span className="text-amber-500 font-semibold text-xs">₹{kycFeeLoading ? "…" : kycFee} due</span>
-                )}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5" /> Aadhaar</span>
-                {userData?.kycStatus === "kyc-success" ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 flex items-center gap-1.5"><Award className="w-3.5 h-3.5" /> Verified Mechanic</span>
-                {userData?.isVerifiedMechanic ? <BadgeCheck className="w-4 h-4 text-emerald-500" /> : <Clock className="w-4 h-4 text-gray-300" />}
-              </div>
-            </div>
-
-            {userData?.aadharData?.verifiedData?.full_name && (
-              <div className="mt-5 pt-4 border-t space-y-1 text-xs text-gray-500">
-                <p className="font-semibold text-gray-700 mb-1">Aadhaar Record</p>
-                <p>{userData.aadharData.verifiedData.full_name}</p>
-                <p>{userData.aadharData.verifiedData.address?.dist}, {userData.aadharData.verifiedData.address?.state}</p>
-              </div>
-            )}
-
-            <div className="mt-5 pt-4 border-t">
-              <p className="text-xs text-gray-400">
-                Only basic details needed. Photos, services and timings are filled by our support team on call after verification. Progress saved — safe to refresh.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── RIGHT: form ── */}
-        <div>
-          <div className="bg-white rounded-2xl shadow-sm border p-6">
-            {step === 0 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold text-gray-900 mb-1">Your Details</h2>
-                <p className="text-sm text-gray-400 mb-4">Takes less than a minute</p>
-
-                <Field label="Full Name" icon={<User className="w-4 h-4" />} error={errors.name}>
-                  <input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Rohit Sharma" className={inputCls(errors.name)} />
-                </Field>
-
-                <Field label="Phone Number" icon={<Phone className="w-4 h-4" />} error={errors.phone}>
-                  <input value={form.phone} onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="9876543210" inputMode="numeric" className={inputCls(errors.phone)} />
-                </Field>
-
-                <Field label="Garage / Shop Name" icon={<Building2 className="w-4 h-4" />} error={errors.garageName}>
-                  <input value={form.garageName} onChange={(e) => update("garageName", e.target.value)} placeholder="Auto Care Garage" className={inputCls(errors.garageName)} />
-                </Field>
-
-                <Field label="Address Line" icon={<MapPin className="w-4 h-4" />} error={errors.addressLine1}>
-                  <input value={form.addressLine1} onChange={(e) => update("addressLine1", e.target.value)} placeholder="Plot No. 45, Industrial Area, Sahibabad" className={inputCls(errors.addressLine1)} />
-                </Field>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Field label="State" icon={<Compass className="w-4 h-4" />} error={errors.state}>
-                    <select value={form.state} onChange={(e) => { update("state", e.target.value); update("city", ""); }} className={inputCls(errors.state)}>
-                      <option value="">Select State</option>
-                      {STATE_LIST.map((s: string) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </Field>
-
-                  <Field label="City" icon={<MapPin className="w-4 h-4" />} error={errors.city}>
-                    <select value={form.city} onChange={(e) => update("city", e.target.value)} disabled={!form.state} className={inputCls(errors.city) + (!form.state ? " opacity-50 cursor-not-allowed" : "")}>
-                      <option value="">Select City</option>
-                      {cities.map((c: string) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </Field>
-                </div>
-
-                <Field label="Pincode" icon={<Map className="w-4 h-4" />} error={errors.pincode}>
-                  <input value={form.pincode} onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="201010" inputMode="numeric" className={inputCls(errors.pincode)} />
-                </Field>
-
-                <label className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
-                  <input type="checkbox" checked={form.agreedToTerms} onChange={(e) => update("agreedToTerms", e.target.checked)} className="mt-0.5" />
-                  <span>I confirm the details are accurate and agree to TaxiSafar's Partner Terms &amp; Privacy Policy.</span>
-                </label>
-                {errors.agreedToTerms && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.agreedToTerms}</p>}
-
-                <button onClick={submitRegistration} disabled={submitting} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} {submitting ? "Submitting..." : "Submit & Get OTP"}
-                </button>
-              </div>
-            )}
-
-            {step === 1 && (
-              <div className="space-y-6 text-center">
-                <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto"><Phone className="w-7 h-7 text-red-600" /></div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">Verify your phone</h2>
-                  <p className="text-sm text-gray-400 mt-1">Enter the 6-digit code sent to <span className="font-medium text-gray-600">{form.phone}</span></p>
-                </div>
-                <div className="flex justify-center gap-2">
-                  {otp.map((d, i) => (
-                    <input key={i} ref={(el) => (otpRefs.current[i] = el)} value={d} onChange={(e) => onOtpChange(i, e.target.value)} onKeyDown={(e) => onOtpKeyDown(i, e)} maxLength={1} inputMode="numeric" className="w-11 h-12 text-center text-lg font-semibold rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none" />
-                  ))}
-                </div>
-                <button onClick={verifyOtp} disabled={verifying} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                  {verifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {verifying ? "Verifying..." : "Verify & Continue"}
-                </button>
-                <button onClick={resendOtp} disabled={resending || resendTimer > 0} className="text-sm text-red-600 font-medium disabled:text-gray-400">
-                  {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : resending ? "Resending..." : "Resend OTP"}
-                </button>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-6 text-center">
-                <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto"><IdCard className="w-7 h-7 text-red-600" /></div>
-
-                {kycStage === "aadhaar-input" && (
-                  <>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">Enter Aadhaar Number</h2>
-                      <p className="text-sm text-gray-400 mt-1">Your photo, name and address are pulled from Aadhaar automatically</p>
-                    </div>
-                    <input value={aadhaarNumber} onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="XXXX XXXX XXXX" inputMode="numeric" className={inputCls() + " text-center tracking-widest"} />
-                    <button onClick={confirmAadhaarNumber} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2">
-                      <IdCard className="w-4 h-4" /> Continue
-                    </button>
-                  </>
-                )}
-
-                {kycStage === "payment" && (
-                  <>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">Pay KYC Fee</h2>
-                      <p className="text-sm text-gray-400 mt-1">One-time fee. OTP is sent to your Aadhaar-linked mobile right after payment.</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">Aadhaar</span>
-                        <span className="text-sm font-medium text-gray-900 tracking-wider">XXXX XXXX {aadhaarNumber.slice(-4)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-600">KYC Verification Fee</span>
-                        <span className="text-lg font-bold text-gray-900">{kycFeeLoading ? <Loader2 className="w-4 h-4 animate-spin inline" /> : `₹${kycFee}`}</span>
-                      </div>
-                    </div>
-                    <button onClick={startKycPayment} disabled={payingKyc || kycFeeLoading} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                      {payingKyc ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                      {payingKyc ? "Processing..." : `Pay ₹${kycFee} & Send OTP`}
-                    </button>
-                    <button onClick={() => setKycStage("aadhaar-input")} disabled={payingKyc} className="text-sm text-gray-500 font-medium disabled:text-gray-300">Change Aadhaar number</button>
-                  </>
-                )}
-
-                {kycStage === "aadhaar-otp" && (
-                  <>
-                    <div>
-                      <h2 className="text-lg font-bold text-gray-900">Verify Aadhaar OTP</h2>
-                      <p className="text-sm text-gray-400 mt-1">Enter the 6-digit code sent to your Aadhaar-linked mobile</p>
-                    </div>
-                    <div className="flex justify-center gap-2">
-                      {aadhaarOtp.map((d, i) => (
-                        <input key={i} ref={(el) => (aadhaarOtpRefs.current[i] = el)} value={d} onChange={(e) => onAadhaarOtpChange(i, e.target.value)} onKeyDown={(e) => onAadhaarOtpKeyDown(i, e)} maxLength={1} inputMode="numeric" className="w-11 h-12 text-center text-lg font-semibold rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none" />
-                      ))}
-                    </div>
-                    <button onClick={verifyAadhaarOtpHandler} disabled={verifyingAadhaarOtp} className="w-full h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                      {verifyingAadhaarOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {verifyingAadhaarOtp ? "Verifying..." : "Verify & Activate Account"}
-                    </button>
-                    <button onClick={resendAadhaarOtp} disabled={sendingAadhaarOtp || aadhaarResendTimer > 0} className="text-sm text-red-600 font-medium disabled:text-gray-400">
-                      {aadhaarResendTimer > 0 ? `Resend OTP in ${aadhaarResendTimer}s` : sendingAadhaarOtp ? "Resending..." : "Resend OTP"}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
