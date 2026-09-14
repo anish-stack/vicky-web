@@ -5,13 +5,15 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   MapPin, Phone, User, Building2, Compass, CheckCircle2, Map, Upload, X,
-  CreditCard, AlertCircle, Loader2, IdCard, Check, FileImage,
+  CreditCard, AlertCircle, Loader2, IdCard, Check, FileImage, Users, Search,
+  BadgeCheck, ShieldCheck, Calendar,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import INDIAN_STATES_CITIES, { STATE_LIST } from "@/data/indianStatesCities";
 
 const API_BASE = "https://partners.taxisafar.com/api/auth/mechanic";
 const FEE_API = "https://partners.taxisafar.com/api/v1/fees/key/kyc_fee_for_car_mechanic";
+const DRIVER_SEARCH_API = "https://authapi.taxisafar.com/api/v1/search-drivers";
 const DRAFT_KEY = "mechanic_register_draft";
 const MECH_ID_KEY = "mechanic_register_id";
 
@@ -21,6 +23,16 @@ const PRIVACY_URL = "https://taxisafar.com/privacy-policy";
 
 const MAX_GALLERY = 6;
 
+type Driver = {
+  _id: string;
+  driver_name?: string;
+  driver_contact_number?: string;
+  address?: string;
+  profile_photo?: { url?: string };
+  aadhar_verified?: boolean;
+  kyc_status?: string;
+};
+
 type FormState = {
   name: string;
   phone: string;
@@ -29,15 +41,19 @@ type FormState = {
   city: string;
   state: string;
   pincode: string;
+  referralPhone: string;
   agreedToTerms: boolean;
 };
 
 const initialForm: FormState = {
   name: "", phone: "", garageName: "", addressLine1: "",
-  city: "", state: "", pincode: "", agreedToTerms: false,
+  city: "", state: "", pincode: "", referralPhone: "", agreedToTerms: false,
 };
 
 const STEPS = ["Your Details", "Verify OTP", "Aadhaar KYC"] as const;
+
+const cleanText = (v?: string) => (v || "").replace(/^"+|"+$/g, "").trim();
+const driverCode = (id?: string) => (id ? `TS${id.slice(-5).toUpperCase()}` : "—");
 
 export default function CarMechanicRegister() {
   const router = useRouter();
@@ -52,12 +68,17 @@ export default function CarMechanicRegister() {
   const [submitting, setSubmitting] = useState(false);
   const [registered, setRegistered] = useState(false);
 
+  // ── referral driver ──
+  const [referralOn, setReferralOn] = useState(false);
+  const [referralInput, setReferralInput] = useState("");
+  const [driverSearching, setDriverSearching] = useState(false);
+  const [driverResult, setDriverResult] = useState<Driver | null>(null);
+  const [driverError, setDriverError] = useState("");
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+
   // ── garage photos ──
-  const [coverImage, setCoverImage] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string>("");
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
-  const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [mechanicId, setMechanicId] = useState<string>("");
@@ -79,6 +100,10 @@ export default function CarMechanicRegister() {
 
   const [kycFee, setKycFee] = useState<number>(99);
   const [kycFeeLoading, setKycFeeLoading] = useState(true);
+
+  // ── final profile ──
+  const [userData, setUserData] = useState<any>(null);
+  const [userDataLoading, setUserDataLoading] = useState(false);
 
   // ── fee ──
   useEffect(() => {
@@ -107,7 +132,14 @@ export default function CarMechanicRegister() {
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(DRAFT_KEY);
-      if (raw) setForm((f) => ({ ...f, ...JSON.parse(raw) }));
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setForm((f) => ({ ...f, ...saved }));
+        if (saved?.referralPhone) {
+          setReferralOn(true);
+          setReferralInput(saved.referralPhone);
+        }
+      }
       const savedId = sessionStorage.getItem(MECH_ID_KEY) || searchParams.get("mid") || "";
       if (savedId) setMechanicId(savedId);
     } catch (_) {}
@@ -139,6 +171,70 @@ export default function CarMechanicRegister() {
     return () => clearInterval(t);
   }, [aadhaarResendTimer]);
 
+  // ── auto search driver at exactly 10 digits ──
+  useEffect(() => {
+    if (!referralOn) return;
+    if (referralInput.length !== 10) {
+      setDriverResult(null);
+      setDriverError("");
+      return;
+    }
+    if (selectedDriver?.driver_contact_number === referralInput) return;
+    const t = setTimeout(() => { searchDriver(referralInput); }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referralInput, referralOn]);
+
+  const searchDriver = async (phoneNumber: string) => {
+    if (!/^[6-9]\d{9}$/.test(phoneNumber)) {
+      setDriverError("Enter valid 10-digit driver number");
+      setDriverResult(null);
+      return;
+    }
+    setDriverSearching(true);
+    setDriverError("");
+    setDriverResult(null);
+    try {
+      const res = await axios.get(DRIVER_SEARCH_API, { params: { phoneNumber } });
+      const d: Driver | undefined = res.data?.data?.[0];
+      if (!d) {
+        setDriverError("No KYC-verified driver found with this number");
+        return;
+      }
+      setDriverResult(d);
+    } catch (err: any) {
+      console.error("driver search err:", err);
+      setDriverError(err?.response?.data?.message || "Couldn't search right now. Try again.");
+    } finally {
+      setDriverSearching(false);
+    }
+  };
+
+  const addReferralDriver = () => {
+    if (!driverResult) return;
+    setSelectedDriver(driverResult);
+    update("referralPhone", driverResult.driver_contact_number || referralInput);
+    setDriverResult(null);
+  };
+
+  const removeReferralDriver = () => {
+    setSelectedDriver(null);
+    setReferralInput("");
+    update("referralPhone", "");
+  };
+
+  const toggleReferral = () => {
+    const next = !referralOn;
+    setReferralOn(next);
+    if (!next) {
+      setSelectedDriver(null);
+      setDriverResult(null);
+      setDriverError("");
+      setReferralInput("");
+      update("referralPhone", "");
+    }
+  };
+
   const setStep = (s: number) => {
     setStepState(s);
     const params = new URLSearchParams(searchParams.toString());
@@ -154,10 +250,6 @@ export default function CarMechanicRegister() {
   const cities = form.state ? INDIAN_STATES_CITIES[form.state] || [] : [];
 
   // ── photo pickers ──
-  const onPickCover = (f: File | null) => {
-    setCoverImage(f);
-    setCoverPreview(f ? URL.createObjectURL(f) : "");
-  };
   const onPickGallery = (files: FileList | null) => {
     if (!files) return;
     const list = Array.from(files).slice(0, MAX_GALLERY - galleryFiles.length);
@@ -198,7 +290,11 @@ export default function CarMechanicRegister() {
         pincode: form.pincode,
         location: { type: "Point", coordinates: [0, 0] },
       }));
-      if (coverImage) fd.append("coverImage", coverImage);
+      if (form.referralPhone) {
+        fd.append("referralPhone", form.referralPhone);
+        if (selectedDriver?._id) fd.append("referralDriverId", selectedDriver._id);
+        if (selectedDriver?.driver_name) fd.append("referralDriverName", selectedDriver.driver_name);
+      }
       galleryFiles.forEach((f) => fd.append("galleryImages", f));
 
       const res = await axios.post(`${API_BASE}/`, fd, { headers: { "Content-Type": "multipart/form-data" } });
@@ -259,7 +355,7 @@ export default function CarMechanicRegister() {
     }
   };
 
-  // ── kyc: aadhaar number first ──
+  // ── kyc ──
   const confirmAadhaarNumber = () => {
     if (!/^\d{12}$/.test(aadhaarNumber)) {
       Swal.fire({ icon: "warning", title: "Enter valid 12-digit Aadhaar number" });
@@ -268,7 +364,6 @@ export default function CarMechanicRegister() {
     setKycStage("payment");
   };
 
-  // ── kyc: payment ──
   const startKycPayment = async () => {
     setPayingKyc(true);
     try {
@@ -311,7 +406,6 @@ export default function CarMechanicRegister() {
     }
   };
 
-  // ── kyc: aadhaar otp ──
   const sendAadhaarOtpHandler = async () => {
     if (!/^\d{12}$/.test(aadhaarNumber)) {
       Swal.fire({ icon: "warning", title: "Enter valid 12-digit Aadhaar number" });
@@ -343,6 +437,19 @@ export default function CarMechanicRegister() {
     if (e.key === "Backspace" && !aadhaarOtp[idx] && idx > 0) aadhaarOtpRefs.current[idx - 1]?.focus();
   };
 
+  const fetchUserData = async (id: string) => {
+    if (!id) return;
+    setUserDataLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE}/${id}`);
+      setUserData(res.data?.data || null);
+    } catch (err) {
+      console.error("user fetch err:", err);
+    } finally {
+      setUserDataLoading(false);
+    }
+  };
+
   const verifyAadhaarOtpHandler = async () => {
     const code = aadhaarOtp.join("");
     if (code.length !== 6) {
@@ -353,10 +460,11 @@ export default function CarMechanicRegister() {
     try {
       await axios.post(`${API_BASE}/${mechanicId}/kyc/aadhaar/verify-otp`, { otp: code });
       setKycStage("done");
+      await fetchUserData(mechanicId);
       setRegistered(true);
       sessionStorage.removeItem(DRAFT_KEY);
       sessionStorage.removeItem(MECH_ID_KEY);
-      Swal.fire({ icon: "success", title: "KYC Verified!", text: "Your garage profile is live." });
+      Swal.fire({ icon: "success", title: "KYC Verified!", text: "Your workshop profile is live.", timer: 1800, showConfirmButton: false });
     } catch (err: any) {
       console.error("aadhaar verify err:", err);
       Swal.fire({ icon: "error", title: "Aadhaar verification failed", text: err?.response?.data?.message || "Invalid or expired OTP" });
@@ -378,21 +486,82 @@ export default function CarMechanicRegister() {
     </div>
   );
 
+  // ── success + profile ──
   if (registered) {
+    const ad = userData?.aadharData?.aadharData || userData?.aadharData || {};
+    const vd = ad?.verifiedData || {};
+    const adr = userData?.address || {};
+    const aadhaarMasked = ad?.aadhaarNumber ? `XXXX XXXX ${String(ad.aadhaarNumber).slice(-4)}` : "";
+
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 pb-10">
         {Header}
-        <div className="flex items-center justify-center px-4 py-16">
-          <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 className="w-9 h-9 text-green-600" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Registration Complete</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Your garage <span className="font-medium">{form.garageName}</span> is now listed. Our team will call you to complete the remaining profile details.
-            </p>
-            <button onClick={() => (window.location.href = pathname)} className="w-full h-11 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition">Done</button>
+            <h2 className="text-xl font-bold text-gray-900">Registration Complete</h2>
+            <p className="text-sm text-gray-500 mt-1">Your workshop is listed. Our team will call you to finish the remaining profile details.</p>
           </div>
+
+          {userDataLoading ? (
+            <div className="bg-white rounded-2xl border shadow-sm p-10 flex justify-center">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            </div>
+          ) : userData ? (
+            <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+              <div className="p-5 flex items-center gap-4 border-b">
+                <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center shrink-0 border-2 border-red-50">
+                  {userData.profileImage
+                    ? <img src={userData.profileImage} alt={userData.name} className="w-full h-full object-cover" />
+                    : <User className="w-7 h-7 text-gray-400" />}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-bold text-gray-900 truncate">{userData.name}</h3>
+                    {userData.isVerifiedMechanic && <BadgeCheck className="w-4 h-4 text-emerald-500 shrink-0" />}
+                  </div>
+                  <p className="text-sm text-gray-500 truncate">{userData.garageName}</p>
+                  <p className="text-xs text-gray-400">+91 {userData.phone}</p>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-3 text-sm">
+                <Row icon={<ShieldCheck className="w-4 h-4" />} label="KYC Status"
+                  value={<span className={`font-semibold ${userData.kycStatus === "kyc-success" ? "text-emerald-600" : "text-amber-500"}`}>
+                    {userData.kycStatus === "kyc-success" ? "Verified" : userData.kycStatus}
+                  </span>} />
+                <Row icon={<CreditCard className="w-4 h-4" />} label="KYC Fee"
+                  value={<span className="font-semibold text-gray-900">₹{userData.howMuchItsPaid || 0} paid</span>} />
+                {aadhaarMasked && <Row icon={<IdCard className="w-4 h-4" />} label="Aadhaar" value={<span className="tracking-wider text-gray-900">{aadhaarMasked}</span>} />}
+                {vd.full_name && <Row icon={<User className="w-4 h-4" />} label="Aadhaar Name" value={<span className="text-gray-900">{vd.full_name}</span>} />}
+                {vd.dob && <Row icon={<Calendar className="w-4 h-4" />} label="DOB" value={<span className="text-gray-900">{vd.dob}</span>} />}
+                {form.referralPhone && <Row icon={<Users className="w-4 h-4" />} label="Referred By" value={<span className="text-gray-900">+91 {form.referralPhone}</span>} />}
+              </div>
+
+              <div className="px-5 pb-5">
+                <p className="text-xs font-semibold text-gray-700 mb-1">Workshop Address</p>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {adr.line1}{adr.line1 ? ", " : ""}{adr.city}, {adr.state} — {adr.pincode}
+                </p>
+                {vd.address && (
+                  <>
+                    <p className="text-xs font-semibold text-gray-700 mt-3 mb-1">Aadhaar Address</p>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {[vd.address.house, vd.address.loc, vd.address.vtc, vd.address.dist, vd.address.state, vd.address.country].filter(Boolean).join(", ")}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl border shadow-sm p-6 text-center text-sm text-gray-500">
+              Profile saved. Details will appear in your partner dashboard.
+            </div>
+          )}
+
+          <button onClick={() => (window.location.href = pathname)} className="w-full h-11 mt-5 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition">Done</button>
         </div>
       </div>
     );
@@ -423,6 +592,7 @@ export default function CarMechanicRegister() {
               <h2 className="text-lg font-bold text-gray-900 mb-1">Your Details</h2>
               <p className="text-sm text-gray-400 mb-4">Takes less than a minute</p>
 
+       
               <Field label="Full Name" icon={<User className="w-4 h-4" />} error={errors.name}>
                 <input value={form.name} onChange={(e) => update("name", e.target.value)} placeholder="Rohit Sharma" className={inputCls(errors.name)} />
               </Field>
@@ -435,7 +605,6 @@ export default function CarMechanicRegister() {
                 <input value={form.garageName} onChange={(e) => update("garageName", e.target.value)} placeholder="Auto Care Garage" className={inputCls(errors.garageName)} />
               </Field>
 
-            
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="State" icon={<Compass className="w-4 h-4" />} error={errors.state}>
                   <select value={form.state} onChange={(e) => { update("state", e.target.value); update("city", ""); }} className={inputCls(errors.state)}>
@@ -451,6 +620,7 @@ export default function CarMechanicRegister() {
                   </select>
                 </Field>
               </div>
+
               <Field label="Address Line" icon={<MapPin className="w-4 h-4" />} error={errors.addressLine1}>
                 <input value={form.addressLine1} onChange={(e) => update("addressLine1", e.target.value)} placeholder="Plot No. 45, Industrial Area, Sahibabad" className={inputCls(errors.addressLine1)} />
               </Field>
@@ -459,27 +629,17 @@ export default function CarMechanicRegister() {
                 <input value={form.pincode} onChange={(e) => update("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="201010" inputMode="numeric" className={inputCls(errors.pincode)} />
               </Field>
 
-              {/* ── garage photos ── */}
+              {/* ── workshop photos ── */}
               <div className="pt-2">
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><FileImage className="w-4 h-4" /> Workshop Photos</label>
                   <span className="text-[11px] text-gray-400">Optional</span>
                 </div>
 
-                {/* <div onClick={() => coverInputRef.current?.click()} className="h-32 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden cursor-pointer bg-gray-50">
-                  {coverPreview ? <img src={coverPreview} className="w-full h-full object-cover" alt="cover" /> : (
-                    <div className="text-center text-gray-400">
-                      <Upload className="w-5 h-5 mx-auto mb-1" />
-                      <p className="text-xs">Upload garage front / cover photo</p>
-                    </div>
-                  )}
-                </div>
-                <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => onPickCover(e.target.files?.[0] || null)} /> */}
-
-                <div className="grid grid-cols-4 gap-2 mt-2">
+                <div className="grid grid-cols-4 gap-2">
                   {galleryPreviews.map((src, i) => (
                     <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
-                      <img src={src} className="w-full h-full object-cover" alt={`garage-${i}`} />
+                      <img src={src} className="w-full h-full object-cover" alt={`workshop-${i}`} />
                       <button type="button" onClick={() => removeGalleryImg(i)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center">
                         <X className="w-3 h-3" />
                       </button>
@@ -493,6 +653,99 @@ export default function CarMechanicRegister() {
                 </div>
                 <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onPickGallery(e.target.files)} />
                 <p className="text-[11px] text-gray-400 mt-1.5">Up to {MAX_GALLERY} photos. Your profile photo is taken from Aadhaar automatically.</p>
+              </div>
+                         {/* ── referral driver ── */}
+              <div className="rounded-2xl border border-gray-200 p-3.5 bg-gray-50/60">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-white border flex items-center justify-center shrink-0">
+                      <Users className="w-4.5 h-4.5 text-gray-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-red-600 leading-tight">Referral Driver Number</p>
+                      <p className="text-[11px] text-gray-400">Optional — if a TaxiSafar driver referred you</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleReferral}
+                    className={`relative w-14 h-7 rounded-full shrink-0 transition ${referralOn ? "bg-red-600" : "bg-gray-300"}`}
+                  >
+                    <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${referralOn ? "left-7" : "left-0.5"}`} />
+                    <span className={`absolute text-[10px] font-bold text-white top-1.5 ${referralOn ? "left-2" : "right-1.5 text-gray-600"}`}>
+                      {referralOn ? "ON" : "OFF"}
+                    </span>
+                  </button>
+                </div>
+
+                {referralOn && (
+                  <div className="mt-3">
+                    {!selectedDriver && (
+                      <div className="flex gap-2">
+                        <span className="h-11 px-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-500 flex items-center shrink-0">+91</span>
+                        <input
+                          value={referralInput}
+                          onChange={(e) => { setReferralInput(e.target.value.replace(/\D/g, "").slice(0, 10)); }}
+                          placeholder="Enter driver number"
+                          inputMode="numeric"
+                          className="flex-1 h-11 px-3.5 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => searchDriver(referralInput)}
+                          disabled={driverSearching || referralInput.length !== 10}
+                          className="h-11 px-4 rounded-xl bg-red-600 text-white text-sm font-semibold flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                        >
+                          {driverSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Search
+                        </button>
+                      </div>
+                    )}
+
+                    {driverError && !selectedDriver && (
+                      <p className="text-xs text-red-500 mt-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {driverError}</p>
+                    )}
+
+                    {driverResult && !selectedDriver && (
+                      <div className="mt-3 rounded-xl border border-gray-200 bg-white overflow-hidden">
+                        <div className="p-3 flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+                            {driverResult.profile_photo?.url
+                              ? <img src={driverResult.profile_photo.url} alt={driverResult.driver_name} className="w-full h-full object-cover" />
+                              : <User className="w-5 h-5 text-gray-400" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-gray-900 truncate">{driverResult.driver_name || "Driver"}</p>
+                            <p className="text-xs text-gray-500">Driver ID: {driverCode(driverResult._id)}</p>
+                            {cleanText(driverResult.address) && (
+                              <p className="text-xs text-gray-400 flex items-center gap-1 truncate"><MapPin className="w-3 h-3 shrink-0" /> {cleanText(driverResult.address)}</p>
+                            )}
+                          </div>
+                          <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                            <Check className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        </div>
+                        <button type="button" onClick={addReferralDriver} className="w-full h-10 bg-gray-900 text-white text-sm font-semibold">Add</button>
+                      </div>
+                    )}
+
+                    {selectedDriver && (
+                      <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-full bg-white overflow-hidden shrink-0 flex items-center justify-center">
+                          {selectedDriver.profile_photo?.url
+                            ? <img src={selectedDriver.profile_photo.url} alt={selectedDriver.driver_name} className="w-full h-full object-cover" />
+                            : <User className="w-5 h-5 text-gray-400" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-900 truncate">{selectedDriver.driver_name || "Driver"}</p>
+                          <p className="text-xs text-gray-500">+91 {selectedDriver.driver_contact_number} · {driverCode(selectedDriver._id)}</p>
+                        </div>
+                        <button type="button" onClick={removeReferralDriver} className="w-7 h-7 rounded-full bg-white border flex items-center justify-center shrink-0">
+                          <X className="w-3.5 h-3.5 text-gray-500" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <label className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 rounded-xl p-3">
@@ -597,6 +850,15 @@ export default function CarMechanicRegister() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Row({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-gray-500 flex items-center gap-1.5">{icon} {label}</span>
+      <span className="text-right">{value}</span>
     </div>
   );
 }
