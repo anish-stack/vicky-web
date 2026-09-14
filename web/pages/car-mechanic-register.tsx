@@ -173,7 +173,7 @@ export default function CarMechanicRegister() {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = "Name required";
     if (!/^[6-9]\d{9}$/.test(form.phone)) e.phone = "Enter valid 10-digit phone";
-    if (!form.garageName.trim()) e.garageName = "Garage name required";
+    if (!form.garageName.trim()) e.garageName = "Workshop name required";
     if (!form.addressLine1.trim()) e.addressLine1 = "Address required";
     if (!form.state) e.state = "Select state";
     if (!form.city) e.city = "Select city";
@@ -462,7 +462,7 @@ export default function CarMechanicRegister() {
               {/* ── garage photos ── */}
               <div className="pt-2">
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><FileImage className="w-4 h-4" /> Garage Photos</label>
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5"><FileImage className="w-4 h-4" /> Workshop Photos</label>
                   <span className="text-[11px] text-gray-400">Optional</span>
                 </div>
 
