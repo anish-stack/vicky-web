@@ -9,6 +9,7 @@ const sendDltMessage = require("../utils/DltMessage");
 const base_url = "https://partners.taxisafar.com";
 const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
 const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
+const { sendPartnerRegister } = require("../utils/sendWhatsapp");
 
 const fileUrl = (req, filename) => {
   if (!filename) return null;
@@ -260,7 +261,7 @@ exports.verifyMechanicAadhaarOtp = async (req, res) => {
     const data = mechanic.toObject();
     delete data.otp;
     delete data.otpExpiry;
-
+    await sendPartnerRegister(mechanic.phone, mechanic._id)
     return res.status(200).json({ success: true, data, message: "Aadhaar verified. Account activated." });
   } catch (err) {
     console.error("verifyMechanicAadhaarOtp err:", err.response?.data || err.message);

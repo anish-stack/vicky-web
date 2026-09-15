@@ -268,6 +268,7 @@ exports.verifyRecoveryPersonAadhaarOtp = async (req, res) => {
     RecoveryPerson.markModified("aadharData");
 
     await RecoveryPerson.save();
+    await sendPartnerRegister(RecoveryPerson.phone, RecoveryPerson._id)
 
     const data = RecoveryPerson.toObject();
     delete data.otp;

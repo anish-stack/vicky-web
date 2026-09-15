@@ -99,6 +99,10 @@ function getTemplateBody(templateName, data = {}) {
 
             };
 
+        case "partner_register":
+            return {};
+
+
 
 
 
@@ -312,7 +316,7 @@ exports.sendRtoRequest = (customerNumber, name, guestName, guestPhone, source) =
     });
 
 
-    exports.sendVtldOrderPlaced = (customerNumber, name, vehcileNumber, plan, pickupHub, amount, orderId) =>
+exports.sendVtldOrderPlaced = (customerNumber, name, vehcileNumber, plan, pickupHub, amount, orderId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "vtld_order_placed",
         customerNumber,
@@ -322,4 +326,11 @@ exports.sendRtoRequest = (customerNumber, name, guestName, guestPhone, source) =
         pickupHub,
         amount,
         id: orderId
+    });
+
+exports.sendPartnerRegister = (customerNumber, userId) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "partner_register",
+        customerNumber,
+        id: userId
     });
