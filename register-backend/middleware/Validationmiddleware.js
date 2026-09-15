@@ -19,11 +19,7 @@ exports.registerRules = [
         .notEmpty().withMessage("Name is required")
         .isLength({ min: 2, max: 80 }).withMessage("Name must be 2–80 characters"),
 
-    body("email")
-        .trim()
-        .notEmpty().withMessage("Email is required")
-        .isEmail().withMessage("Invalid email address")
-        .normalizeEmail(),
+   
 
     body("phone")
         .trim()

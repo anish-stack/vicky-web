@@ -17,7 +17,7 @@ const DRIVER_SEARCH_API = "https://authapi.taxisafar.com/api/v1/search-drivers";
 const DRAFT_KEY = "mechanic_register_draft";
 const MECH_ID_KEY = "mechanic_register_id";
 
-const LOGO_SRC = "/taxisafar-logo.jpg";
+const LOGO_SRC = "/logo-partner.png";
 const TERMS_URL = "https://taxisafar.com/terms-of-use";
 const PRIVACY_URL = "https://taxisafar.com/privacy-policy";
 
@@ -501,7 +501,7 @@ export default function CarMechanicRegister() {
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 className="w-9 h-9 text-green-600" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900">Registration Complete</h2>
+            <h2 className="text-xl font-bold text-gray-900">Registration Submited Profile Under Review</h2>
             <p className="text-sm text-gray-500 mt-1">Your workshop is listed. Our team will call you to finish the remaining profile details.</p>
           </div>
 
@@ -586,7 +586,7 @@ export default function CarMechanicRegister() {
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border p-5 sm:p-6">
+        <div className="bg-white rounded-2xl shadow-sm border p-3 sm:p-1">
           {step === 0 && (
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-gray-900 mb-1">Your Details</h2>

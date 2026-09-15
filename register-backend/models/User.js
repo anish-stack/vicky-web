@@ -15,15 +15,14 @@ const userSchema = new mongoose.Schema(
     {
         name: {
             type: String,
-            required: true,
+            required: false,
             trim: true
         },
 
         email: {
             type: String,
-            required: true,
-            unique: true,
-            lowercase: true
+            required: false,
+
         },
 
         phone: {
@@ -60,6 +59,11 @@ const userSchema = new mongoose.Schema(
         state: {
             type: String
         },
+
+
+        referralPhone: { type: String, trim: true, default: null },
+        referralDriverId: { type: String, default: null },
+        referralDriverName: { type: String, trim: true, default: null },
 
         aadharNumber: { type: String, select: false },
         aadharVerified: { type: Boolean, default: false },

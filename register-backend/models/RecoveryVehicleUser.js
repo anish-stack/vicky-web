@@ -23,6 +23,12 @@ const recoveryVehicleSchema = new mongoose.Schema({
   successRatePercentage: { type: Number, default: 99 }, // e.g., 99%
   availabilitySummary: { type: String, default: "24x7 (All Days)" },
 
+
+  referralPhone: { type: String, trim: true, default: null },
+  referralDriverId: { type: String, default: null },
+  referralDriverName: { type: String, trim: true, default: null },
+
+
   // Rating & Reviews
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },

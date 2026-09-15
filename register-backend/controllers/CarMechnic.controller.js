@@ -248,7 +248,9 @@ exports.verifyMechanicAadhaarOtp = async (req, res) => {
       mechanic.aadharData.verifiedData.profile_image = photoUrl;
       if (!mechanic.profileImage) mechanic.profileImage = photoUrl;   // auto profile pic
     }
-    if (!mechanic.name && result.data.full_name) mechanic.name = result.data.full_name;
+    if (result.data.full_name) {
+      mechanic.name = result.data.full_name;
+    }
     mechanic.aadharData = { ...mechanic.aadharData, verifiedData: result.data };
     mechanic.kycStatus = "kyc-success";
     mechanic.isVerifiedMechanic = true;

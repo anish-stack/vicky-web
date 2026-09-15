@@ -261,18 +261,32 @@ exports.createVltdOrder = async (req, res) => {
             state,
             pickupLocation,
             vehicleNumber,
+            deliveryMethod,
+            courierAddress,
             userName,
             mobileNumber,
             rechargePlan,
             paymentSummary
         } = req.body;
 
-        if (!userId || !state || !pickupLocation || !vehicleNumber || !userName || !mobileNumber) {
+        if (!userId || !state || !vehicleNumber || !userName || !mobileNumber || !deliveryMethod) {
             return res.status(400).json({ success: false, message: "All required fields must be filled." });
         }
 
-        if (!isValidId(userId) || !isValidId(pickupLocation)) {
+        if (!["pickup", "courier"].includes(deliveryMethod)) {
+            return res.status(400).json({ success: false, message: "Invalid delivery method." });
+        }
+
+        if (deliveryMethod === "pickup" && !pickupLocation) {
+            return res.status(400).json({ success: false, message: "Pickup location is required." });
+        }
+
+        if (!isValidId(userId) || (deliveryMethod === "pickup" && !isValidId(pickupLocation))) {
             return res.status(400).json({ success: false, message: "Invalid User ID or Pickup Location ID format." });
+        }
+
+        if (deliveryMethod === "courier" && !courierAddress?.trim()) {
+            return res.status(400).json({ success: false, message: "Courier address is required." });
         }
 
         // Handle Payment Proof File Upload (Screenshot/PDF)
@@ -298,16 +312,20 @@ exports.createVltdOrder = async (req, res) => {
             try { parsedSummary = JSON.parse(paymentSummary); } catch (e) { parsedSummary = {}; }
         }
 
-        // Fetch pickup location details to get the hub name for WhatsApp
-        const pickupLocationDoc = await VltdPickupLocation.findById(pickupLocation);
-        const hubName = pickupLocationDoc ? pickupLocationDoc.hubName : "TaxiSafar Hub";
+        // Fetch pickup location details (only needed for pickup)
+        let hubName = "TaxiSafar Hub";
+        if (deliveryMethod === "pickup") {
+            const pickupLocationDoc = await VltdPickupLocation.findById(pickupLocation);
+            hubName = pickupLocationDoc ? pickupLocationDoc.hubName : hubName;
+        }
 
         const newOrder = await VltdOrder.create({
             userId,
             state,
-            pickupLocation,
+            ...(deliveryMethod === "pickup" && { pickupLocation }),
             vehicleNumber: vehicleNumber.toUpperCase(),
             userName,
+            ...(deliveryMethod === "courier" && { courierAddress: courierAddress.trim() }),
             mobileNumber,
             rechargePlan: parsedPlan || {},
             paymentSummary: parsedSummary || {},
@@ -318,13 +336,13 @@ exports.createVltdOrder = async (req, res) => {
         // Trigger WhatsApp Notification safely using parsed data
         try {
             await sendVtldOrderPlaced(
-                mobileNumber,                      // Recipient phone
-                userName,                          // {1} name
-                vehicleNumber.toUpperCase(),       // {2} vehcileNumber
-                parsedPlan.planTitle || "Recharge", // {3} plan
-                hubName,                           // {4} pickupHub
-                parsedSummary.totalAmount || 0,    // {5} amount
-                newOrder._id                       // Reference ID for MyOperator log
+                mobileNumber,
+                userName,
+                vehicleNumber.toUpperCase(),
+                parsedPlan.planTitle || "Recharge",
+                deliveryMethod === "pickup" ? hubName : "Courier Delivery",
+                parsedSummary.totalAmount || 0,
+                newOrder._id
             );
         } catch (waErr) {
             console.error("WhatsApp trigger failed:", waErr);

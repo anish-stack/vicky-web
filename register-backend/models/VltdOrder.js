@@ -2,13 +2,27 @@ const mongoose = require('mongoose');
 
 const vltdOrderSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  
+
   // Form Selections
   state: { type: String, required: true },
-  pickupLocation: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'VltdPickupLocation', 
-    required: true 
+  pickupLocation: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'VltdPickupLocation',
+    required: true
+  },
+
+  deliveryMethod: {
+    type: String,
+    enum: ["pickup", "courier"],
+    required: true,
+    default: "pickup",
+  },
+
+  courierAddress: {
+    type: String,
+    required: function () {
+      return this.deliveryMethod === "courier";
+    },
   },
   vehicleNumber: { type: String, required: true, uppercase: true }, // e.g., DL01AB1234
   userName: { type: String, required: true },
@@ -33,10 +47,10 @@ const vltdOrderSchema = new mongoose.Schema({
   paymentProofUrl: { type: String, required: true },
 
   // Order Fulfillment Status
-  orderStatus: { 
-    type: String, 
-    enum: ['pending_verification', 'verified', 'dispatched', 'completed', 'cancelled'], 
-    default: 'pending_verification' 
+  orderStatus: {
+    type: String,
+    enum: ['pending_verification', 'verified', 'dispatched', 'completed', 'cancelled'],
+    default: 'pending_verification'
   }
 }, { timestamps: true });
 

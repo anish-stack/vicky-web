@@ -23,6 +23,18 @@ const safeUnlink = (filePath) => {
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "recovery");
+
+const saveAadhaarPhoto = (base64, id) => {
+  if (!base64) return null;
+  try {
+    const clean = String(base64).replace(/^data:image\/\w+;base64,/, "");
+    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    const filename = `aadhaar_${id}_${Date.now()}.jpg`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(clean, "base64"));
+    return `${base_url}/uploads/mechanics/${filename}`;
+  } catch (e) { console.error("aadhaar photo save err:", e.message); return null; }
+};
 /* ======================================================
    USER SIDE — SELF REGISTER / PROFILE / DISCOVERY
 ====================================================== */
@@ -241,10 +253,20 @@ exports.verifyRecoveryPersonAadhaarOtp = async (req, res) => {
         message: result.message || "OTP verification failed or timed out.",
       });
     }
-
+    const photo = result.data.profile_image || result.data.photo || result.data.image || null;
+    const photoUrl = saveAadhaarPhoto(photo, RecoveryPerson._id);
+    if (photoUrl) {
+      RecoveryPerson.aadharData.verifiedData.profile_image = photoUrl;
+      if (!RecoveryPerson.profileImage) RecoveryPerson.profileImage = photoUrl;   // auto profile pic
+    }
+    if (result.data.full_name) {
+      RecoveryPerson.name = result.data.full_name;
+    }
     RecoveryPerson.aadharData = { ...RecoveryPerson.aadharData, verifiedData: result.data };
     RecoveryPerson.kycStatus = "kyc-success";
-    RecoveryPerson.isVerifiedMechanic = true;
+    RecoveryPerson.isVerifiedProvider = true;
+    RecoveryPerson.markModified("aadharData");
+
     await RecoveryPerson.save();
 
     const data = RecoveryPerson.toObject();
@@ -259,28 +281,13 @@ exports.verifyRecoveryPersonAadhaarOtp = async (req, res) => {
 };
 
 
-
-
-
+// controllers/CarMechnic.controller.js — inside registerRecoveryVehicle, replace destructure + create/update blocks
 
 exports.registerRecoveryVehicle = async (req, res) => {
   try {
     const {
-      name,
-      garageName,
-      phone,
-      email,
-      address,
-      experienceYears,
-      startingPrice,
-      serviceArea,
-      operatorName,
-      licenseNumber,
-      tagline,
-      about,
-      availabilitySummary,
-      servicesOffered,       // <--- Added
-      vehiclesRecoveredTypes // <--- Added
+      name, garageName, phone, email, address, experienceYears,
+      referralPhone, referralDriverId, referralDriverName,
     } = req.body;
 
     if (!phone || !name || !garageName) {
@@ -288,39 +295,14 @@ exports.registerRecoveryVehicle = async (req, res) => {
     }
 
     let provider = await RecoveryVehicleUser.findOne({ phone });
-
     const otp = generateOTP();
     const otpExpiry = getOTPExpiry();
 
-    // Parse Address if sent as string
     let parsedAddress = address;
     if (typeof address === "string") {
       try { parsedAddress = JSON.parse(address); } catch (e) { parsedAddress = undefined; }
     }
 
-    // Parse Services Offered if sent as string (JSON)
-    let parsedServices = servicesOffered;
-    if (typeof servicesOffered === "string") {
-      try { parsedServices = JSON.parse(servicesOffered); } catch (e) { parsedServices = undefined; }
-    }
-
-    // Parse Vehicles Recovered Types if sent as string (JSON)
-    let parsedVehicles = vehiclesRecoveredTypes;
-    if (typeof vehiclesRecoveredTypes === "string") {
-      try { parsedVehicles = JSON.parse(vehiclesRecoveredTypes); } catch (e) { parsedVehicles = undefined; }
-    }
-
-    // 1. Handle Profile Image Upload
-    let profileImageUrl = provider ? provider.profileImage : undefined;
-    if (req.files && req.files.profileImage && req.files.profileImage[0]) {
-      if (provider && provider.profileImage) {
-        const oldPath = path.join(__dirname, "..", "uploads", "mechanics", path.basename(provider.profileImage));
-        safeUnlink(oldPath);
-      }
-      profileImageUrl = fileUrl(req, req.files.profileImage[0].filename);
-    }
-
-    // 2. Handle Gallery Images Upload (Multiple files)
     let galleryImageUrls = provider ? provider.galleryImages : [];
     if (req.files && req.files.galleryImages && req.files.galleryImages.length > 0) {
       const newGalleryUrls = req.files.galleryImages.map(file => fileUrl(req, file.filename));
@@ -331,58 +313,32 @@ exports.registerRecoveryVehicle = async (req, res) => {
       provider.name = name || provider.name;
       provider.garageName = garageName || provider.garageName;
       provider.email = email || provider.email;
-      if (profileImageUrl) provider.profileImage = profileImageUrl;
       if (galleryImageUrls.length > 0) provider.galleryImages = galleryImageUrls;
       if (parsedAddress) provider.address = { ...provider.address?.toObject?.() || provider.address, ...parsedAddress };
-
       if (experienceYears !== undefined && experienceYears !== "") provider.experienceYears = Number(experienceYears);
-      if (startingPrice !== undefined && startingPrice !== "") provider.startingPrice = Number(startingPrice);
-      if (serviceArea !== undefined) provider.serviceArea = serviceArea;
-      if (operatorName !== undefined) provider.operatorName = operatorName;
-      if (licenseNumber !== undefined) provider.licenseNumber = licenseNumber;
-      if (tagline !== undefined) provider.tagline = tagline;
-      if (about !== undefined) provider.about = about;
-      if (availabilitySummary !== undefined) provider.availabilitySummary = availabilitySummary;
-
-      // Update arrays if provided
-      if (Array.isArray(parsedServices)) provider.servicesOffered = parsedServices;
-      if (Array.isArray(parsedVehicles)) provider.vehiclesRecoveredTypes = parsedVehicles;
+      if (referralPhone !== undefined) provider.referralPhone = referralPhone;
+      if (referralDriverId !== undefined) provider.referralDriverId = referralDriverId;
+      if (referralDriverName !== undefined) provider.referralDriverName = referralDriverName;
 
       provider.otp = otp;
       provider.otpExpiry = otpExpiry;
       provider.isMobileVerified = false;
-
       await provider.save();
     } else {
       provider = await RecoveryVehicleUser.create({
-        name,
-        garageName,
-        phone,
-        email,
-        profileImage: profileImageUrl,
+        name, garageName, phone, email,
         galleryImages: galleryImageUrls,
         address: parsedAddress || {},
         experienceYears: experienceYears ? Number(experienceYears) : 0,
-        startingPrice: startingPrice ? Number(startingPrice) : 899,
-        serviceArea: serviceArea || "",
-        operatorName: operatorName || name,
-        licenseNumber: licenseNumber || "",
-        tagline: tagline || "Fast | Safe | Reliable",
-        about: about || "",
-        availabilitySummary: availabilitySummary || "24x7 (All Days)",
-        servicesOffered: Array.isArray(parsedServices) ? parsedServices : ["Breakdown Recovery", "Accident Recovery", "Bike Recovery", "Jump Start Service", "Fuel Delivery"],
-        vehiclesRecoveredTypes: Array.isArray(parsedVehicles) ? parsedVehicles : ["Hatchback", "Sedan", "SUV", "MPV", "Luxury Cars", "Commercial"],
-        otp,
-        otpExpiry,
-        isMobileVerified: false
+        operatorName: name,
+        referralPhone: referralPhone || null,
+        referralDriverId: referralDriverId || null,
+        referralDriverName: referralDriverName || null,
+        otp, otpExpiry, isMobileVerified: false,
       });
     }
 
-    try {
-      await sendDltMessage(phone, otp);
-    } catch (smsErr) {
-      console.error("SMS sending failed:", smsErr);
-    }
+    try { await sendDltMessage(phone, otp); } catch (smsErr) { console.error("SMS sending failed:", smsErr); }
 
     return res.status(200).json({
       success: true,

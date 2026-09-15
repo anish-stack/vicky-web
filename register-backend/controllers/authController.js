@@ -12,6 +12,28 @@ const { createPaymentLink, verifyWebhookSignature } = require("../utils/Razorpay
 const sendDltMessage = require("../utils/DltMessage");
 const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
 const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
+const fs = require("fs");
+const path = require("path");
+
+const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "other");
+const base_url = process.env.BASE_URL || "https://partners.taxisafar.com";
+
+const saveAadhaarPhoto = (base64, id) => {
+    if (!base64) return null;
+    try {
+        const clean = String(base64).replace(/^data:image\/\w+;base64,/, "");
+        if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+        const filename = `aadhaar_${id}_${Date.now()}.jpg`;
+        fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(clean, "base64"));
+        return `${base_url}/uploads/other/${filename}`; // matches UPLOAD_DIR now
+    } catch (e) {
+        console.error("aadhaar photo save err:", e.message);
+        return null;
+    }
+};
+
+
+
 
 const MAX_OTP_ATTEMPTS = 5;
 
@@ -153,6 +175,17 @@ exports.verifyUserAadhaarOtp = async (req, res) => {
         user.aadharData = result.data;
         user.aadharVerified = true;
         user.kycStatus = "kyc-success";
+
+        // Use Aadhaar-verified name & photo — no separate profile upload needed
+        const verified = result.data?.verifiedData || result.data;
+        if (verified?.full_name) user.name = verified.full_name;
+
+        const aadhaarPhotoBase64 = result.data?.profile_image || result.data?.zip_data;
+        if (aadhaarPhotoBase64) {
+            const photoUrl = saveAadhaarPhoto(aadhaarPhotoBase64, userId);
+            if (photoUrl) user.profileImage = photoUrl;
+        }
+
         await user.save();
 
         const data = await User.findById(userId).select("-otp -otpExpires -otpAttempts");
@@ -169,10 +202,12 @@ exports.registerUser = async (req, res) => {
     const uploadedFiles = req.files || {};
     try {
         const {
-            name, email, phone, category, description,
+            name, phone, category,
             city, state, address,
             // Social
             facebook, instagram, youtube, website, whatsapp,
+            // Referral
+            referralPhone, referralDriverId, referralDriverName,
             // Tour guide
             experienceYears, languages, guideLicenseNumber, servicesOffered,
             // RTO
@@ -183,12 +218,14 @@ exports.registerUser = async (req, res) => {
             garageName, garageAddress, mechanicExperience, specialization
         } = req.body;
 
+        console.log(req.body)
+
         // Check duplicate
-        const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+        const existingUser = await User.findOne({ phone });
         if (existingUser) {
             cleanupUploadedFiles(uploadedFiles);
-            const field = existingUser.email === email.toLowerCase() ? "Email" : "Phone";
-            return res.status(409).json({ success: false, message: `${field} is already registered.` });
+
+            return res.status(409).json({ success: false, message: `Phone number is already registered.` });
         }
 
 
@@ -204,10 +241,10 @@ exports.registerUser = async (req, res) => {
         // Build user object
         const userData = {
             name: name.trim(),
-            email: email.trim().toLowerCase(),
+
             phone: phone.trim(),
             category,
-            description,
+
             city,
             state,
             address,
@@ -217,6 +254,11 @@ exports.registerUser = async (req, res) => {
             panCard: filePaths.panCard,
             socialLinks: { facebook, instagram, youtube, website, whatsapp }
         };
+
+        // Referral driver (optional)
+        if (referralPhone) userData.referralPhone = referralPhone.trim();
+        if (referralDriverId) userData.referralDriverId = referralDriverId;
+        if (referralDriverName) userData.referralDriverName = referralDriverName.trim();
 
         // Category-specific fields
         if (category === "tour_guide") {
@@ -278,7 +320,6 @@ exports.registerUser = async (req, res) => {
         res.status(500).json({ success: false, message: err.message || "Registration failed." });
     }
 };
-
 
 exports.verifyRegisterOTP = async (req, res) => {
     try {
@@ -988,7 +1029,7 @@ exports.getUserProfile = async (req, res) => {
         // Check if requester is the profile owner (req.user set by protect middleware if token provided)
         const isOwner = req.user && req.user._id.toString() === userId;
 
-    
+
 
         // Hide sensitive fields for non-owners
         const profile = user.toObject();
@@ -1185,6 +1226,10 @@ exports.adminUpdatePartner = async (req, res) => {
             website,
             whatsapp,
 
+            referralPhone,
+            referralDriverId,
+            referralDriverName,
+
             experienceYears,
             languages,
             guideLicenseNumber,
@@ -1248,6 +1293,11 @@ exports.adminUpdatePartner = async (req, res) => {
         if (state !== undefined) user.state = state;
         if (address !== undefined) user.address = address;
 
+        // referral driver
+        if (referralPhone !== undefined) user.referralPhone = referralPhone ? referralPhone.trim() : null;
+        if (referralDriverId !== undefined) user.referralDriverId = referralDriverId || null;
+        if (referralDriverName !== undefined) user.referralDriverName = referralDriverName ? referralDriverName.trim() : null;
+
         // social links
         user.socialLinks = {
             facebook: facebook !== undefined ? facebook : user.socialLinks?.facebook,
@@ -1258,10 +1308,20 @@ exports.adminUpdatePartner = async (req, res) => {
         };
 
         // status fields
-        if (isPaid !== undefined) user.isPaid = isPaid;
-        if (isMobileVerified !== undefined) user.isMobileVerified = isMobileVerified;
-        if (verifiedByAdmin !== undefined) user.verifiedByAdmin = verifiedByAdmin;
+        if (isPaid !== undefined) user.isPaid = isPaid === "true" || isPaid === true;
+        if (isMobileVerified !== undefined) user.isMobileVerified = isMobileVerified === "true" || isMobileVerified === true;
+        if (verifiedByAdmin !== undefined) user.verifiedByAdmin = verifiedByAdmin === "true" || verifiedByAdmin === true;
         if (rating !== undefined) user.rating = Number(rating);
+
+        // uploaded files (single images replace, gallery arrays append/replace)
+        const filePaths = extractUploadedFiles(uploadedFiles);
+        if (filePaths.profileImage) user.profileImage = filePaths.profileImage;
+        if (filePaths.aadharFront) user.aadharFront = filePaths.aadharFront;
+        if (filePaths.aadharBack) user.aadharBack = filePaths.aadharBack;
+        if (filePaths.panCard) user.panCard = filePaths.panCard;
+        if (filePaths.tourImages?.length) user.tourImages = filePaths.tourImages;
+        if (filePaths.shopImages?.length) user.shopImages = filePaths.shopImages;
+        if (filePaths.garageImages?.length) user.garageImages = filePaths.garageImages;
 
         // category-specific
         const finalCategory = category || user.category;
@@ -1311,7 +1371,6 @@ exports.adminUpdatePartner = async (req, res) => {
         });
     }
 };
-
 
 exports.deletePartner = async (req, res) => {
     try {

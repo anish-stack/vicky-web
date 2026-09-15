@@ -105,6 +105,12 @@ router.get(
     },
     getUserProfile
 );
+router.get(
+    "/:userId",
+
+    getUserProfile
+);
+
 
 // ─── Admin Routes ─────────────────────────────────────────────────────────────
 
@@ -130,7 +136,7 @@ router.patch("/admin/partner/:userId/deactivate", deactivateProfile);
 router.patch("/admin/partner/:userId/reactivate", reactivateProfile);
 
 // update partner
-router.put("/admin/partner/:userId", adminUpdatePartner);
+router.put("/admin/partner/:userId",uploadUserImages, adminUpdatePartner);
 
 // delete partner
 router.delete("/admin/partner/:userId", deletePartner);
