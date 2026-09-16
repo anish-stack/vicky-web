@@ -28,9 +28,9 @@ import {
 import Swal from "sweetalert2";
 import INDIAN_STATES_CITIES, { STATE_LIST } from "@/data/indianStatesCities";
 
-const API_BASE = "http://localhost:5001/api/auth/mechanic";
+const API_BASE = "https://partners.taxisafar.com/api/auth/mechanic";
 const FEE_API =
-  "http://localhost:5001/api/v1/fees/key/kyc_fee_for_car_mechanic";
+  "https://partners.taxisafar.com/api/v1/fees/key/kyc_fee_for_car_mechanic";
 const DRIVER_SEARCH_API = "https://authapi.taxisafar.com/api/v1/search-drivers";
 const DRAFT_KEY = "mechanic_register_draft";
 const MECH_ID_KEY = "mechanic_register_id";
