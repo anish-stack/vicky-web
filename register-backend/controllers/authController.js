@@ -373,9 +373,9 @@ exports.verifyRegisterOTP = async (req, res) => {
             return res.status(404).json({ success: false, message: "User not found." });
         }
 
-        if (user.isMobileVerified) {
-            return res.status(400).json({ success: false, message: "Mobile already verified." });
-        }
+        // if (user.isMobileVerified) {
+        //     return res.status(400).json({ success: false, message: "Mobile already verified." });
+        // }
 
         // Rate limit check
         if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {

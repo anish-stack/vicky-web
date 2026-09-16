@@ -18,13 +18,13 @@ const userSchema = new mongoose.Schema(
             required: false,
             trim: true
         },
-email: {
-    type: String,
-    required: false,
-    trim: true,
-    lowercase: true,
-    sparse: true
-},
+        email: {
+            type: String,
+            required: false,
+            trim: true,
+            lowercase: true,
+            sparse: true
+        },
 
         phone: {
             type: String,
@@ -66,7 +66,7 @@ email: {
         referralDriverId: { type: String, default: null },
         referralDriverName: { type: String, trim: true, default: null },
 
-   aadharNumber: { type: String, select: false, index: true },
+        aadharNumber: { type: String, select: false, index: true },
         aadharVerified: { type: Boolean, default: false },
         aadharData: { type: mongoose.Schema.Types.Mixed, default: null },
         kycRequestId: { type: String, select: false },
