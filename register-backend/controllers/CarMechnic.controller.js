@@ -51,13 +51,20 @@ exports.createMechanicKycOrder = async (req, res) => {
     if (!mechanic) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
 
     if (mechanic.isKycFeeDone) {
-      return res.status(400).json({ success: false, data: null, message: "KYC fee already paid" });
+      return res.status(200).json({
+        success: true,
+        alreadyPaid: true,
+        order: null,
+        data: null,
+        message: "KYC fee already paid, proceed to Aadhaar OTP",
+      });
     }
 
     const order = await createKycOrder(`kyc_${id}_${Date.now()}`, "kyc_fee_for_car_mechanic");
 
     return res.json({
       success: true,
+      alreadyPaid: false,
       order,
       data: { orderId: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID },
       message: "Order created",
@@ -109,105 +116,65 @@ exports.sendMechanicAadhaarOtp = async (req, res) => {
     const { id } = req.params;
     const { aadhaarNumber } = req.body;
 
-    // Validate Aadhaar number
     if (!aadhaarNumber) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: "Aadhaar number is required",
-      });
+      return res.status(400).json({ success: false, data: null, message: "Aadhaar number is required" });
     }
 
-    // Find mechanic
     const mechanic = await CarMechanicUser.findById(id);
-
     if (!mechanic) {
-      return res.status(404).json({
-        success: false,
-        data: null,
-        message: "Mechanic not found",
-      });
+      return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
     }
 
-    // KYC fee check
     if (!mechanic.isKycFeeDone) {
-      return res.status(402).json({
-        success: false,
-        data: null,
-        message: "Please complete ₹99 KYC fee payment first",
-      });
+      return res.status(402).json({ success: false, data: null, message: "Please complete ₹99 KYC fee payment first" });
     }
 
-    // Already completed
     if (mechanic.kycStatus === "kyc-success") {
-      return res.status(400).json({
+      return res.status(400).json({ success: false, data: null, message: "KYC already completed" });
+    }
+
+    // NEW: aadhaar uniqueness — block only if linked to ANOTHER fully-verified mechanic
+    const dupAadhaar = await CarMechanicUser.findOne({
+      "aadharData.aadhaarNumber": aadhaarNumber,
+      kycStatus: "kyc-success",
+      _id: { $ne: id },
+    });
+    if (dupAadhaar) {
+      return res.status(409).json({
         success: false,
         data: null,
-        message: "KYC already completed",
+        message: "This Aadhaar number is already linked to another mechanic profile",
       });
     }
 
-    // Send OTP
     const result = await sendAadhaarOtp(aadhaarNumber);
-
     console.log("🔹 Aadhaar OTP Result:", result);
-
-    // QuickeKYC utility returns:
-    // {
-    //   success: true,
-    //   request_id: 16132853,
-    //   data: {
-    //     otp_sent: true
-    //   }
-    // }
 
     if (!result?.success || !result?.data?.otp_sent) {
       console.log("❌ Aadhaar OTP Send Failed:", result);
-
       return res.status(result?.statusCode || 400).json({
         success: false,
         data: null,
-        message:
-          result?.message ||
-          "Couldn't send OTP. Please check the Aadhaar number and try again.",
+        message: result?.message || "Couldn't send OTP. Please check the Aadhaar number and try again.",
         response: result,
       });
     }
 
-    // Save Aadhaar request details
-    mechanic.aadharData = {
-      aadhaarNumber,
-      request_id: result.request_id,
-    };
-
-    // Optional: mark KYC as pending
+    // overwrite aadhaar/request_id each time — allows changing aadhaar number even after fee paid
+    mechanic.aadharData = { aadhaarNumber, request_id: result.request_id };
     mechanic.kycStatus = "pending";
-
     await mechanic.save();
 
-    // Success response
     return res.status(200).json({
       success: true,
-      data: {
-        request_id: result.request_id,
-      },
+      data: { request_id: result.request_id },
       message: "OTP sent to Aadhaar linked mobile number",
     });
   } catch (err) {
-    console.error("🔥 sendMechanicAadhaarOtp Error:", {
-      message: err.message,
-      response: err.response?.data,
-    });
-
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message:
-        "Unable to send OTP at the moment. Please try again shortly.",
-    });
+    console.error("🔥 sendMechanicAadhaarOtp Error:", { message: err.message, response: err.response?.data });
+    return res.status(500).json({ success: false, data: null, message: "Unable to send OTP at the moment. Please try again shortly." });
   }
 };
-
 
 // STEP 4: verify aadhaar otp -> finalize kyc
 exports.verifyMechanicAadhaarOtp = async (req, res) => {
@@ -285,8 +252,10 @@ exports.createMechanic = async (req, res) => {
     }
 
     const existingPhone = await CarMechanicUser.findOne({ phone: body.phone });
-    if (existingPhone && existingPhone.isPhoneVerified) {
-      return res.status(409).json({ success: false, data: null, message: "Phone already registered" });
+
+    // block only fully completed profiles
+    if (existingPhone && existingPhone.kycStatus === "kyc-success" && existingPhone.isVerifiedMechanic) {
+      return res.status(409).json({ success: false, data: null, message: "Phone already registered and verified" });
     }
 
     if (req.files?.profileImage?.[0]) body.profileImage = fileUrl(req, req.files.profileImage[0].filename);
@@ -298,9 +267,14 @@ exports.createMechanic = async (req, res) => {
     body.otpExpiry = getOTPExpiry();
     body.isPhoneVerified = false;
 
+    // never let a details-resubmit reset fee/kyc progress already made
+    delete body.isKycFeeDone;
+    delete body.howMuchItsPaid;
+    delete body.kycStatus;
+    delete body.aadharData;
+
     let mechanic;
     if (existingPhone) {
-      // re-registering unverified phone: overwrite with fresh data + new otp
       mechanic = await CarMechanicUser.findByIdAndUpdate(existingPhone._id, body, { new: true, runValidators: true });
     } else {
       mechanic = await CarMechanicUser.create(body);
@@ -312,13 +286,14 @@ exports.createMechanic = async (req, res) => {
     delete data.otp;
     delete data.otpExpiry;
 
-    return res.status(201).json({ success: true, data, message: "Mechanic created, OTP sent" });
+    return res.status(201).json({ success: true, data, message: existingPhone ? "Resuming registration, OTP sent" : "Mechanic created, OTP sent" });
   } catch (err) {
     console.error("createMechanic err:", err);
     if (err.code === 11000) return res.status(409).json({ success: false, data: null, message: "Phone already registered" });
     return res.status(500).json({ success: false, data: null, message: err.message || "Failed to create mechanic" });
   }
 };
+
 
 // VERIFY OTP
 exports.verifyMechanicOtp = async (req, res) => {

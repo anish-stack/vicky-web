@@ -14,6 +14,7 @@ import {
   ArrowRight,
   ArrowLeft,
   CreditCard,
+  RotateCcw,
   AlertCircle,
   Loader2,
   IdCard,
@@ -39,6 +40,8 @@ const RAZORPAY_SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 const LOGO_SRC = "/logo-partner.png";
 const TERMS_URL = "https://taxisafar.com/terms-of-use";
 const PRIVACY_URL = "https://taxisafar.com/privacy-policy";
+const MIN_REFERRAL_DIGITS = 8;
+
 
 type Address = { line1: string; city: string; state: string; pincode: string };
 type Driver = {
@@ -47,8 +50,9 @@ type Driver = {
   driver_contact_number?: string;
   address?: string;
   profile_photo?: { url?: string };
+  aadhar_verified?: boolean;
+  kyc_status?: string;
 };
-
 type FormState = {
   name: string;
   garageName: string;
@@ -71,6 +75,12 @@ type Draft = {
   kycStage?: KycStage;
   aadhaarNumber?: string;
 };
+
+
+
+const isDriverKycDone = (d?: Driver | null) =>
+  !!d && (d.kyc_status === "kyc-success" || d.aadhar_verified === true);
+
 
 const emptyForm: FormState = {
   name: "",
@@ -229,6 +239,35 @@ const RecoveryVehicleRegister = () => {
     } finally {
       setUserDataLoading(false);
     }
+  };
+  const changeAadhaarAfterPayment = () => {
+    setAadhaarOtpDigits(Array(AADHAAR_OTP_LENGTH).fill(""));
+    setAadhaarOtpError("");
+    setAadhaarResendAt(null);
+    setKycStage("aadhaar-input");
+    saveDraft({
+      step: 3,
+      formData,
+      resendAvailableAt,
+      providerId,
+      kycStage: "aadhaar-input",
+      aadhaarNumber,
+    });
+  };
+
+  const restartRegistration = () => {
+    Swal.fire({
+      icon: "warning",
+      title: "Restart Registration?",
+      text: "This will clear your current progress and start over.",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Restart",
+      confirmButtonColor: "#dc2626",
+    }).then((res) => {
+      if (!res.isConfirmed) return;
+      clearDraft();
+      window.location.href = pathname;
+    });
   };
 
   useEffect(() => {
@@ -421,7 +460,27 @@ const RecoveryVehicleRegister = () => {
     });
   };
 
+
+
+  useEffect(() => {
+    if (!referralOn) return;
+    if (referralInput.length < MIN_REFERRAL_DIGITS) {
+      setDriverResult(null);
+      setDriverError("");
+      return;
+    }
+    if (selectedDriver?.driver_contact_number === referralInput) return;
+    const t = setTimeout(() => { searchDriver(referralInput); }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referralInput, referralOn]);
+
   const searchDriver = async (phone: string) => {
+    if (!/^\d{8,10}$/.test(phone)) {
+      setDriverError(`Enter at least ${MIN_REFERRAL_DIGITS} digits`);
+      setDriverResult(null);
+      return;
+    }
     setDriverSearching(true);
     setDriverError("");
     setDriverResult(null);
@@ -430,7 +489,6 @@ const RecoveryVehicleRegister = () => {
         params: { phoneNumber: phone },
       });
       const driver = res.data?.data?.[0];
-      console.log(driver);
       if (!driver) {
         setDriverError("No driver found with this number.");
         return;
@@ -708,6 +766,13 @@ const RecoveryVehicleRegister = () => {
         `${API_BASE}/recovery-vehicle/${providerId}/kyc/create-order`,
       );
       const responseData = response?.data;
+
+      if (responseData?.alreadyPaid) {
+        setPayingKyc(false);
+        await sendAadhaarOtpHandler();
+        return;
+      }
+
       const razorpayOrder = responseData?.order?.order;
       const order = {
         orderId: razorpayOrder?.id,
@@ -872,12 +937,18 @@ const RecoveryVehicleRegister = () => {
   return (
     <div className="min-h-screen bg-white ">
       <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex flex-col items-center">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <img
             src={LOGO_SRC}
             alt="TaxiSafar"
-            className="h-16 w-auto object-contain"
+            className="h-12 w-auto object-contain"
           />
+          <button
+            onClick={restartRegistration}
+            className="h-9 px-3 rounded-xl border border-gray-300 text-gray-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-50 shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Restart
+          </button>
         </div>
       </div>
 
@@ -1073,7 +1144,7 @@ const RecoveryVehicleRegister = () => {
                     </span>
                   </button>
                 </div>
-
+                {/* ── referral driver block — updated (no Search button) ── */}
                 {referralOn && (
                   <div className="mt-3">
                     {!selectedDriver && (
@@ -1081,32 +1152,22 @@ const RecoveryVehicleRegister = () => {
                         <span className="h-11 px-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-500 flex items-center shrink-0">
                           +91
                         </span>
-                        <input
-                          value={referralInput}
-                          onChange={(e) =>
-                            setReferralInput(
-                              e.target.value.replace(/\D/g, "").slice(0, 10),
-                            )
-                          }
-                          placeholder="Enter driver number"
-                          inputMode="numeric"
-                          className="flex-1 h-11 px-3.5 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => searchDriver(referralInput)}
-                          disabled={
-                            driverSearching || referralInput.length !== 10
-                          }
-                          className="h-11 px-4 rounded-xl bg-red-600 text-white text-sm font-semibold flex items-center gap-1.5 shrink-0 disabled:opacity-50"
-                        >
-                          {driverSearching ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Search className="w-4 h-4" />
-                          )}{" "}
-                          Search
-                        </button>
+                        <div className="relative flex-1">
+                          <input
+                            value={referralInput}
+                            onChange={(e) =>
+                              setReferralInput(
+                                e.target.value.replace(/\D/g, "").slice(0, 10),
+                              )
+                            }
+                            placeholder="Full number or last 8 digits"
+                            inputMode="numeric"
+                            className="w-full h-11 px-3.5 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                          />
+                          {driverSearching && (
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -1139,13 +1200,14 @@ const RecoveryVehicleRegister = () => {
                             </p>
                             {cleanText(driverResult.address) && (
                               <p className="text-xs text-gray-400 flex items-center gap-1 truncate">
-                                <MapPin className="w-3 h-3 shrink-0" />{" "}
-                                {cleanText(driverResult.address)}
+                                <MapPin className="w-3 h-3 shrink-0" /> {cleanText(driverResult.address)}
                               </p>
                             )}
-                          </div>
-                          <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                            <Check className="w-3.5 h-3.5 text-white" />
+                            <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isDriverKycDone(driverResult) ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                              }`}>
+                              {isDriverKycDone(driverResult) ? <Shield className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                              {isDriverKycDone(driverResult) ? "KYC Verified" : "Non-KYC Verified"}
+                            </span>
                           </div>
                         </div>
                         <button
@@ -1176,9 +1238,13 @@ const RecoveryVehicleRegister = () => {
                             {selectedDriver.driver_name || "Driver"}
                           </p>
                           <p className="text-xs text-gray-500">
-                            +91 {selectedDriver.driver_contact_number} ·{" "}
-                            {driverCode(selectedDriver._id)}
+                            +91 {selectedDriver.driver_contact_number} · {driverCode(selectedDriver._id)}
                           </p>
+                          <span className={`inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${isDriverKycDone(selectedDriver) ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                            }`}>
+                            {isDriverKycDone(selectedDriver) ? <Shield className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                            {isDriverKycDone(selectedDriver) ? "KYC Verified" : "Non-KYC Verified"}
+                          </span>
                         </div>
                         <button
                           type="button"
@@ -1468,6 +1534,14 @@ const RecoveryVehicleRegister = () => {
                         {sendingAadhaarOtp ? "Resending..." : "Resend OTP"}
                       </button>
                     )}
+                    <span className="text-gray-300 mx-2">|</span>
+                    <button
+                      onClick={changeAadhaarAfterPayment}
+                      disabled={sendingAadhaarOtp || verifyingAadhaarOtp}
+                      className="text-gray-500 font-medium disabled:text-gray-300"
+                    >
+                      Change Aadhaar Number
+                    </button>
                   </div>
                 </>
               )}
@@ -1531,12 +1605,12 @@ const RecoveryVehicleRegister = () => {
                       value={
                         userData?.address
                           ? [
-                              userData.address.line1,
-                              userData.address.city,
-                              userData.address.state,
-                            ]
-                              .filter(Boolean)
-                              .join(", ")
+                            userData.address.line1,
+                            userData.address.city,
+                            userData.address.state,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")
                           : undefined
                       }
                     />

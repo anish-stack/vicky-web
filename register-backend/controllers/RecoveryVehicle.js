@@ -48,13 +48,19 @@ exports.createRecoveryKycOrder = async (req, res) => {
     if (!RecoveryPerson) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
 
     if (RecoveryPerson.isKycFeeDone) {
-      return res.status(400).json({ success: false, data: null, message: "KYC fee already paid" });
+      return res.status(200).json({
+        success: true,
+        alreadyPaid: true,
+        order: null,
+        data: null,
+        message: "KYC fee already paid, proceed to Aadhaar OTP",
+      });
     }
 
     const order = await createKycOrder(`kyc_${id}_${Date.now()}`, "kyc_fee_for_recovery_vehicle");
-    console.log(order)
     return res.json({
       success: true,
+      alreadyPaid: false,
       order,
       data: { orderId: order.id, amount: order.amount, currency: order.currency, key: process.env.RAZORPAY_KEY_ID },
       message: "Order created",
@@ -113,108 +119,68 @@ exports.verifyRecoveryKycPayment = async (req, res) => {
   }
 };
 
-// STEP 3: send aadhaar otp (only if fee paid)
 exports.sendRecoveryAadhaarOtp = async (req, res) => {
   try {
     const { id } = req.params;
     const { aadhaarNumber } = req.body;
 
-    // Validate Aadhaar number
     if (!aadhaarNumber) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: "Aadhaar number is required",
-      });
+      return res.status(400).json({ success: false, data: null, message: "Aadhaar number is required" });
     }
 
     const RecoveryPerson = await RecoveryVehicleUser.findById(id);
-
-
     if (!RecoveryPerson) {
-      return res.status(404).json({
-        success: false,
-        data: null,
-        message: "Mechanic not found",
-      });
+      return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
     }
 
-    // KYC fee check
     if (!RecoveryPerson.isKycFeeDone) {
-      return res.status(402).json({
-        success: false,
-        data: null,
-        message: "Please complete ₹99 KYC fee payment first",
-      });
+      return res.status(402).json({ success: false, data: null, message: "Please complete ₹99 KYC fee payment first" });
     }
 
-    // Already completed
     if (RecoveryPerson.kycStatus === "kyc-success") {
-      return res.status(400).json({
+      return res.status(400).json({ success: false, data: null, message: "KYC already completed" });
+    }
+
+    // NEW: block only if aadhaar linked to ANOTHER already-verified provider
+    const dupAadhaar = await RecoveryVehicleUser.findOne({
+      "aadharData.aadhaarNumber": aadhaarNumber,
+      kycStatus: "kyc-success",
+      _id: { $ne: id },
+    });
+    if (dupAadhaar) {
+      return res.status(409).json({
         success: false,
         data: null,
-        message: "KYC already completed",
+        message: "This Aadhaar number is already linked to another profile",
       });
     }
 
-    // Send OTP
     const result = await sendAadhaarOtp(aadhaarNumber);
-
     console.log("🔹 Aadhaar OTP Result:", result);
-
-    // QuickeKYC utility returns:
-    // {
-    //   success: true,
-    //   request_id: 16132853,
-    //   data: {
-    //     otp_sent: true
-    //   }
-    // }
 
     if (!result?.success || !result?.data?.otp_sent) {
       console.log("❌ Aadhaar OTP Send Failed:", result);
-
       return res.status(result?.statusCode || 400).json({
         success: false,
         data: null,
-        message:
-          result?.message ||
-          "Couldn't send OTP. Please check the Aadhaar number and try again.",
+        message: result?.message || "Couldn't send OTP. Please check the Aadhaar number and try again.",
         response: result,
       });
     }
 
-    // Save Aadhaar request details
-    RecoveryPerson.aadharData = {
-      aadhaarNumber,
-      request_id: result.request_id,
-    };
-
-    // Optional: mark KYC as pending
+    // overwrite each time — allows changing aadhaar number even after fee paid
+    RecoveryPerson.aadharData = { aadhaarNumber, request_id: result.request_id };
     RecoveryPerson.kycStatus = "pending";
-
     await RecoveryPerson.save();
 
-    // Success response
     return res.status(200).json({
       success: true,
-      data: {
-        request_id: result.request_id,
-      },
+      data: { request_id: result.request_id },
       message: "OTP sent to Aadhaar linked mobile number",
     });
   } catch (err) {
-    console.error("🔥 sendRecoveryAadhaarOtp Error:", {
-      message: err.message,
-      response: err.response?.data,
-    });
-
-    return res.status(500).json({
-      success: false,
-      data: null,
-      message:
-        "Unable to send OTP at the moment. Please try again shortly.",
-    });
+    console.error("🔥 sendRecoveryAadhaarOtp Error:", { message: err.message, response: err.response?.data });
+    return res.status(500).json({ success: false, data: null, message: "Unable to send OTP at the moment. Please try again shortly." });
   }
 };
 
