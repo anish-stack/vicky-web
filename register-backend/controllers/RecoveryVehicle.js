@@ -9,6 +9,7 @@ const sendDltMessage = require("../utils/DltMessage");
 const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
 const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
 const feeModel = require("../models/fee.model");
+const { sendPartnerRegister } = require("../utils/sendWhatsapp");
 
 const base_url = "https://partners.taxisafar.com";
 
