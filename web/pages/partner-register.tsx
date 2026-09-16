@@ -838,50 +838,49 @@ const restartFlow = () => {
     }
   };
 
-  const verifyOTP = async () => {
-    if (otp.trim().length < 4) {
-      Swal.fire({
-        icon: "warning",
-        title: "Enter OTP",
-        text: "Please enter the OTP from WhatsApp.",
-        confirmButtonColor: "#E52710",
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await fetch(
-        "https://partners.taxisafar.com/api/auth/verify-register-otp",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phone: form.phone, otp: otp.trim() }),
-        },
-      );
-      const data = await res.json();
-      if (data.success) {
-        if (data?.data?.userId) setUserId(data.data.userId);
-        pushParams("kyc-aadhaar");
-        setStep("kyc-aadhaar");
-      } else
-        Swal.fire({
-          icon: "error",
-          title: "Invalid OTP",
-          text: data.message || "Incorrect OTP.",
-          confirmButtonColor: "#E52710",
-        });
-    } catch {
+const verifyOTP = async () => {
+  if (otp.trim().length < 4) {
+    Swal.fire({
+      icon: "warning",
+      title: "Enter OTP",
+      text: "Please enter the OTP from WhatsApp.",
+      confirmButtonColor: "#E52710",
+    });
+    return;
+  }
+  setLoading(true);
+  try {
+    const res = await fetch(
+      "https://partners.taxisafar.com/api/auth/verify-register-otp",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: form.phone, otp: otp.trim(), category }),
+      },
+    );
+    const data = await res.json();
+    if (data.success) {
+      if (data?.data?.userId) setUserId(data.data.userId);
+      pushParams("kyc-aadhaar");
+      setStep("kyc-aadhaar");
+    } else
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: "Verification failed. Try again.",
+        title: "Invalid OTP",
+        text: data.message || "Incorrect OTP.",
         confirmButtonColor: "#E52710",
       });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  } catch {
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "Verification failed. Try again.",
+      confirmButtonColor: "#E52710",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
   // ── Aadhaar number entry: local validation only — if fee is already paid
   // (restart/refresh scenario), skip the payment step entirely and go
   // straight to sending the Aadhaar OTP ──

@@ -366,9 +366,9 @@ exports.registerUser = async (req, res) => {
 
 exports.verifyRegisterOTP = async (req, res) => {
     try {
-        const { phone, otp } = req.body;
+        const { phone, otp, category } = req.body;
 
-        const user = await User.findOne({ phone });
+        const user = await User.findOne({ phone, category });
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
@@ -422,8 +422,6 @@ exports.verifyRegisterOTP = async (req, res) => {
         res.status(500).json({ success: false, message: err.message || "OTP verification failed." });
     }
 };
-
-
 exports.sendLoginOTP = async (req, res) => {
     try {
         const { phone } = req.body;
