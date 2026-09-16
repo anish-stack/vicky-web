@@ -4,6 +4,7 @@ const router = express.Router();
 const ctrl = require("../controllers/CarMechnic.controller");
 const { mechanicImageUpload } = require("../middleware/mechanicUpload.middleware");
 // const { adminAuth, userAuth } = require("../middlewares/auth.middleware");
+router.get("/", ctrl.getAllMechanics);
 
 router.post("/", mechanicImageUpload, ctrl.createMechanic);
 router.put("/:id", mechanicImageUpload, ctrl.updateMechanic);
@@ -16,7 +17,6 @@ router.post("/:id/kyc/aadhaar/verify-otp", ctrl.verifyMechanicAadhaarOtp);
 router.post("/verify-otp", ctrl.verifyMechanicOtp);
 router.post("/resend-otp", ctrl.resendMechanicOtp);
 router.delete("/:id", ctrl.deleteMechanic);
-router.get("/", ctrl.getAllMechanics);
 
 router.get("/all", ctrl.getAllMechanics);
 router.get("/:id", ctrl.getOneMechanic);
