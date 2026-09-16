@@ -16,6 +16,8 @@ router.post("/:id/kyc/aadhaar/verify-otp", ctrl.verifyMechanicAadhaarOtp);
 router.post("/verify-otp", ctrl.verifyMechanicOtp);
 router.post("/resend-otp", ctrl.resendMechanicOtp);
 router.delete("/:id", ctrl.deleteMechanic);
+router.get("/", ctrl.getAllMechanics);
+
 router.get("/all", ctrl.getAllMechanics);
 router.get("/:id", ctrl.getOneMechanic);
 

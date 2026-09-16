@@ -107,7 +107,6 @@ router.get(
 );
 router.get(
     "/:userId",
-
     getUserProfile
 );
 
