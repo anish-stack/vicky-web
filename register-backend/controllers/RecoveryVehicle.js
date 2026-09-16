@@ -33,7 +33,7 @@ const saveAadhaarPhoto = (base64, id) => {
     if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     const filename = `aadhaar_${id}_${Date.now()}.jpg`;
     fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(clean, "base64"));
-    return `${base_url}/uploads/mechanics/${filename}`;
+    return `${base_url}/uploads/recovery/${filename}`;
   } catch (e) { console.error("aadhaar photo save err:", e.message); return null; }
 };
 /* ======================================================
@@ -198,7 +198,6 @@ exports.verifyRecoveryPersonAadhaarOtp = async (req, res) => {
     if (!RecoveryPerson.isKycFeeDone) {
       return res.status(402).json({ success: false, data: null, message: "KYC fee not paid yet" });
     }
-    console.log(RecoveryPerson.aadharData)
     const requestId = RecoveryPerson.aadharData?.request_id;
     if (!requestId) {
       return res.status(400).json({ success: false, data: null, message: "No OTP request found. Please resend OTP." });

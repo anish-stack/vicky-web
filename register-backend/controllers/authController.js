@@ -7,6 +7,7 @@ const {
     sendRegistrationSuccess,
     sendPaymentLink,
     sendPaymentSuccess,
+    sendPartnerRegister,
 } = require("../utils/sendWhatsapp");
 const { createPaymentLink, verifyWebhookSignature } = require("../utils/Razorpayutils");
 const sendDltMessage = require("../utils/DltMessage");
@@ -408,7 +409,7 @@ exports.verifyRegisterOTP = async (req, res) => {
         });
 
         // Send success WhatsApp message
-        sendRegistrationSuccess(phone, user.name, user._id).catch(console.error);
+        // sendRegistrationSuccess(phone, user.name, user._id).catch(console.error);
 
         res.status(200).json({
             success: true,
@@ -523,6 +524,7 @@ exports.verifyLoginOTP = async (req, res) => {
 
         // Fetch clean user object
         const userProfile = await User.findById(user._id).select("-otp -otpExpires -otpAttempts");
+        await sendPartnerRegister(userProfile.phone, userProfile._id)
 
         res.status(200).json({
             success: true,
