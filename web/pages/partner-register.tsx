@@ -28,7 +28,8 @@ import {
   Check,
   Map,
   Users,
-  Search,
+  ImagePlus,
+  RotateCcw,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import INDIAN_STATES_CITIES, { STATE_LIST } from "@/data/indianStatesCities";
@@ -66,6 +67,15 @@ const CATEGORIES = [
     textColor: "#065F46",
   },
 ] as const;
+
+// field name (multipart) that each category's gallery images are appended under
+const CATEGORY_IMAGE_FIELD: Record<Category, string> = {
+  tour_guide: "tourImages",
+  rto_service: "officeImages",
+  car_accessory: "shopImages",
+};
+
+const MAX_CATEGORY_IMAGES = 6;
 
 type FormState = {
   name: string;
@@ -124,7 +134,13 @@ const INIT: FormState = {
 };
 
 type FieldErrors = Record<string, string>;
-type Step = "form" | "otp" | "kyc-aadhaar" | "kyc-payment" | "kyc-otp" | "success";
+type Step =
+  | "form"
+  | "otp"
+  | "kyc-aadhaar"
+  | "kyc-payment"
+  | "kyc-otp"
+  | "success";
 
 const categoryLabelMap: Record<string, string> = {
   tour_guide: "Tour Guide",
@@ -264,17 +280,113 @@ function SecHead({
   );
 }
 
+/* ─── Image uploader (max N images, preview + remove, no external deps) ──── */
+function ImageUploader({
+  images,
+  setImages,
+  max = MAX_CATEGORY_IMAGES,
+  label = "Photos",
+}: {
+  images: File[];
+  setImages: (files: File[]) => void;
+  max?: number;
+  label?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
+
+  useEffect(() => {
+    const urls = images.map((f) => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, [images]);
+
+  const handleFiles = (files: FileList | null) => {
+    if (!files || !files.length) return;
+    const incoming = Array.from(files).filter((f) =>
+      f.type.startsWith("image/"),
+    );
+    const merged = [...images, ...incoming].slice(0, max);
+    setImages(merged);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const removeAt = (idx: number) => {
+    setImages(images.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.1em]">
+          {label}
+        </span>
+        <span className="text-[11px] text-gray-400 font-medium">
+          {images.length}/{max}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {previews.map((src, idx) => (
+          <div
+            key={idx}
+            className="relative w-16 h-16 rounded-xl overflow-hidden border border-gray-200 group"
+          >
+            <img src={src} alt="" className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={() => removeAt(idx)}
+              className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center"
+            >
+              <X className="w-2.5 h-2.5 text-white" />
+            </button>
+          </div>
+        ))}
+
+        {images.length < max && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-0.5 text-gray-400 hover:border-[#E52710] hover:text-[#E52710] transition"
+          >
+            <ImagePlus className="w-4.5 h-4.5" />
+            <span className="text-[9px] font-bold">Add</span>
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+    </div>
+  );
+}
+
 const KYC_API_BASE = "https://partners.taxisafar.com/api/auth";
 const FEES_API_BASE = "https://partners.taxisafar.com/api/v1/fees/key";
 const USER_API_BASE = "https://partners.taxisafar.com/api/auth/users";
 const DRIVER_SEARCH_API = "https://authapi.taxisafar.com/api/v1/search-drivers";
-
 
 const CATEGORY_TO_FEE_KEY: Record<string, string> = {
   tour_guide: "kyc_fee_for_guide",
   rto_service: "kyc_fee_for_rto",
   car_accessory: "kyc_fee_for_car_access",
 };
+
+// which field on the driver-search response indicates KYC completion.
+// adjust this if the real API uses a different field name.
+const isDriverKycVerified = (driver: any) =>
+  !!driver &&
+  (driver.kyc_status === "verified" ||
+    driver.kyc_done === true ||
+    driver.aadharVerified === true ||
+    driver.isKycVerified === true ||
+    driver.is_kyc_verified === true);
 
 /* ─── Main component ────────────────────────────────────────────────────── */
 export default function RegisterPage() {
@@ -285,6 +397,12 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+
+  // gallery images for whichever category is currently selected (max 6)
+  const [categoryImages, setCategoryImages] = useState<File[]>([]);
+  useEffect(() => {
+    setCategoryImages([]);
+  }, [category]);
 
   const [kycFee, setKycFee] = useState<number | null>(null);
   const [fetchingFee, setFetchingFee] = useState(false);
@@ -297,16 +415,20 @@ export default function RegisterPage() {
   const [verifyingAadhaarOtp, setVerifyingAadhaarOtp] = useState(false);
   const [aadhaarResendTimer, setAadhaarResendTimer] = useState(0);
 
+  // tracks whether the ₹ KYC fee has already been paid for this user, so a
+  // restart / refresh never asks for payment twice
+  const [feePaid, setFeePaid] = useState(false);
+
   const [profileData, setProfileData] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
-
-   const [referralOn, setReferralOn] = useState(false);
+  const [referralOn, setReferralOn] = useState(false);
   const [referralInput, setReferralInput] = useState("");
   const [driverResult, setDriverResult] = useState<any>(null);
   const [driverError, setDriverError] = useState("");
   const [selectedDriver, setSelectedDriver] = useState<any>(null);
   const [driverSearching, setDriverSearching] = useState(false);
+
   // ── restore step/session on load ──
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -349,7 +471,7 @@ export default function RegisterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-    const update = (name: keyof FormState, value: string) => {
+  const update = (name: keyof FormState, value: string) => {
     setForm((p) => ({ ...p, [name]: value }));
   };
 
@@ -357,6 +479,7 @@ export default function RegisterPage() {
     id ? `#${id.slice(-6).toUpperCase()}` : "—";
 
   const cleanText = (v: any) => (typeof v === "string" ? v.trim() : "");
+
   // ── fetch full user details and re-hydrate form/category/step ──
   const fetchUserDetails = async (uid: string) => {
     try {
@@ -376,11 +499,13 @@ export default function RegisterPage() {
 
       if (user.category) setCategory(user.category);
       if (user.aadharNumber) setAadharNumber(user.aadharNumber);
+      if (user.isKycFeeDone) setFeePaid(true);
 
       if (user.kycStatus === "kyc-success") {
         pushParams("success");
         setStep("success");
       } else if (user.isKycFeeDone) {
+        // fee already paid in a previous session — skip straight to Aadhaar OTP
         pushParams("kyc-otp");
         setStep("kyc-otp");
       } else if (user.isMobileVerified) {
@@ -390,13 +515,9 @@ export default function RegisterPage() {
     } catch (err) {
       console.error("fetchUserDetails err:", err);
     }
-
-
-
   };
 
-
-    // ── referral driver ──
+  // ── referral driver ──
   const toggleReferral = () => {
     setReferralOn((prev) => {
       const next = !prev;
@@ -413,13 +534,13 @@ export default function RegisterPage() {
     });
   };
 
-  const searchDriver = async (phone: string) => {
+  const searchDriver = async (query: string) => {
     setDriverSearching(true);
     setDriverError("");
     setDriverResult(null);
     try {
       const res = await axios.get(DRIVER_SEARCH_API, {
-        params: { phoneNumber: phone },
+        params: { phoneNumber: query },
       });
       const driver = res.data?.data?.[0];
       if (!driver) {
@@ -434,8 +555,23 @@ export default function RegisterPage() {
     }
   };
 
+  // auto-search as the user types — full 10-digit number OR last 8 digits,
+  // no manual "Search" button needed
+  useEffect(() => {
+    if (!referralOn || selectedDriver) return;
+    if (referralInput.length !== 10 && referralInput.length !== 8) {
+      setDriverResult(null);
+      setDriverError("");
+      return;
+    }
+    const t = setTimeout(() => searchDriver(referralInput), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referralInput, referralOn, selectedDriver]);
+
   const addReferralDriver = () => {
     if (!driverResult) return;
+    if (!isDriverKycVerified(driverResult)) return;
     setSelectedDriver(driverResult);
     update(
       "referralPhone",
@@ -479,12 +615,19 @@ export default function RegisterPage() {
     };
   }, []);
 
-  // ── kyc fee fetch (needed on the payment step) ──
+  // ── kyc fee fetch (needed on the payment step) — skipped entirely if fee already paid ──
   useEffect(() => {
     if (step !== "kyc-payment") return;
 
     if (!category && userId) {
       fetchUserDetails(userId);
+      return;
+    }
+
+    if (feePaid) {
+      // fee was already paid in an earlier session — don't ask again,
+      // go straight to sending the Aadhaar OTP
+      sendAadhaarOtpHandler();
       return;
     }
 
@@ -502,7 +645,7 @@ export default function RegisterPage() {
       })
       .finally(() => setFetchingFee(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, category, userId]);
+  }, [step, category, userId, feePaid]);
 
   // ── fetch profile details once KYC succeeds ──
   useEffect(() => {
@@ -535,7 +678,9 @@ export default function RegisterPage() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = e.target as any;
 
@@ -573,10 +718,12 @@ export default function RegisterPage() {
     if (form.youtube) d.append("youtube", form.youtube);
     if (form.website) d.append("website", form.website);
     if (form.whatsapp) d.append("whatsapp", form.whatsapp);
+
     if (category === "tour_guide") {
       d.append("experienceYears", form.experienceYears);
       d.append("languages", form.languages);
-      if (form.servicesOffered) d.append("servicesOffered", form.servicesOffered);
+      if (form.servicesOffered)
+        d.append("servicesOffered", form.servicesOffered);
     }
     if (category === "rto_service") {
       d.append("officeName", form.officeName);
@@ -589,13 +736,30 @@ export default function RegisterPage() {
       if (form.shopAddress) d.append("shopAddress", form.shopAddress);
       if (form.accessoryTypes) d.append("accessoryTypes", form.accessoryTypes);
     }
-      if (form.referralPhone) d.append("referralPhone", form.referralPhone);
-    if (form.referralDriverId) d.append("referralDriverId", form.referralDriverId);
-    if (form.referralDriverName) d.append("referralDriverName", form.referralDriverName);
+
+    // category gallery images (max 6) — field name depends on the category
+    if (category && categoryImages.length) {
+      const fieldName = CATEGORY_IMAGE_FIELD[category];
+      categoryImages.slice(0, MAX_CATEGORY_IMAGES).forEach((file) => {
+        d.append(fieldName, file);
+      });
+    }
+
+    if (form.referralPhone) d.append("referralPhone", form.referralPhone);
+    if (form.referralDriverId)
+      d.append("referralDriverId", form.referralDriverId);
+    if (form.referralDriverName)
+      d.append("referralDriverName", form.referralDriverName);
 
     return d;
   };
-
+const restartFlow = () => {
+  setOtp("");
+  setAadhaarOtp("");
+  setFieldErrors({});
+  pushParams("form");
+  setStep("form"); // userId/phone/aadharNumber stay in state, so resubmit resumes correctly
+};
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!category) {
@@ -620,9 +784,23 @@ export default function RegisterPage() {
         validateStatus: () => true,
       });
       if (res.data?.success) {
-        if (res.data?.data?.userId) setUserId(res.data.data.userId);
-        pushParams("otp", form.phone);
-        setStep("otp");
+        const d = res.data.data;
+        if (d?.userId) setUserId(d.userId);
+
+        if (d?.kycStatus === "kyc-success") {
+          pushParams("success");
+          setStep("success");
+        } else if (d?.isKycFeeDone) {
+          setFeePaid(true);
+          pushParams("kyc-otp");
+          setStep("kyc-otp"); // fee already paid for this number — skip payment
+        } else if (d?.isMobileVerified) {
+          pushParams("kyc-aadhaar");
+          setStep("kyc-aadhaar");
+        } else {
+          pushParams("otp", form.phone);
+          setStep("otp");
+        }
       } else if (res.data?.errors?.length) {
         const errs: FieldErrors = {};
         res.data.errors.forEach((e: { field: string; message: string }) => {
@@ -633,7 +811,10 @@ export default function RegisterPage() {
           icon: "error",
           title: "Please fix errors",
           html: res.data.errors
-            .map((e: any) => `<div style="text-align:left;padding:2px 0">• ${e.message}</div>`)
+            .map(
+              (e: any) =>
+                `<div style="text-align:left;padding:2px 0">• ${e.message}</div>`,
+            )
             .join(""),
           confirmButtonColor: "#E52710",
         });
@@ -669,11 +850,14 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch("https://partners.taxisafar.com/api/auth/verify-register-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: form.phone, otp: otp.trim() }),
-      });
+      const res = await fetch(
+        "https://partners.taxisafar.com/api/auth/verify-register-otp",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone: form.phone, otp: otp.trim() }),
+        },
+      );
       const data = await res.json();
       if (data.success) {
         if (data?.data?.userId) setUserId(data.data.userId);
@@ -698,8 +882,10 @@ export default function RegisterPage() {
     }
   };
 
-  // ── Aadhaar number entry: local validation only, no API call yet ──
-  const proceedToPayment = () => {
+  // ── Aadhaar number entry: local validation only — if fee is already paid
+  // (restart/refresh scenario), skip the payment step entirely and go
+  // straight to sending the Aadhaar OTP ──
+  const proceedToPayment = async () => {
     if (!/^\d{12}$/.test(aadharNumber)) {
       Swal.fire({
         icon: "warning",
@@ -708,6 +894,12 @@ export default function RegisterPage() {
       });
       return;
     }
+
+    if (feePaid) {
+      await sendAadhaarOtpHandler();
+      return;
+    }
+
     pushParams("kyc-payment");
     setStep("kyc-payment");
   };
@@ -727,7 +919,9 @@ export default function RegisterPage() {
     setPayingKyc(true);
 
     try {
-      const res = await axios.post(`${KYC_API_BASE}/${userId}/kyc/create-order`);
+      const res = await axios.post(
+        `${KYC_API_BASE}/${userId}/kyc/create-order`,
+      );
       const responseData = res?.data;
       const razorpayOrder = responseData?.order?.order;
 
@@ -742,7 +936,9 @@ export default function RegisterPage() {
         Swal.fire({
           icon: "error",
           title: "Payment unavailable",
-          text: responseData?.message || "Unable to create a valid payment order. Please try again.",
+          text:
+            responseData?.message ||
+            "Unable to create a valid payment order. Please try again.",
           confirmButtonColor: "#E52710",
         });
         setPayingKyc(false);
@@ -796,6 +992,7 @@ export default function RegisterPage() {
               razorpay_signature: paymentResponse.razorpay_signature,
             });
 
+            setFeePaid(true);
             setPayingKyc(false);
             // payment done → immediately send Aadhaar OTP using the number captured earlier
             await sendAadhaarOtpHandler();
@@ -804,7 +1001,9 @@ export default function RegisterPage() {
             Swal.fire({
               icon: "error",
               title: "Payment verification failed",
-              text: err?.response?.data?.message || "We couldn't verify your payment. Please contact support.",
+              text:
+                err?.response?.data?.message ||
+                "We couldn't verify your payment. Please contact support.",
               confirmButtonColor: "#E52710",
             });
           }
@@ -819,7 +1018,9 @@ export default function RegisterPage() {
         Swal.fire({
           icon: "error",
           title: "Payment failed",
-          text: paymentFailedResponse?.error?.description || "Your payment couldn't be completed. Please try again.",
+          text:
+            paymentFailedResponse?.error?.description ||
+            "Your payment couldn't be completed. Please try again.",
           confirmButtonColor: "#E52710",
         });
       });
@@ -847,7 +1048,9 @@ export default function RegisterPage() {
     }
     setSendingAadhaarOtp(true);
     try {
-      await axios.post(`${KYC_API_BASE}/${userId}/kyc/aadhaar/send-otp`, { aadharNumber });
+      await axios.post(`${KYC_API_BASE}/${userId}/kyc/aadhaar/send-otp`, {
+        aadharNumber,
+      });
       pushParams("kyc-otp");
       setStep("kyc-otp");
       setAadhaarResendTimer(30);
@@ -862,7 +1065,8 @@ export default function RegisterPage() {
       Swal.fire({
         icon: "error",
         title: "Couldn't send OTP",
-        text: err?.response?.data?.message || "Check Aadhaar number and try again",
+        text:
+          err?.response?.data?.message || "Check Aadhaar number and try again",
         confirmButtonColor: "#E52710",
       });
     } finally {
@@ -872,7 +1076,11 @@ export default function RegisterPage() {
 
   const verifyAadhaarOtpHandler = async () => {
     if (aadhaarOtp.trim().length < 4) {
-      Swal.fire({ icon: "warning", title: "Enter OTP", confirmButtonColor: "#E52710" });
+      Swal.fire({
+        icon: "warning",
+        title: "Enter OTP",
+        confirmButtonColor: "#E52710",
+      });
       return;
     }
     setVerifyingAadhaarOtp(true);
@@ -920,10 +1128,21 @@ export default function RegisterPage() {
 
   const Header = (
     <div className="bg-white border-b sticky top-0 z-10">
-      <div className="max-w-2xl mx-auto px-4 py-3 flex flex-col items-center">
-        <img src={LOGO_SRC} alt="TaxiSafar" className="h-16 w-auto object-contain" />
-      </div>
+    <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="w-16" />
+      <img
+        src={LOGO_SRC}
+        alt="TaxiSafar"
+        className="h-16 w-auto object-contain"
+      />
+      <button
+        onClick={restartFlow}
+        className="h-9 px-3 rounded-xl border border-gray-300 text-gray-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-50 shrink-0"
+      >
+        <RotateCcw className="w-3.5 h-3.5" /> Restart
+      </button>
     </div>
+  </div>
   );
 
   return (
@@ -952,9 +1171,10 @@ export default function RegisterPage() {
           <div className="w-full max-w-3xl mx-auto px-4 sm:px-8 lg:px-10 py-8 sm:py-12">
             {/* ── FORM ── */}
             {step === "form" && (
-              <form onSubmit={submitForm} className="space-y-8 fsu pb-28 sm:pb-0">
-                
-
+              <form
+                onSubmit={submitForm}
+                className="space-y-8 fsu pb-28 sm:pb-0"
+              >
                 {/* Basic info */}
                 <Section label="Basic Information">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -971,19 +1191,18 @@ export default function RegisterPage() {
                     </Field>
                     <Field err={fieldErrors.phone}>
                       <IconInp
-                         icon={Phone}
+                        icon={Phone}
                         name="phone"
                         type="phone"
-                          placeholder="10-digit Mobile "
+                        placeholder="10-digit Mobile "
                         value={form.phone}
                         onChange={handleChange}
                         err={!!fieldErrors.phone}
-                           inp={inp}
+                        inp={inp}
                         maxLength={10}
                         inputMode="numeric"
                       />
                     </Field>
-
 
                     <Field err={fieldErrors.state}>
                       <IconSelect
@@ -1005,7 +1224,9 @@ export default function RegisterPage() {
                         value={form.city}
                         onChange={handleChange}
                         disabled={!form.state}
-                        placeholder={form.state ? "Select City" : "Select State first"}
+                        placeholder={
+                          form.state ? "Select City" : "Select State first"
+                        }
                         options={cities}
                         err={!!fieldErrors.city}
                         sel={sel}
@@ -1020,53 +1241,80 @@ export default function RegisterPage() {
                       onChange={handleChange}
                     />
                   </div>
-
                 </Section>
 
                 {/* Category */}
                 <Section label="Service Category ">
                   <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 gap-3">
-                    {CATEGORIES.map(({ value, label, icon: Icon, gradient, light, border, textColor }) => {
-                      const active = category === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setCategory(value)}
-                          className={`cat-btn rounded-2xl p-4 flex items-center gap-3 text-left border w-full ${
-                            active ? "cat-active" : "border-gray-150 bg-gray-50"
-                          }`}
-                          style={active ? { backgroundColor: light, borderColor: border } : { borderColor: "#ededf0" }}
-                        >
-                          <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                              active ? `bg-gradient-to-br ${gradient} shadow` : "bg-white border border-gray-200"
+                    {CATEGORIES.map(
+                      ({
+                        value,
+                        label,
+                        icon: Icon,
+                        gradient,
+                        light,
+                        border,
+                        textColor,
+                      }) => {
+                        const active = category === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setCategory(value)}
+                            className={`cat-btn rounded-2xl p-4 flex items-center gap-3 text-left border w-full ${
+                              active
+                                ? "cat-active"
+                                : "border-gray-150 bg-gray-50"
                             }`}
+                            style={
+                              active
+                                ? {
+                                    backgroundColor: light,
+                                    borderColor: border,
+                                  }
+                                : { borderColor: "#ededf0" }
+                            }
                           >
-                            <Icon
-                              className={`${active ? "text-white" : "text-gray-400"}`}
-                              style={{ width: 18, height: 18 }}
-                            />
-                          </div>
-                          <span
-                            className="font-bold text-[13px] leading-tight"
-                            style={{ color: active ? textColor : "#374151" }}
-                          >
-                            {label}
-                          </span>
-                          {active && (
-                            <Check className="w-3.5 h-3.5 ml-auto flex-shrink-0" style={{ color: textColor }} />
-                          )}
-                        </button>
-                      );
-                    })}
+                            <div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                                active
+                                  ? `bg-gradient-to-br ${gradient} shadow`
+                                  : "bg-white border border-gray-200"
+                              }`}
+                            >
+                              <Icon
+                                className={`${active ? "text-white" : "text-gray-400"}`}
+                                style={{ width: 18, height: 18 }}
+                              />
+                            </div>
+                            <span
+                              className="font-bold text-[13px] leading-tight"
+                              style={{ color: active ? textColor : "#374151" }}
+                            >
+                              {label}
+                            </span>
+                            {active && (
+                              <Check
+                                className="w-3.5 h-3.5 ml-auto flex-shrink-0"
+                                style={{ color: textColor }}
+                              />
+                            )}
+                          </button>
+                        );
+                      },
+                    )}
                   </div>
                 </Section>
 
                 {/* Tour Guide */}
                 {category === "tour_guide" && (
                   <div className="space-y-4 p-5 bg-amber-50/60 rounded-2xl border border-amber-100">
-                    <SecHead icon={Compass} label="Tour Guide Details" color="text-amber-700" />
+                    <SecHead
+                      icon={Compass}
+                      label="Tour Guide Details"
+                      color="text-amber-700"
+                    />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Field err={fieldErrors.experienceYears}>
                         <input
@@ -1096,6 +1344,11 @@ export default function RegisterPage() {
                         className={`${inp()} sm:col-span-2`}
                         onChange={handleChange}
                       />
+                      <ImageUploader
+                        images={categoryImages}
+                        setImages={setCategoryImages}
+                        label="Tour Photos (up to 6)"
+                      />
                     </div>
                   </div>
                 )}
@@ -1103,7 +1356,11 @@ export default function RegisterPage() {
                 {/* RTO */}
                 {category === "rto_service" && (
                   <div className="space-y-4 p-5 bg-blue-50/60 rounded-2xl border border-blue-100">
-                    <SecHead icon={Car} label="RTO Service Details" color="text-blue-700" />
+                    <SecHead
+                      icon={Car}
+                      label="RTO Service Details"
+                      color="text-blue-700"
+                    />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Field err={fieldErrors.officeName}>
                         <input
@@ -1137,6 +1394,11 @@ export default function RegisterPage() {
                         className={`${inp()} sm:col-span-2`}
                         onChange={handleChange}
                       />
+                      <ImageUploader
+                        images={categoryImages}
+                        setImages={setCategoryImages}
+                        label="Office Photos (up to 6)"
+                      />
                     </div>
                   </div>
                 )}
@@ -1144,7 +1406,11 @@ export default function RegisterPage() {
                 {/* Car Accessory */}
                 {category === "car_accessory" && (
                   <div className="space-y-4 p-5 bg-emerald-50/60 rounded-2xl border border-emerald-100">
-                    <SecHead icon={Wrench} label="Car Accessory Shop" color="text-emerald-700" />
+                    <SecHead
+                      icon={Wrench}
+                      label="Car Accessory Shop"
+                      color="text-emerald-700"
+                    />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Field err={fieldErrors.shopName}>
                         <input
@@ -1170,6 +1436,11 @@ export default function RegisterPage() {
                         className={`${inp()} sm:col-span-2`}
                         onChange={handleChange}
                       />
+                      <ImageUploader
+                        images={categoryImages}
+                        setImages={setCategoryImages}
+                        label="Shop Photos (up to 6)"
+                      />
                     </div>
                   </div>
                 )}
@@ -1182,8 +1453,11 @@ export default function RegisterPage() {
                     className="w-full flex items-center justify-between px-5 h-14 bg-gray-50 hover:bg-gray-100 transition"
                   >
                     <span className="flex items-center gap-2 text-[13px] font-bold text-gray-600">
-                      <Globe className="w-4 h-4 text-gray-400" /> Social & Online Links
-                      <span className="text-gray-400 font-normal text-[11px]">(optional)</span>
+                      <Globe className="w-4 h-4 text-gray-400" /> Social &
+                      Online Links
+                      <span className="text-gray-400 font-normal text-[11px]">
+                        (optional)
+                      </span>
                     </span>
                     {showSocial ? (
                       <ChevronUp className="w-4 h-4 text-gray-400" />
@@ -1194,14 +1468,41 @@ export default function RegisterPage() {
                   {showSocial && (
                     <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-gray-100">
                       {[
-                        { name: "facebook", icon: Facebook, ph: "Facebook URL", c: "text-blue-600" },
-                        { name: "instagram", icon: Instagram, ph: "Instagram URL", c: "text-pink-500" },
-                        { name: "youtube", icon: Youtube, ph: "YouTube URL", c: "text-red-500" },
-                        { name: "website", icon: Globe, ph: "Website URL", c: "text-gray-400" },
-                        { name: "whatsapp", icon: MessageCircle, ph: "WhatsApp Number", c: "text-green-600" },
+                        {
+                          name: "facebook",
+                          icon: Facebook,
+                          ph: "Facebook URL",
+                          c: "text-blue-600",
+                        },
+                        {
+                          name: "instagram",
+                          icon: Instagram,
+                          ph: "Instagram URL",
+                          c: "text-pink-500",
+                        },
+                        {
+                          name: "youtube",
+                          icon: Youtube,
+                          ph: "YouTube URL",
+                          c: "text-red-500",
+                        },
+                        {
+                          name: "website",
+                          icon: Globe,
+                          ph: "Website URL",
+                          c: "text-gray-400",
+                        },
+                        {
+                          name: "whatsapp",
+                          icon: MessageCircle,
+                          ph: "WhatsApp Number",
+                          c: "text-green-600",
+                        },
                       ].map(({ name, icon: Icon, ph, c }) => (
                         <div key={name} className="relative">
-                          <Icon className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${c}`} />
+                          <Icon
+                            className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${c}`}
+                          />
                           <input
                             name={name}
                             placeholder={ph}
@@ -1214,7 +1515,7 @@ export default function RegisterPage() {
                   )}
                 </div>
 
-                                {/* Referral Driver */}
+                {/* Referral Driver */}
                 <div className="rounded-2xl border border-gray-200 p-3.5 bg-gray-50/60">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -1249,8 +1550,8 @@ export default function RegisterPage() {
                   {referralOn && (
                     <div className="mt-3">
                       {!selectedDriver && (
-                        <div className="flex gap-2">
-                          <span className="h-11 px-3 rounded-xl border border-gray-300 bg-white text-sm text-gray-500 flex items-center shrink-0">
+                        <div className="relative">
+                          <span className="absolute left-0 top-0 h-11 px-3 rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-sm text-gray-500 flex items-center">
                             +91
                           </span>
                           <input
@@ -1260,25 +1561,13 @@ export default function RegisterPage() {
                                 e.target.value.replace(/\D/g, "").slice(0, 10),
                               )
                             }
-                            placeholder="Enter driver number"
+                            placeholder="Full number or last 8 digits"
                             inputMode="numeric"
-                            className="flex-1 h-11 px-3.5 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            className="w-full h-11 pl-14 pr-10 rounded-xl border border-gray-300 bg-white text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
                           />
-                          <button
-                            type="button"
-                            onClick={() => searchDriver(referralInput)}
-                            disabled={
-                              driverSearching || referralInput.length !== 10
-                            }
-                            className="h-11 px-4 rounded-xl bg-red-600 text-white text-sm font-semibold flex items-center gap-1.5 shrink-0 disabled:opacity-50"
-                          >
-                            {driverSearching ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Search className="w-4 h-4" />
-                            )}{" "}
-                            Search
-                          </button>
+                          {driverSearching && (
+                            <Loader2 className="w-4 h-4 animate-spin text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                          )}
                         </div>
                       )}
 
@@ -1315,18 +1604,33 @@ export default function RegisterPage() {
                                   {cleanText(driverResult.address)}
                                 </p>
                               )}
-                            </div>
-                            <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                              <Check className="w-3.5 h-3.5 text-white" />
+                              {isDriverKycVerified(driverResult) ? (
+                                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                  <CheckCircle2 className="w-3 h-3" /> KYC
+                                  Verified
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                  <AlertCircle className="w-3 h-3" /> Non-KYC
+                                  Verified
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={addReferralDriver}
-                            className="w-full h-10 bg-gray-900 text-white text-sm font-semibold"
-                          >
-                            Add
-                          </button>
+                          {isDriverKycVerified(driverResult) ? (
+                            <button
+                              type="button"
+                              onClick={addReferralDriver}
+                              className="w-full h-10 bg-gray-900 text-white text-sm font-semibold"
+                            >
+                              Add
+                            </button>
+                          ) : (
+                            <div className="w-full py-2.5 bg-amber-50 text-amber-700 text-[11px] text-center font-medium border-t border-amber-100">
+                              This driver hasn't completed KYC yet — can't be
+                              added as referral.
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -1368,7 +1672,9 @@ export default function RegisterPage() {
                 <div
                   className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-gray-100 p-4
                              sm:static sm:z-auto sm:bg-transparent sm:backdrop-blur-0 sm:border-0 sm:p-0"
-                  style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}
+                  style={{
+                    paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)",
+                  }}
                 >
                   <button
                     type="submit"
@@ -1396,9 +1702,15 @@ export default function RegisterPage() {
                   <Phone className="w-9 h-9 text-[#E52710]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-gray-900">Verify Your Number</h2>
-                  <p className="text-gray-400 text-[13px] mt-1.5">OTP sent to WhatsApp</p>
-                  <p className="font-extrabold text-gray-800 mt-1">{form.phone}</p>
+                  <h2 className="text-xl font-extrabold text-gray-900">
+                    Verify Your Number
+                  </h2>
+                  <p className="text-gray-400 text-[13px] mt-1.5">
+                    OTP sent to WhatsApp
+                  </p>
+                  <p className="font-extrabold text-gray-800 mt-1">
+                    {form.phone}
+                  </p>
                 </div>
                 <input
                   className="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 text-center text-2xl font-extrabold tracking-[.4em] focus:outline-none focus:border-[#E52710] transition bg-white"
@@ -1429,7 +1741,11 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => {
                       setStep("form");
-                      window.history.replaceState({}, "", window.location.pathname);
+                      window.history.replaceState(
+                        {},
+                        "",
+                        window.location.pathname,
+                      );
                     }}
                     className="text-[#E52710] font-bold hover:underline"
                   >
@@ -1446,41 +1762,62 @@ export default function RegisterPage() {
                   <IdCard className="w-9 h-9 text-[#E52710]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-gray-900">Enter Aadhaar Number</h2>
+                  <h2 className="text-xl font-extrabold text-gray-900">
+                    Enter Aadhaar Number
+                  </h2>
                   <p className="text-gray-400 text-[13px] mt-1.5">
-                    Required for identity verification. OTP will be sent after the KYC fee is paid.
+                    {feePaid
+                      ? "Required for identity verification. OTP will be sent right away."
+                      : "Required for identity verification. OTP will be sent after the KYC fee is paid."}
                   </p>
                 </div>
                 <input
                   value={aadharNumber}
-                  onChange={(e) => setAadharNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                  onChange={(e) =>
+                    setAadharNumber(
+                      e.target.value.replace(/\D/g, "").slice(0, 12),
+                    )
+                  }
                   placeholder="XXXX XXXX XXXX"
                   inputMode="numeric"
                   className="w-full border-2 border-gray-200 rounded-2xl px-4 py-4 text-center text-lg font-bold tracking-widest focus:outline-none focus:border-[#E52710] transition bg-white"
                 />
                 <button
                   onClick={proceedToPayment}
-                  className="w-full bg-[#E52710] text-white h-14 rounded-2xl font-extrabold text-[13px] hover:opacity-90 transition flex items-center justify-center gap-2 shadow-lg shadow-[#E52710]/20"
+                  disabled={sendingAadhaarOtp}
+                  className="w-full bg-[#E52710] text-white h-14 rounded-2xl font-extrabold text-[13px] hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-[#E52710]/20"
                 >
-                  Continue <ArrowRight className="w-4 h-4" />
+                  {sendingAadhaarOtp ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Sending OTP…
+                    </>
+                  ) : (
+                    <>
+                      Continue <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
               </div>
             )}
 
-            {/* ── KYC PAYMENT ── */}
+            {/* ── KYC PAYMENT (skipped automatically if fee already paid) ── */}
             {step === "kyc-payment" && (
               <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-6 max-w-xs mx-auto text-center fsu">
                 <div className="w-20 h-20 bg-[#E52710]/10 rounded-3xl flex items-center justify-center">
                   <CreditCard className="w-9 h-9 text-[#E52710]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-gray-900">Complete KYC Fee</h2>
+                  <h2 className="text-xl font-extrabold text-gray-900">
+                    Complete KYC Fee
+                  </h2>
                   <p className="text-gray-400 text-[13px] mt-1.5">
                     Pay a one-time KYC fee to send the Aadhaar OTP
                   </p>
                 </div>
                 <div className="w-full bg-gray-50 rounded-2xl p-4 flex items-center justify-between border border-gray-100">
-                  <span className="text-[13px] text-gray-500 font-semibold">KYC Verification Fee</span>
+                  <span className="text-[13px] text-gray-500 font-semibold">
+                    KYC Verification Fee
+                  </span>
                   <span className="text-lg font-extrabold text-gray-900">
                     {fetchingFee ? (
                       <Loader2 className="w-4 h-4 animate-spin inline-block" />
@@ -1493,12 +1830,18 @@ export default function RegisterPage() {
                 </div>
                 <button
                   onClick={startKycPayment}
-                  disabled={payingKyc || fetchingFee || kycFee === null || sendingAadhaarOtp}
+                  disabled={
+                    payingKyc ||
+                    fetchingFee ||
+                    kycFee === null ||
+                    sendingAadhaarOtp
+                  }
                   className="w-full bg-[#E52710] text-white h-14 rounded-2xl font-extrabold text-[13px] hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-[#E52710]/20"
                 >
                   {payingKyc ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" /> Opening Razorpay…
+                      <Loader2 className="w-4 h-4 animate-spin" /> Opening
+                      Razorpay…
                     </>
                   ) : sendingAadhaarOtp ? (
                     <>
@@ -1506,7 +1849,8 @@ export default function RegisterPage() {
                     </>
                   ) : (
                     <>
-                      Pay {kycFee !== null ? `₹${kycFee}` : ""} & Continue <ArrowRight className="w-4 h-4" />
+                      Pay {kycFee !== null ? `₹${kycFee}` : ""} & Continue{" "}
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
@@ -1520,7 +1864,9 @@ export default function RegisterPage() {
                   <Shield className="w-9 h-9 text-[#E52710]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-gray-900">Verify Aadhaar OTP</h2>
+                  <h2 className="text-xl font-extrabold text-gray-900">
+                    Verify Aadhaar OTP
+                  </h2>
                   <p className="text-gray-400 text-[13px] mt-1.5">
                     Enter the 6-digit code sent to your Aadhaar-linked mobile
                   </p>
@@ -1556,7 +1902,9 @@ export default function RegisterPage() {
                     disabled={sendingAadhaarOtp || aadhaarResendTimer > 0}
                     className="text-[#E52710] font-bold hover:underline disabled:text-gray-400 disabled:no-underline"
                   >
-                    {aadhaarResendTimer > 0 ? `Resend in ${aadhaarResendTimer}s` : "Resend OTP"}
+                    {aadhaarResendTimer > 0
+                      ? `Resend in ${aadhaarResendTimer}s`
+                      : "Resend OTP"}
                   </button>
                 </p>
               </div>
@@ -1569,8 +1917,12 @@ export default function RegisterPage() {
                   <CheckCircle2 className="w-10 h-10 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-extrabold text-gray-900">You're Registered! 🎉</h2>
-                  <p className="text-gray-400 text-[13px] mt-1.5">Your profile is now under review.</p>
+                  <h2 className="text-xl font-extrabold text-gray-900">
+                    You're Registered! 🎉
+                  </h2>
+                  <p className="text-gray-400 text-[13px] mt-1.5">
+                    Your profile is now under review.
+                  </p>
                 </div>
 
                 {profileLoading ? (
@@ -1593,27 +1945,43 @@ export default function RegisterPage() {
                     <div className="divide-y divide-gray-100">
                       <div className="flex justify-between px-5 py-2.5">
                         <span className="text-[12px] text-gray-500">Name</span>
-                        <span className="text-[13px] font-semibold">{profileData.name}</span>
-                      </div>
-                      <div className="flex justify-between px-5 py-2.5">
-                        <span className="text-[12px] text-gray-500">Mobile</span>
-                        <span className="text-[13px] font-semibold">+91 {profileData.phone}</span>
-                      </div>
-                      <div className="flex justify-between px-5 py-2.5">
-                        <span className="text-[12px] text-gray-500">Aadhaar No.</span>
                         <span className="text-[13px] font-semibold">
-                          XXXX XXXX {String(profileData.aadharNumber || "").slice(-4)}
+                          {profileData.name}
                         </span>
                       </div>
                       <div className="flex justify-between px-5 py-2.5">
-                        <span className="text-[12px] text-gray-500">Category</span>
+                        <span className="text-[12px] text-gray-500">
+                          Mobile
+                        </span>
                         <span className="text-[13px] font-semibold">
-                          {categoryLabelMap[profileData.category] || profileData.category}
+                          +91 {profileData.phone}
                         </span>
                       </div>
                       <div className="flex justify-between px-5 py-2.5">
-                        <span className="text-[12px] text-gray-500">Status</span>
-                        <span className="text-[13px] font-bold text-amber-600">Under Review</span>
+                        <span className="text-[12px] text-gray-500">
+                          Aadhaar No.
+                        </span>
+                        <span className="text-[13px] font-semibold">
+                          XXXX XXXX{" "}
+                          {String(profileData.aadharNumber || "").slice(-4)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between px-5 py-2.5">
+                        <span className="text-[12px] text-gray-500">
+                          Category
+                        </span>
+                        <span className="text-[13px] font-semibold">
+                          {categoryLabelMap[profileData.category] ||
+                            profileData.category}
+                        </span>
+                      </div>
+                      <div className="flex justify-between px-5 py-2.5">
+                        <span className="text-[12px] text-gray-500">
+                          Status
+                        </span>
+                        <span className="text-[13px] font-bold text-amber-600">
+                          Under Review
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1621,8 +1989,9 @@ export default function RegisterPage() {
 
                 <div className="w-full bg-[#E52710]/5 border border-[#E52710]/15 rounded-2xl p-4">
                   <p className="text-[11px] text-gray-500 leading-relaxed">
-                    <span className="font-bold text-[#E52710]">Next:</span> Watch your WhatsApp for the Taxi
-                    Safar team message with your verification status and deposit link.
+                    <span className="font-bold text-[#E52710]">Next:</span>{" "}
+                    Watch your WhatsApp for the Taxi Safar team message with
+                    your verification status and deposit link.
                   </p>
                 </div>
 

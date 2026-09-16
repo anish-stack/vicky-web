@@ -122,6 +122,17 @@ exports.sendUserAadhaarOtp = async (req, res) => {
         if (!user) return res.status(404).json({ success: false, message: "User not found." });
         if (!user.isKycFeeDone) return res.status(402).json({ success: false, message: "Please complete ₹99 KYC fee payment first." });
         if (user.kycStatus === "kyc-success") return res.status(400).json({ success: false, message: "KYC already completed." });
+        const duplicateAadhaar = await User.findOne({
+            _id: { $ne: userId },
+            aadharNumber,
+            aadharVerified: true,
+        });
+        if (duplicateAadhaar) {
+            return res.status(409).json({
+                success: false,
+                message: "This Aadhaar number is already verified with another account.",
+            });
+        }
 
         const result = await sendAadhaarOtp(aadharNumber);
 
@@ -160,7 +171,19 @@ exports.verifyUserAadhaarOtp = async (req, res) => {
         if (!user.isKycFeeDone) return res.status(402).json({ success: false, message: "KYC fee not paid yet." });
         if (!user.kycRequestId) return res.status(400).json({ success: false, message: "No OTP request found. Please resend OTP." });
         if (!otp) return res.status(400).json({ success: false, message: "OTP is required." });
-
+        const duplicateAadhaar = await User.findOne({
+            _id: { $ne: userId },
+            aadharNumber: user.aadharNumber,
+            aadharVerified: true,
+        });
+        if (duplicateAadhaar) {
+            user.kycStatus = "kyc-failed";
+            await user.save();
+            return res.status(409).json({
+                success: false,
+                message: "This Aadhaar number is already verified with another account.",
+            });
+        }
         const result = await verifyAadhaarOtp(user.kycRequestId, otp);
         if (!result?.success || !result?.data) {
             console.log("❌ Aadhaar OTP Verify Failed:", result);
@@ -221,14 +244,15 @@ exports.registerUser = async (req, res) => {
         console.log(req.body)
 
         // Check duplicate
-        const existingUser = await User.findOne({ phone });
-        if (existingUser) {
+        // NEW — only block if this phone+category already fully completed KYC
+        const existingUser = await User.findOne({ phone, category });
+        if (existingUser && existingUser.kycStatus === "kyc-success") {
             cleanupUploadedFiles(uploadedFiles);
-
-            return res.status(409).json({ success: false, message: `Phone number is already registered.` });
+            return res.status(409).json({
+                success: false,
+                message: `This number is already registered as ${categoryLabel[category] || category}.`
+            });
         }
-
-
         const filePaths = extractUploadedFiles(uploadedFiles);
 
         // Parse arrays (from form-data they may come as comma-separated strings or arrays)
@@ -272,8 +296,9 @@ exports.registerUser = async (req, res) => {
         if (category === "rto_service") {
             userData.officeName = officeName;
             userData.officeAddress = officeAddress;
-            userData.rtoOfficeCode = rtoOfficeCode
+            userData.rtoOfficeCode = rtoOfficeCode;
             userData.services = parseArray(services);
+            userData.officeImages = filePaths.officeImages || []; // NEW
         }
 
         if (category === "car_accessory") {
@@ -290,27 +315,44 @@ exports.registerUser = async (req, res) => {
             userData.specialization = parseArray(specialization);
             userData.garageImages = filePaths.garageImages || [];
         }
+        let user;
+        if (existingUser) {
+            Object.assign(existingUser, userData);
 
-        // Generate OTP
-        const otp = generateOTP();
-        userData.otp = otp;
-        userData.otpExpires = getOTPExpiry();
-        userData.otpAttempts = 0;
+            if (!existingUser.isMobileVerified) {
+                const otp = generateOTP();
+                existingUser.otp = otp;
+                existingUser.otpExpires = getOTPExpiry();
+                existingUser.otpAttempts = 0;
+                await existingUser.save();
+                await sendDltMessage(phone, otp).catch(console.error);
+            } else {
+                await existingUser.save();
+            }
+            user = existingUser;
+        } else {
+            const otp = generateOTP();
+            userData.otp = otp;
+            userData.otpExpires = getOTPExpiry();
+            userData.otpAttempts = 0;
 
-        const user = await User.create(userData);
-
-        // Send OTP via WhatsApp (non-blocking)
-        await sendDltMessage(phone, otp).catch(console.error);
+            user = await User.create(userData);
+            await sendDltMessage(phone, otp).catch(console.error);
+        }
 
         res.status(201).json({
             success: true,
-            message: "Registration successful. OTP sent to your WhatsApp number.",
+            message: user.isMobileVerified
+                ? "Details updated. Continuing your KYC."
+                : "Registration successful. OTP sent to your WhatsApp number.",
             data: {
                 userId: user._id,
                 name: user.name,
                 phone: user.phone,
                 category: user.category,
-                isMobileVerified: user.isMobileVerified
+                isMobileVerified: user.isMobileVerified,
+                isKycFeeDone: user.isKycFeeDone,
+                kycStatus: user.kycStatus
             }
         });
 

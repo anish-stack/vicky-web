@@ -65,7 +65,7 @@ const userSchema = new mongoose.Schema(
         referralDriverId: { type: String, default: null },
         referralDriverName: { type: String, trim: true, default: null },
 
-        aadharNumber: { type: String, select: false },
+   aadharNumber: { type: String, select: false, index: true },
         aadharVerified: { type: Boolean, default: false },
         aadharData: { type: mongoose.Schema.Types.Mixed, default: null },
         kycRequestId: { type: String, select: false },
@@ -182,6 +182,7 @@ const userSchema = new mongoose.Schema(
                 return this.category === "rto_service"
             }
         },
+        officeImages: { type: [String] },
         rtoOfficeCode: String,
         services: {
             type: [String] // driving license, rc transfer etc

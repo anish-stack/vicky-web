@@ -81,8 +81,14 @@ const STEPS = ["Your Details", "Verify OTP", "Aadhaar KYC"] as const;
 const cleanText = (v?: string) => (v || "").replace(/^"+|"+$/g, "").trim();
 const driverCode = (id?: string) =>
   id ? `TS${id.slice(-5).toUpperCase()}` : "—";
-const isDriverKycDone = (d?: Driver | null) =>
-  !!d && (d.kyc_status === "kyc-success" || d.aadhar_verified === true);
+
+const isDriverKycDone = (driver?: Driver | null) =>
+  !!driver &&
+  (driver.kyc_status === "verified" ||
+    driver.kyc_done === true ||
+    driver.aadharVerified === true ||
+    driver.isKycVerified === true ||
+    driver.is_kyc_verified === true);
 
 export default function CarMechanicRegister() {
   const router = useRouter();
@@ -270,11 +276,11 @@ export default function CarMechanicRegister() {
       setDriverSearching(false);
     }
   };
-const changeAadhaarAfterPayment = () => {
-  setAadhaarOtp(["", "", "", "", "", ""]);
-  setAadhaarResendTimer(0);
-  setKycStage("aadhaar-input");
-};
+  const changeAadhaarAfterPayment = () => {
+    setAadhaarOtp(["", "", "", "", "", ""]);
+    setAadhaarResendTimer(0);
+    setKycStage("aadhaar-input");
+  };
   const addReferralDriver = () => {
     if (!driverResult) return;
     setSelectedDriver(driverResult);
@@ -661,24 +667,24 @@ const changeAadhaarAfterPayment = () => {
     if (aadhaarResendTimer > 0) return;
     await sendAadhaarOtpHandler();
   };
-const Header = (
-  <div className="bg-white border-b sticky top-0 z-10">
-    <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div className="w-16" />
-      <img
-        src={LOGO_SRC}
-        alt="TaxiSafar"
-        className="h-16 w-auto object-contain"
-      />
-      <button
-        onClick={restartRegistration}
-        className="h-9 px-3 rounded-xl border border-gray-300 text-gray-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-50 shrink-0"
-      >
-        <RotateCcw className="w-3.5 h-3.5" /> Restart
-      </button>
+  const Header = (
+    <div className="bg-white border-b sticky top-0 z-10">
+      <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="w-16" />
+        <img
+          src={LOGO_SRC}
+          alt="TaxiSafar"
+          className="h-16 w-auto object-contain"
+        />
+        <button
+          onClick={restartRegistration}
+          className="h-9 px-3 rounded-xl border border-gray-300 text-gray-600 text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-gray-50 shrink-0"
+        >
+          <RotateCcw className="w-3.5 h-3.5" /> Restart
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
 
   // ── success + profile ──
   if (registered) {
@@ -1442,39 +1448,79 @@ const Header = (
                 </>
               )}
 
-         {/* ── step 2 : aadhaar-otp block — updated ── */}
-{kycStage === "aadhaar-otp" && (
-  <>
-    <div>
-      <h2 className="text-lg font-bold text-gray-900">Verify Aadhaar OTP</h2>
-      <p className="text-sm text-gray-400 mt-1">Enter the 6-digit code sent to your Aadhaar-linked mobile</p>
-    </div>
-    <div className="flex justify-center gap-2">
-      {aadhaarOtp.map((d, i) => (
-        <input key={i} ref={(el) => (aadhaarOtpRefs.current[i] = el)} value={d} onChange={(e) => onAadhaarOtpChange(i, e.target.value)} onKeyDown={(e) => onAadhaarOtpKeyDown(i, e)} maxLength={1} inputMode="numeric" className="w-11 h-12 text-center text-lg font-semibold rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none" />
-      ))}
-    </div>
+              {/* ── step 2 : aadhaar-otp block — updated ── */}
+              {kycStage === "aadhaar-otp" && (
+                <>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">
+                      Verify Aadhaar OTP
+                    </h2>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Enter the 6-digit code sent to your Aadhaar-linked mobile
+                    </p>
+                  </div>
+                  <div className="flex justify-center gap-2">
+                    {aadhaarOtp.map((d, i) => (
+                      <input
+                        key={i}
+                        ref={(el) => (aadhaarOtpRefs.current[i] = el)}
+                        value={d}
+                        onChange={(e) => onAadhaarOtpChange(i, e.target.value)}
+                        onKeyDown={(e) => onAadhaarOtpKeyDown(i, e)}
+                        maxLength={1}
+                        inputMode="numeric"
+                        className="w-11 h-12 text-center text-lg font-semibold rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-100 outline-none"
+                      />
+                    ))}
+                  </div>
 
-    <div className="flex gap-2">
-      <button onClick={verifyAadhaarOtpHandler} disabled={verifyingAadhaarOtp} className="flex-1 h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-        {verifyingAadhaarOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {verifyingAadhaarOtp ? "Verifying..." : "Verify & Activate"}
-      </button>
-      <button onClick={restartRegistration} disabled={verifyingAadhaarOtp} className="h-12 px-4 rounded-xl border border-gray-300 text-gray-600 font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50">
-        <RotateCcw className="w-4 h-4" /> Restart
-      </button>
-    </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={verifyAadhaarOtpHandler}
+                      disabled={verifyingAadhaarOtp}
+                      className="flex-1 h-12 rounded-xl bg-red-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                    >
+                      {verifyingAadhaarOtp ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}{" "}
+                      {verifyingAadhaarOtp
+                        ? "Verifying..."
+                        : "Verify & Activate"}
+                    </button>
+                    <button
+                      onClick={restartRegistration}
+                      disabled={verifyingAadhaarOtp}
+                      className="h-12 px-4 rounded-xl border border-gray-300 text-gray-600 font-semibold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      <RotateCcw className="w-4 h-4" /> Restart
+                    </button>
+                  </div>
 
-    <div className="flex items-center justify-center gap-4">
-      <button onClick={resendAadhaarOtp} disabled={sendingAadhaarOtp || aadhaarResendTimer > 0} className="text-sm text-red-600 font-medium disabled:text-gray-400">
-        {aadhaarResendTimer > 0 ? `Resend OTP in ${aadhaarResendTimer}s` : sendingAadhaarOtp ? "Resending..." : "Resend OTP"}
-      </button>
-      <span className="text-gray-300">|</span>
-      <button onClick={changeAadhaarAfterPayment} disabled={sendingAadhaarOtp || verifyingAadhaarOtp} className="text-sm text-gray-500 font-medium disabled:text-gray-300">
-        Change Aadhaar Number
-      </button>
-    </div>
-  </>
-)}
+                  <div className="flex items-center justify-center gap-4">
+                    <button
+                      onClick={resendAadhaarOtp}
+                      disabled={sendingAadhaarOtp || aadhaarResendTimer > 0}
+                      className="text-sm text-red-600 font-medium disabled:text-gray-400"
+                    >
+                      {aadhaarResendTimer > 0
+                        ? `Resend OTP in ${aadhaarResendTimer}s`
+                        : sendingAadhaarOtp
+                          ? "Resending..."
+                          : "Resend OTP"}
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button
+                      onClick={changeAadhaarAfterPayment}
+                      disabled={sendingAadhaarOtp || verifyingAadhaarOtp}
+                      className="text-sm text-gray-500 font-medium disabled:text-gray-300"
+                    >
+                      Change Aadhaar Number
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -1515,7 +1561,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1.5">
+      <label className="text-base font-bold text-gray-900 mb-1.5 flex items-center gap-1.5">
         {icon}
         {label}
       </label>

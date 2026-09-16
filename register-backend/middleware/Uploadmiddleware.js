@@ -108,13 +108,13 @@ const upload = multer({
 exports.uploadUserImages = upload.fields([
   { name: "profileImage", maxCount: 1 },
   { name: "tourImages", maxCount: 8 },
+  { name: "officeImages", maxCount: 8 },   // ← ADD THIS (rto_service ke liye missing tha)
   { name: "shopImages", maxCount: 8 },
   { name: "garageImages", maxCount: 8 },
   { name: "aadharFront", maxCount: 1 },
   { name: "aadharBack", maxCount: 1 },
   { name: "panCard", maxCount: 1 },
 ]);
-
 /* ===============================
    SINGLE PROFILE IMAGE
 ================================*/

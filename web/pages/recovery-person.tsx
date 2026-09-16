@@ -78,8 +78,14 @@ type Draft = {
 
 
 
-const isDriverKycDone = (d?: Driver | null) =>
-  !!d && (d.kyc_status === "kyc-success" || d.aadhar_verified === true);
+
+const isDriverKycDone = (driver?: Driver | null) =>
+  !!driver &&
+  (driver.kyc_status === "verified" ||
+    driver.kyc_done === true ||
+    driver.aadharVerified === true ||
+    driver.isKycVerified === true ||
+    driver.is_kyc_verified === true);
 
 
 const emptyForm: FormState = {
@@ -1658,7 +1664,7 @@ const Field = ({
   children: React.ReactNode;
 }) => (
   <div>
-    <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
+    <label className="flex items-center gap-1.5 text-base font-bold text-gray-900 mb-1.5">
       <Icon className="w-3.5 h-3.5 text-gray-400" /> {label}
     </label>
     {children}
