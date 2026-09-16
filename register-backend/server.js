@@ -96,11 +96,14 @@ app.get("/", (req, res) => {
   res.json({ success: true, message: "TaxiSafar partner API Running ✅", version: "1.0.0" });
 });
 
-app.use("/api/auth", require("./routes/authRoutes"));
+// specific /api/auth/* sub-routers MUST mount before the generic authRoutes,
+// or authRoutes' /:id catch-all swallows them (e.g. "mechanic" parsed as a user id)
 app.use("/api/auth/mechanic", require("./routes/carMechanic.routes"));
 app.use("/api/auth/recovery-vehicle", require("./routes/recovery.routes"));
 app.use("/api/auth/vltd", require("./routes/vltd.routes"));
 app.use("/api/auth/partner-configs", require("./routes/partnerConfigRoutes"));
+app.use("/api/auth", require("./routes/authRoutes"));
+
 app.use("/api/v1/fees", require("./routes/feeRoutes"));
 app.use("/api/contact", require("./routes/contact"));
 app.use("/api/washrooms", require("./routes/driverWashroom.routes"));

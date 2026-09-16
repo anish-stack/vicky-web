@@ -4,7 +4,6 @@ const router = express.Router();
 const ctrl = require("../controllers/CarMechnic.controller");
 const { mechanicImageUpload } = require("../middleware/mechanicUpload.middleware");
 // const { adminAuth, userAuth } = require("../middlewares/auth.middleware");
-router.get("/", ctrl.getAllMechanics);
 
 router.post("/", mechanicImageUpload, ctrl.createMechanic);
 router.put("/:id", mechanicImageUpload, ctrl.updateMechanic);
