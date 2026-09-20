@@ -1,77 +1,162 @@
+"use client";
+
 import { useWebsite } from "@/context/WebsiteContext";
-import { ArrowUpRight } from "lucide-react";
+import {
+  Building2,
+  Plane,
+  MapPinned,
+  BriefcaseBusiness,
+  ArrowRight,
+} from "lucide-react";
 
 const services = [
   {
-    title: "One Way Drop",
-    desc: "Pay only for the onward fare — toll and tax included, nothing for the return.",
-    image: "https://images.pexels.com/photos/21014/pexels-photo.jpg?auto=compress&cs=tinysrgb&w=1200",
+    icon: Building2,
+    title: "City Rides",
+    desc: "Quick rides within the city",
+    image:
+      "https://i.ibb.co/R4gvL1cn/maruti-suzuki-ertiga-pearl-metallic-arctic-white-removebg-preview.png",
+    bg: "bg-[#EEF5FF]",
+    iconBg: "bg-[#DFECFF]",
+    iconColor: "text-[#2878F0]",
   },
   {
-    title: "Round Trip",
-    desc: "Your own car and driver for the whole journey — stops wherever you do.",
-    image: "https://images.pexels.com/photos/386025/pexels-photo-386025.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    icon: Plane,
+    title: "Airport Transfers",
+    desc: "On-time airport pickups & drops",
+    image:
+      "https://i.ibb.co/R4gvL1cn/maruti-suzuki-ertiga-pearl-metallic-arctic-white-removebg-preview.png",
+    bg: "bg-[#F5F8FF]",
+    iconBg: "bg-[#EAF0FF]",
+    iconColor: "text-[#3468E8]",
   },
   {
-    title: "Tour Package",
-    desc: "Pilgrimage or family trip — everything included in the package.",
-    image: "https://images.pexels.com/photos/374870/pexels-photo-374870.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    icon: MapPinned,
+    title: "Outstation Trips",
+    desc: "Comfortable long-distance rides",
+    image:
+      "https://i.ibb.co/R4gvL1cn/maruti-suzuki-ertiga-pearl-metallic-arctic-white-removebg-preview.png",
+    bg: "bg-[#F2FAF7]",
+    iconBg: "bg-[#DCF4EA]",
+    iconColor: "text-[#159966]",
   },
   {
-    title: "Local & Airport",
-    desc: "Hourly rentals within the city and on-time airport pickup-drop.",
-    image: "https://images.pexels.com/photos/2026324/pexels-photo-2026324.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    icon: BriefcaseBusiness,
+    title: "Corporate Travel",
+    desc: "Reliable business travel",
+    image:
+      "https://i.ibb.co/R4gvL1cn/maruti-suzuki-ertiga-pearl-metallic-arctic-white-removebg-preview.png",
+    bg: "bg-[#FFF4ED]",
+    iconBg: "bg-[#FFE5D4]",
+    iconColor: "text-[#FF641A]",
   },
 ];
 
 export default function Services() {
   const { website } = useWebsite();
-  const whatsapp = website?.basicInfo?.whatsapp || website?.basicInfo?.phone || "919876543210";
+
+  const rawWhatsapp =
+    website?.basicInfo?.whatsapp ||
+    website?.basicInfo?.phone ||
+    "919876543210";
+
+  const whatsapp = rawWhatsapp
+    .toString()
+    .replace(/\D/g, "")
+    .replace(/^91(?=\d{10}$)/, "");
+
+  const handleBookingUrl = (title) => {
+    const message = `Hi, I want to book ${title}.`;
+    return `https://wa.me/91${whatsapp}?text=${encodeURIComponent(message)}`;
+  };
 
   return (
-    <section id="services" className="py-12 md:py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10 md:mb-14">
-          <span className="inline-flex px-5 py-2 rounded-full bg-green-700 text-white text-xs font-black uppercase tracking-[0.2em] shadow-[3px_3px_0px_0px_rgba(249,115,22,1)]">
+    <section
+      id="services"
+      className="relative overflow-hidden bg-white py-10 md:py-14 lg:py-16"
+    >
+      {/* Decorative background blurs */}
+      <div className="pointer-events-none absolute left-[-160px] top-[-100px] h-[350px] w-[350px] rounded-full bg-orange-50 blur-3xl" />
+      <div className="pointer-events-none absolute right-[-180px] bottom-[-100px] h-[380px] w-[380px] rounded-full bg-blue-50 blur-3xl" />
+
+      <div className="relative mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
+        
+        {/* SECTION HEADER */}
+        <div className="mx-auto mb-6 max-w-2xl text-center md:mb-10">
+          <span className="inline-flex items-center rounded-full bg-[#FFF0E8] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#FF641A]">
             Our Services
           </span>
-          <h2 className="mt-5 text-3xl md:text-5xl font-black text-slate-900">
-            Tell Us, <span className="text-green-700">Where To?</span>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-[-0.035em] text-[#071936] sm:text-3xl lg:text-[40px]">
+            Ride For Every Need
           </h2>
-          <p className="mt-3 text-slate-500 font-semibold">Tap a card — talk to us directly on WhatsApp.</p>
+          <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-slate-500 md:text-sm">
+            From daily commutes to airport transfers and outstation trips,
+            we&apos;ve got the perfect ride for every journey.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services.map((item, index) => (
-            <a
-              key={index}
-              href={`https://wa.me/91${whatsapp}?text=${encodeURIComponent(`Hi, I'd like more information about ${item.title}.`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative rounded-2xl overflow-hidden h-72 md:h-80 block border-[3px] border-green-700 shadow-[6px_6px_0px_0px_rgba(21,128,61,0.35)] hover:shadow-[6px_6px_0px_0px_rgba(249,115,22,0.8)] hover:-translate-y-1 transition-all"
-            >
-              <img
-                src={item.image}
-                alt={item.title}
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-green-950/90 via-green-900/25 to-transparent" />
+        {/* SERVICE CARDS GRID - 2 cards on mobile, 4 on large screens */}
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4 lg:gap-6">
+          {services.map((service) => {
+            const Icon = service.icon;
 
-              <span className="absolute top-3 left-3 bg-amber-300 text-green-900 text-xs font-black px-2.5 py-1 rounded-lg -rotate-2 shadow">
-                {String(index + 1).padStart(2, "0")}
-              </span>
+            return (
+              <article
+                key={service.title}
+                className={`group relative overflow-hidden rounded-[16px] sm:rounded-[24px] border border-slate-100 ${service.bg} p-2 sm:p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg`}
+              >
+                {/* IMAGE AREA */}
+                <div className="relative h-[110px] sm:h-[180px] overflow-hidden rounded-[12px] sm:rounded-[18px]">
+                  <img
+                    src={service.image}
+                    alt={service.title}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.06]"
+                  />
 
-              <div className="absolute bottom-0 inset-x-0 p-5">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-white font-black text-lg leading-tight">{item.title}</h3>
-                  <span className="w-9 h-9 shrink-0 rounded-xl bg-white flex items-center justify-center group-hover:rotate-45 group-hover:bg-orange-500 transition-all">
-                    <ArrowUpRight size={16} className="text-green-800 group-hover:text-white transition-colors" />
-                  </span>
+                  {/* Icon */}
+                  <div
+                    className={`absolute left-2 top-2 sm:left-3 sm:top-3 flex h-7 w-7 sm:h-10 sm:w-10 items-center justify-center rounded-lg ${service.iconBg} shadow-sm backdrop-blur-md`}
+                  >
+                    <Icon
+                      size={15}
+                      strokeWidth={2}
+                      className={service.iconColor}
+                    />
+                  </div>
                 </div>
-                <p className="mt-2 text-green-50 text-xs md:text-sm font-semibold leading-relaxed">{item.desc}</p>
-              </div>
-            </a>
-          ))}
+
+                {/* CONTENT */}
+                <div className="px-1 pb-1 pt-2.5 sm:px-2 sm:pb-2 sm:pt-4">
+                  <h3 className="text-xs sm:text-[16px] font-extrabold tracking-[-0.02em] text-[#071936] line-clamp-1">
+                    {service.title}
+                  </h3>
+
+                  <p className="mt-0.5 sm:mt-1 min-h-[28px] sm:min-h-[36px] text-[10px] sm:text-[12px] leading-3.5 sm:leading-4 text-slate-500 line-clamp-2">
+                    {service.desc}
+                  </p>
+
+                  {/* Divider */}
+                  <div className="my-2 sm:my-3 h-px bg-slate-900/[0.07]" />
+
+                  {/* Button */}
+                  <a
+                    href={handleBookingUrl(service.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/btn inline-flex w-full items-center justify-between rounded-lg sm:rounded-xl border border-slate-200 bg-white px-2 py-1.5 sm:px-3.5 sm:py-2.5 text-[10px] sm:text-[12px] font-bold text-[#071936] shadow-sm transition-all duration-300 hover:border-[#FF641A]/30 hover:bg-[#FF641A] hover:text-white"
+                  >
+                    <span className="truncate">Book Now</span>
+                    <span className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-[#FFF0E8] text-[#FF641A] transition-all duration-300 group-hover/btn:bg-white/20 group-hover/btn:text-white shrink-0">
+                      <ArrowRight
+                        size={11}
+                        className="transition-transform duration-300 group-hover/btn:translate-x-0.5"
+                      />
+                    </span>
+                  </a>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

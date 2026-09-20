@@ -1,47 +1,39 @@
-import { ShieldCheck, Wallet, Clock, Car, UserCheck, PhoneCall, Route, Sparkles } from "lucide-react";
-import { useWebsite } from "@/context/WebsiteContext";
+import { Tag, ShieldCheck, Sparkles, Headphones, Send } from "lucide-react";
 
 const features = [
-  { icon: Wallet, title: "Guaranteed Rate", desc: "Toll and state tax included — the rate we quote is the rate you pay, not a rupee extra." },
-  { icon: ShieldCheck, title: "Trusted Drivers", desc: "Experienced, verified drivers who know the routes and respect their passengers." },
-  { icon: Clock, title: "24×7 Service", desc: "Midnight run or a 4 AM flight — a cab is always ready for you." },
-  { icon: Car, title: "Clean AC Cars", desc: "Mini, Sedan, SUV, Innova — all spotless, with AC running full." },
-  { icon: Route, title: "One Way Drop", desc: "Pay only for the onward trip — we don't charge for the return." },
-  { icon: UserCheck, title: "Talk to the Owner Directly", desc: "No agents, no commission — the number you call is the owner's own." },
-  { icon: PhoneCall, title: "1 Minute Booking", desc: "One call or one WhatsApp message — cab booked, no more worries." },
-  { icon: Sparkles, title: "Always On Time", desc: "We get there before you do — being late just isn't our style." },
+  { icon: Tag, title: "Affordable Pricing", desc: "Best rates, no hidden charges", color: "text-emerald-500 bg-emerald-50" },
+  { icon: ShieldCheck, title: "Trusted Drivers", desc: "Background-verified professionals", color: "text-orange-500 bg-orange-50" },
+  { icon: Sparkles, title: "Clean & Safe Cabs", desc: "Well-maintained and sanitized", color: "text-blue-500 bg-blue-50" },
+  { icon: Headphones, title: "24/7 Customer Support", desc: "We're always here to help", color: "text-blue-500 bg-blue-50" },
 ];
 
 export default function Features() {
-  const { website } = useWebsite();
-  const companyName = website?.basicInfo?.logo_name || website?.basicInfo?.name || "Us";
-
   return (
-    <section className="py-12 md:py-20 bg-[#fffdf5]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="about" className="relative py-14 md:py-20 bg-white overflow-hidden">
+      <Send size={220} className="hidden lg:block absolute top-6 right-0 text-orange-50 -rotate-12" strokeWidth={1} />
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10 md:mb-14">
-          <span className="inline-flex px-5 py-2 rounded-full bg-green-700 text-white text-xs font-black uppercase tracking-[0.2em] shadow-[3px_3px_0px_0px_rgba(249,115,22,1)]">
-            Why Choose Us?
+          <span className="inline-flex px-4 py-1.5 rounded-full bg-orange-50 text-orange-600 text-[11px] font-bold uppercase tracking-wider">
+            Why Choose Us
           </span>
-          <h2 className="mt-5 text-3xl md:text-5xl font-black text-slate-900">
-            Why Trust <span className="text-green-700">{companyName}</span>?
+          <h2 className="mt-4 text-3xl md:text-4xl font-extrabold text-slate-900">
+            Making Travel Better
+            <br className="hidden sm:block" /> For Everyone
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {features.map((f, i) => (
             <div
               key={i}
-              className="group bg-white rounded-2xl border-2 border-green-700/20 p-6 hover:border-green-700 hover:-translate-y-1 hover:shadow-[5px_5px_0px_0px_rgba(21,128,61,0.2)] transition-all"
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-center hover:shadow-md hover:-translate-y-1 transition-all duration-300"
             >
-              <div className="flex items-center justify-between">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${i % 2 === 0 ? "bg-green-700" : "bg-orange-500"} shadow-md group-hover:-rotate-6 transition-transform`}>
-                  <f.icon size={21} className="text-white" />
-                </div>
-                <span className="text-3xl font-black text-green-700/10 select-none">{String(i + 1).padStart(2, "0")}</span>
-              </div>
-              <h3 className="mt-4 font-black text-slate-900">{f.title}</h3>
-              <p className="mt-2 text-sm text-slate-500 font-semibold leading-relaxed">{f.desc}</p>
+              <span className={`mx-auto w-12 h-12 rounded-xl flex items-center justify-center ${f.color}`}>
+                <f.icon size={20} />
+              </span>
+              <h3 className="mt-4 font-bold text-slate-900 text-sm md:text-base">{f.title}</h3>
+              <p className="mt-1.5 text-xs md:text-sm text-slate-500 leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>

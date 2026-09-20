@@ -1,298 +1,386 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { MapPin, Calendar, ArrowRight, Plus, X, ShieldCheck, Clock, Star, BadgeCheck } from "lucide-react";
+import { useState } from "react";
+import {
+  MapPin,
+  CalendarDays,
+  Car,
+  Zap,
+  ShieldCheck,
+  Headphones,
+  ArrowRight,
+  ChevronDown,
+} from "lucide-react";
 import { useWebsite } from "@/context/WebsiteContext";
 
-const formatDateTime = (value) => {
-  if (!value) return "N/A";
-  const date = new Date(value);
-  return date.toLocaleString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: true,
-  });
-};
+const tabs = [
+  { key: "ride", label: "Book a Ride" },
+  { key: "outstation", label: "Outstation" },
+  { key: "airport", label: "Airport" },
+];
+
+const vehicles = ["Any", "Mini", "Sedan", "SUV", "Prime SUV"];
+
+const highlights = [
+  {
+    icon: Zap,
+    label: "Instant Booking",
+  },
+  {
+    icon: ShieldCheck,
+    label: "Verified Drivers",
+  },
+  {
+    icon: Headphones,
+    label: "24/7 Support",
+  },
+];
 
 export default function Hero() {
   const { website } = useWebsite();
-  const [serviceType, setServiceType] = useState("outstation");
-  const [tripType, setTripType] = useState("one-way");
-  const [pickup, setPickup] = useState("");
-  const [drop, setDrop] = useState("");
-  const [breaks, setBreaks] = useState([]);
-  const [pickupDate, setPickupDate] = useState("");
-  const [returnDate, setReturnDate] = useState("");
-  const [error, setError] = useState("");
 
   const basicInfo = website?.basicInfo || {};
-  const companyName = basicInfo.logo_name || basicInfo.name || "TaxiSafar";
-  const city = basicInfo.city || "your city";
 
-  useEffect(() => {
-    if (tripType === "round-trip") {
-      setDrop(pickup);
-      setBreaks((prev) => (prev.length === 0 ? [""] : prev));
-    } else {
-      setBreaks([]);
-    }
-  }, [pickup, tripType]);
+  const name =
+    basicInfo.logo_name ||
+    basicInfo.name ||
+    "QuickRide";
 
-  const addBreak = () => setBreaks((prev) => [...prev, ""]);
-  const removeBreak = (i) => setBreaks((prev) => prev.filter((_, idx) => idx !== i));
+  const whatsapp =
+    basicInfo.whatsapp ||
+    basicInfo.phone ||
+    "919876543210";
 
-  const handleSubmit = () => {
+  const city = basicInfo.city?.trim();
+
+  const [tab, setTab] = useState("ride");
+  const [pickup, setPickup] = useState("");
+  const [drop, setDrop] = useState("");
+  const [dateTime, setDateTime] = useState("");
+  const [vehicle, setVehicle] = useState("Any");
+  const [error, setError] = useState("");
+
+  const handleFindCabs = () => {
     setError("");
-    if (!pickup.trim()) return setError("Please enter pickup location");
-    if (tripType !== "round-trip" && !drop.trim()) return setError("Please enter drop location");
-    if (!pickupDate) return setError("Please select pickup date & time");
-    if (tripType === "round-trip" && !returnDate) return setError("Please select return date & time");
 
-    const whatsappNumber = basicInfo.whatsapp || basicInfo.phone || "919876543210";
+    if (!pickup.trim()) {
+      setError("Please enter pickup location");
+      return;
+    }
 
-    const message = `*New Trip Enquiry*
+    if (!drop.trim()) {
+      setError("Please enter drop location");
+      return;
+    }
 
-*${companyName}*
+    const selectedTab =
+      tabs.find((item) => item.key === tab)?.label || "Book a Ride";
 
-*Pickup Date & Time:*
-${formatDateTime(pickupDate)}
-${tripType === "round-trip" ? `*Return Date & Time:*\n${formatDateTime(returnDate)}` : ""}
-*Service Type:* ${serviceType}
-*Trip Type:* ${tripType === "round-trip" ? "Round Trip" : "One Way"}
+    const message = `*New Ride Enquiry*
 
+*${name}*
+
+*Type:* ${selectedTab}
 *Pickup:* ${pickup}
-*Drop:* ${drop || pickup}
+*Drop:* ${drop}
+*Date & Time:* ${dateTime || "Not specified"}
+*Vehicle:* ${vehicle}`;
 
-*Stops:* ${breaks.filter(Boolean).length ? breaks.filter(Boolean).join(", ") : "No stops"}
+    const cleanNumber = whatsapp
+      .toString()
+      .replace(/\D/g, "")
+      .replace(/^91(?=\d{10}$)/, "");
 
-*Total Estimate Amount:*
-*Rs ..... (All Including)*
-
-*Extra Parking Charges Applicable*`;
-
-    window.open(`https://wa.me/91${whatsappNumber}?text=${encodeURIComponent(message)}`, "_blank");
-    alert("Thanks For Enquiry! We Will Connect You Soon 😊");
+    window.open(
+      `https://wa.me/91${cleanNumber}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
   };
 
   return (
-    <section id="home" className="relative overflow-hidden">
-      {/* Car bg image merged with warm cream overlay */}
+    <section
+      id="home"
+      className="relative overflow-hidden bg-[#fffaf6]"
+    >
+      {/* ================= BACKGROUND ================= */}
+
+      {/* ================= BACKGROUND ================= */}
       <div className="absolute inset-0">
         <img
-          src="https://images.pexels.com/photos/386025/pexels-photo-386025.jpeg?auto=compress&cs=tinysrgb&w=1800"
-          alt=""
-          className="w-full h-full object-cover"
+          src="https://images.unsplash.com/photo-1449824913935-59a10b8d2000?q=90&w=2000&auto=format&fit=crop"
+          alt="City skyline"
+          className="h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#fffdf5]/[0.97] via-[#fffdf5]/90 to-green-50/80" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#fffdf5] via-transparent to-transparent" />
+
+        {/* Very light overall tint */}
+        <div className="absolute inset-0 bg-white/5" />
+
+        {/* Light overlay only on left for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#fffaf6]/90 via-[#fffaf6]/40 to-transparent" />
+
+        {/* Small bottom blend */}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#fffaf6]/60 to-transparent" />
       </div>
+      {/* Decorative glows */}
+      <div className="pointer-events-none absolute -left-28 top-24 h-80 w-80 rounded-full bg-orange-200/30 blur-3xl" />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-        {/* Left copy */}
-        <div>
-          {/* Horn OK Please style badge */}
-          <span className="inline-flex items-center gap-2 md:px-5 px-3 py-2 rounded-full bg-green-700 text-white text-xs font-black uppercase tracking-[0.2em] shadow-[3px_3px_0px_0px_rgba(249,115,22,1)]">
-            ✦ Straight Talk · Fair Rate ✦
-          </span>
+      <div className="pointer-events-none absolute right-[30%] top-10 h-80 w-80 rounded-full bg-orange-100/30 blur-3xl" />
 
-          <h1 className="mt-6 text-4xl sm:text-5xl lg:text-[62px] font-black leading-[1.05] text-slate-900">
-            Cab Ready,
-            <br />
-            <span className="text-green-700">Driver Ready.</span>
-            <br />
-            <span className="relative inline-block">
-              <span className="relative z-10">Just Hop In!</span>
-              <span className="absolute bottom-1.5 left-0 right-0 h-3.5 md:h-4 bg-orange-300/80 -z-0 -rotate-1" />
-            </span>
-          </h1>
+      {/* ================= CONTENT ================= */}
 
-          <p className="mt-5 text-slate-600 text-base md:text-lg max-w-lg leading-relaxed font-semibold">
-            {companyName} — outstation tours, one-way drops, or local rides from {city}.
-            Clean AC cars, experienced drivers, and fixed rates — toll tax all included.
-          </p>
+      <div className="relative z-10 mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+        <div className="grid min-h-[650px] grid-cols-1 items-center gap-10 py-12 lg:grid-cols-[1.1fr_0.8fr] lg:gap-12 lg:py-16">
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            {[
-              { icon: ShieldCheck, label: "Verified Driver" },
-              { icon: Clock, label: "24×7 Service" },
-              { icon: BadgeCheck, label: "All India Permit" },
-            ].map((f, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border-2 border-green-700/20 shadow-sm text-sm font-black text-slate-700"
-              >
-                <f.icon size={15} className="text-green-700" /> {f.label}
+          {/* ================================================= */}
+          {/* LEFT SIDE */}
+          {/* ================================================= */}
+
+          <div className="relative z-20 max-w-[660px]">
+
+            {/* Badge */}
+            <div className="mb-5">
+              <span className="inline-flex items-center rounded-full border border-orange-200 bg-[#fff1e8] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-orange-600">
+                Safe
+                <span className="mx-2 text-orange-300">•</span>
+                Affordable
+                <span className="mx-2 text-orange-300">•</span>
+                Always On Time
+
+                {city && (
+                  <>
+                    <span className="mx-2 text-orange-300">
+                      •
+                    </span>
+
+                    {city}
+                  </>
+                )}
               </span>
-            ))}
+            </div>
+
+            {/* Heading */}
+            <h1 className="max-w-[620px] text-[45px] font-extrabold leading-[0.98] tracking-[-0.045em] text-[#071936] sm:text-[58px] lg:text-[68px] xl:text-[74px]">
+              Your Ride
+              <br />
+
+              Anytime,
+              <br />
+
+              <span className="text-[#ff641a]">
+                Anywhere.
+              </span>
+            </h1>
+
+            {/* Description */}
+            <p className="mt-6 max-w-[510px] text-[15px] font-medium leading-7 text-slate-600 sm:text-[16px]">
+              Book a cab in seconds and travel comfortably
+              across your city and beyond.
+            </p>
+
+            {/* Benefits */}
+            <div className="mt-9 flex flex-wrap gap-x-8 gap-y-6">
+              {highlights.map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-3"
+                  >
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white bg-white/80 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-md">
+                      <Icon
+                        size={20}
+                        strokeWidth={2.2}
+                        className="text-[#071936]"
+                      />
+                    </div>
+
+                    <span className="text-[13px] font-bold text-[#071936]">
+                      {item.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Rating strip — dhaba board style */}
-          <div className="mt-8 inline-flex items-center gap-4 bg-white rounded-2xl border-2 border-green-700 md:px-5 px-2 py-3.5 shadow-[4px_4px_0px_0px_rgba(21,128,61,0.25)]">
-            <div className="flex -space-x-2">
-              {["bg-green-600", "bg-orange-500", "bg-emerald-700", "bg-amber-500"].map((c, i) => (
-                <span key={i} className={`w-9 h-9 rounded-full ${c} border-2 border-white flex items-center justify-center text-white text-xs font-black`}>
-                  {String.fromCharCode(65 + i)}
-                </span>
-              ))}
-            </div>
-            <div>
-              <p className="flex items-center gap-1 text-sm font-black text-slate-900">
-                4.9 <Star size={13} className="text-orange-500 fill-orange-500" /> · 5000+ Rides
-              </p>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Happy Customers, Lasting Trust</p>
-            </div>
-          </div>
-        </div>
+          {/* ================================================= */}
+          {/* BOOKING CARD */}
+          {/* ================================================= */}
 
-        {/* Booking card — permit board style */}
-        <div className="relative">
-          <div className="bg-white rounded-2xl border-[3px] border-green-700 shadow-[8px_8px_0px_0px_rgba(21,128,61,0.9)] overflow-hidden">
-            {/* Permit header */}
-            <div className="bg-green-700 px-6 py-4 relative">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.3em] text-green-200">Booking Window</p>
-                  <h3 className="text-white font-black text-lg uppercase tracking-wide">Book Your Cab</h3>
-                </div>
-                <span className="bg-orange-500 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-lg -rotate-2 shadow">
-                  Rate Fix
-                </span>
-              </div>
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-[repeating-linear-gradient(to_right,#f97316_0px,#f97316_14px,#ffffff_14px,#ffffff_28px)]" />
-            </div>
+          <div className="relative z-30 mx-auto w-full max-w-[460px] lg:ml-auto">
 
-            <div className="p-2 sm:p-6">
-              {/* Service type */}
-              <div className="grid grid-cols-2 rounded-xl overflow-hidden border-2 border-green-700 mb-4">
-                {[
-                  { key: "outstation", label: "Outstation" },
-                  { key: "local", label: "Local / Airport" },
-                ].map((item) => (
+            <div className="rounded-[24px] border border-white/70 bg-white/95 p-4 shadow-[0_28px_80px_rgba(15,23,42,0.20)] backdrop-blur-xl sm:p-5">
+
+              {/* Tabs */}
+              <div className="grid grid-cols-3 rounded-xl bg-[#f3f5f8] p-1">
+                {tabs.map((item) => (
                   <button
                     key={item.key}
-                    onClick={() => setServiceType(item.key)}
-                    className={`py-2.5 text-xs font-black uppercase tracking-wide transition ${
-                      serviceType === item.key ? "bg-green-700 text-white" : "bg-white text-slate-500 hover:text-green-700"
-                    }`}
+                    type="button"
+                    onClick={() => setTab(item.key)}
+                    className={`rounded-[9px] px-2 py-3 text-[11px] font-bold transition-all duration-300 sm:text-xs ${tab === item.key
+                        ? "bg-[#071936] text-white shadow-md"
+                        : "text-slate-500 hover:text-[#071936]"
+                      }`}
                   >
                     {item.label}
                   </button>
                 ))}
               </div>
 
-              {/* Trip type */}
-              <div className="flex gap-6 text-sm mb-4 text-slate-700 font-black">
-                {[
-                  { key: "one-way", label: "One Way" },
-                  { key: "round-trip", label: "Round Trip" },
-                ].map((t) => (
-                  <label key={t.key} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={tripType === t.key}
-                      onChange={() => setTripType(t.key)}
-                      className="accent-green-700"
-                    />
-                    {t.label}
+              {/* Form */}
+              <div className="mt-5 space-y-4">
+
+                <Field
+                  icon={MapPin}
+                  label="Pickup Location"
+                  placeholder="Enter pickup location"
+                  value={pickup}
+                  onChange={setPickup}
+                />
+
+                <Field
+                  icon={MapPin}
+                  label="Drop Location"
+                  placeholder="Enter drop location"
+                  value={drop}
+                  onChange={setDrop}
+                />
+
+                {/* Date */}
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.04em] text-[#071936]">
+                    Date & Time
                   </label>
-                ))}
-              </div>
 
-              <Field icon={MapPin} label="From (Pickup)" placeholder="Pickup location" value={pickup} onChange={setPickup} />
+                  <div className="flex h-[54px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 transition-all focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-100">
+                    <CalendarDays
+                      size={18}
+                      className="shrink-0 text-slate-400"
+                    />
 
-              {breaks.map((b, i) => (
-                <div key={i} className="flex gap-2 mt-3">
-                  <input
-                    value={b}
-                    onChange={(e) => {
-                      const copy = [...breaks];
-                      copy[i] = e.target.value;
-                      setBreaks(copy);
-                    }}
-                    placeholder={`Stop ${i + 1} (optional)`}
-                    className="flex-1 px-4 py-3 rounded-xl border-2 border-dashed border-slate-300 bg-[#fffdf5] text-slate-900 placeholder-slate-400 outline-none text-sm font-bold focus:border-green-700"
-                  />
-                  <button onClick={() => removeBreak(i)} className="p-2 rounded-xl border-2 border-dashed border-slate-300 hover:border-orange-500 transition">
-                    <X className="text-orange-500" size={18} />
-                  </button>
+                    <input
+                      type="datetime-local"
+                      value={dateTime}
+                      onChange={(e) =>
+                        setDateTime(e.target.value)
+                      }
+                      className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-slate-700 outline-none"
+                    />
+                  </div>
                 </div>
-              ))}
 
-              <button
-                onClick={addBreak}
-                className="mt-3 text-xs text-green-700 font-black uppercase tracking-wide flex items-center gap-1 hover:underline"
-              >
-                <Plus size={14} className="text-orange-500" /> Add a Stop
-              </button>
+                {/* Vehicle */}
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.04em] text-[#071936]">
+                    Select Vehicle
+                  </label>
 
-              <Field
-                icon={MapPin}
-                label="To (Drop)"
-                placeholder="Drop location"
-                value={drop}
-                onChange={setDrop}
-                disabled={tripType === "round-trip"}
-              />
+                  <div className="relative flex h-[54px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 transition-all focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-100">
+                    <Car
+                      size={18}
+                      className="shrink-0 text-slate-400"
+                    />
 
-              <DateField label="Pickup Date & Time" value={pickupDate} onChange={setPickupDate} />
-              {tripType === "round-trip" && (
-                <DateField label="Return Date & Time" value={returnDate} onChange={setReturnDate} />
-              )}
+                    <select
+                      value={vehicle}
+                      onChange={(e) =>
+                        setVehicle(e.target.value)
+                      }
+                      className="min-w-0 flex-1 appearance-none bg-transparent pr-7 text-[13px] font-medium text-slate-700 outline-none"
+                    >
+                      {vehicles.map((item) => (
+                        <option
+                          key={item}
+                          value={item}
+                        >
+                          {item}
+                        </option>
+                      ))}
+                    </select>
 
-              {error && <p className="mt-4 text-orange-600 text-center text-sm font-black">{error}</p>}
+                    <ChevronDown
+                      size={16}
+                      className="pointer-events-none absolute right-4 text-slate-400"
+                    />
+                  </div>
+                </div>
 
-              <button
-                onClick={handleSubmit}
-                className="mt-6 w-full bg-green-700 hover:bg-green-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(249,115,22,1)] hover:translate-y-0.5 hover:shadow-[2px_2px_0px_0px_rgba(249,115,22,1)] transition-all"
-              >
-                Ask Rate on WhatsApp <ArrowRight size={17} />
-              </button>
+                {/* Error */}
+                {error && (
+                  <div className="rounded-lg bg-red-50 px-3 py-2 text-center text-xs font-semibold text-red-500">
+                    {error}
+                  </div>
+                )}
 
-              <p className="mt-4 text-center text-[11px] font-black text-slate-400 uppercase tracking-wide">
-                ✓ Toll-Tax Included &nbsp;·&nbsp; ✓ No Hidden Charges
-              </p>
+                {/* CTA */}
+                <button
+                  type="button"
+                  onClick={handleFindCabs}
+                  className="group flex h-[56px] w-full items-center justify-center gap-2 rounded-xl bg-[#ff641a] text-sm font-bold text-white shadow-[0_12px_30px_rgba(255,100,26,0.30)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#e95712] hover:shadow-[0_16px_35px_rgba(255,100,26,0.38)] active:scale-[0.98]"
+                >
+                  Find Cabs
+
+                  <ArrowRight
+                    size={17}
+                    className="transition-transform duration-300 group-hover:translate-x-1"
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ================================================= */}
+      {/* OPTIONAL CAR IMAGE */}
+      {/* ================================================= */}
+
+      <div className="pointer-events-none absolute bottom-0 left-[53%] z-20 hidden -translate-x-1/2 lg:block">
+        <img
+          src="/images/hero-car.png"
+          alt=""
+          className="w-[480px] xl:w-[540px] drop-shadow-[0_25px_25px_rgba(15,23,42,0.20)]"
+        />
+      </div>
+
+      {/* Bottom fade */}
     </section>
   );
 }
 
-function Field({ icon: Icon, label, placeholder, value, onChange, disabled }) {
-  return (
-    <div className="mt-3">
-      <label className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400 mb-1 block">{label}</label>
-      <div
-        className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-slate-200 focus-within:border-green-700 ${
-          disabled ? "opacity-60 bg-slate-100" : "bg-[#fffdf5]"
-        }`}
-      >
-        <Icon size={16} className="text-green-700 flex-shrink-0" />
-        <input
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className={`flex-1 bg-transparent outline-none text-sm font-bold text-slate-900 placeholder-slate-400 ${
-            disabled ? "cursor-not-allowed" : ""
-          }`}
-        />
-      </div>
-    </div>
-  );
-}
+/* ================================================= */
+/* FIELD COMPONENT */
+/* ================================================= */
 
-function DateField({ label, value, onChange }) {
+function Field({
+  icon: Icon,
+  label,
+  placeholder,
+  value,
+  onChange,
+}) {
   return (
-    <div className="mt-3">
-      <label className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400 mb-1 block">{label}</label>
-      <div className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-slate-200 bg-[#fffdf5] focus-within:border-green-700">
-        <Calendar size={16} className="text-green-700 flex-shrink-0" />
+    <div>
+      <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.04em] text-[#071936]">
+        {label}
+      </label>
+
+      <div className="flex h-[54px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 transition-all focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-100">
+        <Icon
+          size={18}
+          className="shrink-0 text-slate-400"
+        />
+
         <input
-          type="datetime-local"
+          type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="bg-transparent outline-none text-sm flex-1 text-slate-900 font-bold"
+          onChange={(e) =>
+            onChange(e.target.value)
+          }
+          placeholder={placeholder}
+          className="min-w-0 flex-1 bg-transparent text-[13px] font-medium text-slate-700 outline-none placeholder:text-slate-400"
         />
       </div>
     </div>

@@ -1,69 +1,164 @@
-import { Star, Quote, MapPin } from "lucide-react";
-import { useWebsite } from "@/context/WebsiteContext";
+"use client";
 
-const locationPool = ["Delhi", "Gurgaon", "Noida", "Jaipur", "Chandigarh", "Agra"];
+import { useMemo } from "react";
+import { Heart, Quote, Star, MapPin } from "lucide-react";
+import { useWebsite } from "@/context/WebsiteContext";
 
 export default function Testimonials() {
   const { website } = useWebsite();
 
-  const testimonials = (website?.reviews || []).map((review, index) => ({
-    name: review.name || "Happy Customer",
-    text: review.text || review.review || "",
-    rating: review.rating || 5,
-    location: review.location || locationPool[index % locationPool.length],
-  }));
+  const testimonials = useMemo(() => {
+    return (website?.reviews || []).map((review, index) => ({
+      id: review._id || review.id || `${review.name}-${index}`,
+      name: review.name || "Happy Rider",
+      text: review.text || review.review || "",
+      rating: Math.min(5, Math.max(1, Number(review.rating || 5))),
+      location: review.location || review.city || "Verified Rider",
+      image: review.image || "",
+    }));
+  }, [website?.reviews]);
 
-  if (testimonials.length === 0) return null;
+  if (!testimonials.length) return null;
+
+  // Duplicate array for seamless infinite marquee loop
+  const duplicatedReviews = [...testimonials, ...testimonials];
 
   return (
-    <section id="testimonials" className="py-12 md:py-20 bg-[#fffdf5]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10 md:mb-14">
-          <span className="inline-flex px-5 py-2 rounded-full bg-green-700 text-white text-xs font-black uppercase tracking-[0.2em] shadow-[3px_3px_0px_0px_rgba(249,115,22,1)]">
-            In Our Customers' Words
+    <section
+      id="testimonials"
+      className="relative overflow-hidden bg-[#FBFCFF] py-10 md:py-14 lg:py-16"
+    >
+      {/* Decorative background glows */}
+      <div className="pointer-events-none absolute -left-30 top-10 h-[300px] w-[300px] rounded-full bg-orange-100/50 blur-[100px]" />
+      <div className="pointer-events-none absolute -right-30 top-0 h-[350px] w-[350px] rounded-full bg-blue-100/50 blur-[100px]" />
+
+      <div className="relative mx-auto max-w-[1400px] px-3 sm:px-6 lg:px-8">
+        
+        {/* HEADER */}
+        <div className="mx-auto max-w-[700px] text-center mb-8 md:mb-10">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-100 bg-[#FFF4EC] px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#FF641A]">
+            <Heart size={12} className="fill-[#FF641A]" />
+            Real People. Real Journeys.
           </span>
-          <h2 className="mt-5 text-3xl md:text-5xl font-black text-slate-900">
-            Our Riders Say It <span className="text-green-700">Best</span>
+
+          <h2 className="mt-3 text-2xl font-extrabold tracking-[-0.04em] text-[#071936] sm:text-3xl lg:text-[42px]">
+            Our Riders <span className="text-[#FF641A]">Love Us</span>
           </h2>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-7">
-          {testimonials.map((t, i) => (
-            <div
-              key={i}
-              className={`bg-white rounded-2xl border-2 border-green-700/20 p-6 hover:border-green-700 hover:-translate-y-1 hover:shadow-[5px_5px_0px_0px_rgba(21,128,61,0.2)] transition-all ${
-                i % 2 === 1 ? "md:rotate-1" : "md:-rotate-1"
-              } hover:rotate-0`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="w-10 h-10 rounded-xl bg-green-700 flex items-center justify-center shadow-md -rotate-6">
-                  <Quote size={17} className="text-white" />
-                </span>
-                {/* Star rating meter */}
-                <div className="flex items-center gap-0.5 bg-green-50 rounded-lg px-2.5 py-1.5">
-                  {Array.from({ length: t.rating || 5 }).map((_, s) => (
-                    <Star key={s} size={12} className="text-orange-500 fill-orange-500" />
-                  ))}
-                </div>
-              </div>
-
-              <p className="mt-4 text-slate-600 font-semibold leading-relaxed text-sm md:text-base">“{t.text}”</p>
-
-              <div className="mt-5 pt-4 border-t-2 border-dashed border-green-700/15 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-500 text-white font-black flex items-center justify-center uppercase shadow-sm">
-                  {t.name.charAt(0)}
-                </div>
-                <div>
-                  <p className="font-black text-slate-900 text-sm">{t.name}</p>
-                  <p className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wide text-slate-400">
-                    <MapPin size={11} className="text-green-700" /> {t.location}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
+          <p className="mx-auto mt-2 max-w-lg text-xs leading-5 text-slate-500 md:text-sm">
+            Real experiences from happy travellers across the city.
+          </p>
         </div>
       </div>
+
+      {/* AUTO-SCROLLING HORIZONTAL TESTIMONIALS CAROUSEL */}
+      <div className="relative w-full overflow-hidden [mask-image:_linear-gradient(to_right,transparent_0,_black_128px,_black_calc(100%-128px),transparent_100%)]">
+        <div className="flex w-max animate-testimonial-marquee gap-5 py-3 hover:[animation-play-state:paused]">
+          {duplicatedReviews.map((testimonial, index) => {
+            // Alternate featured cards style for visual variety
+            const featured = index % 2 === 1;
+
+            return (
+              <article
+                key={`${testimonial.id}-${index}`}
+                className={`
+                  group relative flex w-[300px] sm:w-[360px] shrink-0 flex-col justify-between overflow-hidden rounded-[20px] sm:rounded-[24px] border p-5 sm:p-6 transition-all duration-300 hover:-translate-y-1.5
+                  ${
+                    featured
+                      ? "border-[#0B2A4F] bg-gradient-to-br from-[#071936] to-[#0E3766] text-white shadow-xl"
+                      : "border-slate-100 bg-white text-slate-900 shadow-sm hover:shadow-md"
+                  }
+                `}
+              >
+                {/* Background decorative quote watermark */}
+                <Quote
+                  size={60}
+                  className={`pointer-events-none absolute -bottom-2 right-2 rotate-180 ${
+                    featured ? "text-white/[0.05]" : "text-[#071936]/[0.03]"
+                  }`}
+                />
+
+                <div>
+                  {/* Top: Avatar & Name */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-extrabold ${
+                          featured ? "bg-white text-[#071936]" : "bg-[#FFF0E8] text-[#FF641A]"
+                        }`}
+                      >
+                        {testimonial.image ? (
+                          <img src={testimonial.image} alt={testimonial.name} className="h-full w-full object-cover" />
+                        ) : (
+                          testimonial.name.charAt(0).toUpperCase()
+                        )}
+                      </div>
+
+                      <div>
+                        <p className={`text-xs sm:text-sm font-extrabold ${featured ? "text-white" : "text-[#071936]"}`}>
+                          {testimonial.name}
+                        </p>
+                        <p className={`mt-0.5 flex items-center gap-1 text-[10px] ${featured ? "text-blue-200" : "text-slate-400"}`}>
+                          <MapPin size={10} />
+                          {testimonial.location}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className={`flex h-8 w-8 items-center justify-center rounded-full ${featured ? "bg-white/10" : "bg-[#FFF4EC]"}`}>
+                      <Heart size={14} className={featured ? "fill-orange-400 text-orange-400" : "fill-[#FF641A] text-[#FF641A]"} />
+                    </span>
+                  </div>
+
+                  {/* Rating Stars */}
+                  <div className="mt-3.5 flex items-center gap-1">
+                    {Array.from({ length: 5 }).map((_, starIndex) => (
+                      <Star
+                        key={starIndex}
+                        size={13}
+                        className={
+                          starIndex < testimonial.rating
+                            ? "fill-amber-400 text-amber-400"
+                            : featured ? "text-white/20" : "text-slate-200"
+                        }
+                      />
+                    ))}
+                    <span className={`ml-1.5 text-[10px] font-bold ${featured ? "text-white/70" : "text-slate-400"}`}>
+                      {testimonial.rating}.0
+                    </span>
+                  </div>
+
+                  {/* Review Text */}
+                  <p className={`mt-3 line-clamp-4 text-xs sm:text-[13px] leading-5 ${featured ? "text-slate-200" : "text-slate-600"}`}>
+                    &ldquo;{testimonial.text}&rdquo;
+                  </p>
+                </div>
+
+                {/* Footer status */}
+                <div className={`mt-5 flex items-center justify-between border-t pt-3 ${featured ? "border-white/10" : "border-slate-100"}`}>
+                  <span className={`text-[9px] font-extrabold uppercase tracking-wider ${featured ? "text-blue-200" : "text-slate-400"}`}>
+                    Verified Rider
+                  </span>
+                  <span className={`h-2 w-2 rounded-full ${featured ? "bg-orange-400" : "bg-emerald-400"}`} />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Marquee Custom Animation Style */}
+      <style jsx global>{`
+        @keyframes testimonialMarquee {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-testimonial-marquee {
+          display: flex;
+          width: max-content;
+          animation: testimonialMarquee 40s linear infinite;
+        }
+      `}</style>
     </section>
   );
 }
