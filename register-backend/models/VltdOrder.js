@@ -37,9 +37,9 @@ const vltdOrderSchema = new mongoose.Schema({
 
   // Payment Summary Calculation Breakdown
   paymentSummary: {
-    devicePrice: { type: Number, required: true, default: 1399 },
-    simCardRechargePrice: { type: Number, required: true },
-    taxiSafarFees: { type: Number, required: true, default: 200 },
+    rechargePlanPrice: { type: Number, required: true },
+    advancePayment: { type: Number, required: true },
+    remainingBalance: { type: Number, required: true },
     totalAmount: { type: Number, required: true } // e.g., 5099
   },
 
