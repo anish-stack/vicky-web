@@ -1178,7 +1178,7 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
       <div className="inner-box">
         <div className="image-box position-relative">
           <img src={img} alt="Car" loading="lazy" />
-          {discountPrice && discount > 0 && (
+          {/* {discountPrice && discount > 0 && (
             <div className="discount-sticker">
               <div className="cab-discount-top"></div>
               <div className="cab-discount">
@@ -1186,7 +1186,7 @@ const PricingCardThree: React.FC<PricingCardThreeProps> = ({
                 <p className="mb-0">Off</p>
               </div>
             </div>
-          )}
+          )} */}
         </div>
 
         <div className="content">

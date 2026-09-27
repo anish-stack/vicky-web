@@ -8,7 +8,7 @@ export default async function handler(req, res) {
         });
       }
 
-      const googleMapsApiUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=AIzaSyDcp4L3kpVue3TMWpELG3_TLsO6h52ykQo&fields=formatted_address,name,geometry/location`;
+      const googleMapsApiUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=AIzaSyDg3Y_xm8zX0V1tWajJOEsuWsXgx7uE4gs&fields=formatted_address,name,geometry/location`;
   
       const response = await fetch(googleMapsApiUrl);
   

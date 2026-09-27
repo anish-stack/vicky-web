@@ -1,10 +1,9 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { create, get } = require('../controllers/advancePayment');
+const { create, get } = require("../controllers/advancePayment");
+const admin = require("../middlewares/adminMiddleware");
 
-const authMiddleware = require('../middlewares/authMiddleware');
-
-router.post('/', authMiddleware, create);
-router.get('/', get);
+router.post("/", admin, create);
+router.get("/", get);
 
 module.exports = router;

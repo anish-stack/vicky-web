@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from 'axios'
 
 const API_URL = process.env.API_URL
+console.log("API_URL",API_URL)
 const MODEL_URL = `${API_URL}/api`
 
 export type City = {

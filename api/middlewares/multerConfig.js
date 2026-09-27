@@ -19,13 +19,13 @@ const storage = multer.diskStorage({
 const upload = multer({
     storage: storage,
     fileFilter: (req, file, cb) => {
-        const fileTypes = /jpeg|jpg|png/;
+        const fileTypes = /jpeg|jpg|png|webp/;
         const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = fileTypes.test(file.mimetype);
         if (extname && mimetype) {
             cb(null, true);
         } else {
-            cb(new Error('Only images (jpeg, jpg, png) are allowed!'));
+            cb(Object.assign(new Error('Only images (jpeg, jpg, png, webp) are allowed!'), { status: 400 }));
         }
     },
 });

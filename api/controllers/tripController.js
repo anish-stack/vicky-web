@@ -1,6 +1,6 @@
 const Joi = require("joi");
 const Razorpay = require("razorpay");
-const { Op } = require("sequelize");
+const { Op, literal } = require("sequelize");
 const {
 	Trip,
 	Transaction,
@@ -615,24 +615,52 @@ exports.getAllTrips = async (req, res) => {
 			page = 1,
 			items_per_page = 10,
 			search = "",
-			userId,
 			tripStatus,
+			trip_type,
+			car_tab,
+			converted,
+			paid,
 		} = req.query;
+		let { userId } = req.query;
+
+		// customers can only ever list their own trips
+		if (req.user?.role === "customer") userId = req.user.id;
+
 		const pageNumber = parseInt(page, 10);
 		const itemsPerPage = parseInt(items_per_page, 10);
 
+		const andConditions = [];
+		if (search) {
+			const term = String(search).trim();
+			const numericId = term.replace(/^TS/i, "");
+			const matchedUsers = await User.findAll({
+				attributes: ["id"],
+				where: {
+					[Op.or]: [
+						{ name: { [Op.like]: `%${term}%` } },
+						{ phone_number: { [Op.like]: `%${term}%` } },
+					],
+				},
+				limit: 500,
+			});
+			const or = [{ user_id: matchedUsers.map((u) => u.id) }];
+			if (/^\d+$/.test(numericId)) or.push({ id: Number(numericId) });
+			andConditions.push({ [Op.or]: or });
+		}
+		if (paid === "1" || paid === "true") {
+			andConditions.push({ id: { [Op.in]: literal("(SELECT DISTINCT trip_id FROM transactions)") } });
+		} else if (paid === "0" || paid === "false") {
+			andConditions.push({ id: { [Op.notIn]: literal("(SELECT DISTINCT trip_id FROM transactions)") } });
+		}
+
 		const whereCondition = {
-			...(search && {
-				[Op.or]: [{ invoice_id: { [Op.like]: `%${search}%` } }],
-			}),
-
-			...(userId && {
-				user_id: userId,
-			}),
-
-			...(tripStatus && {
-				trip_status: tripStatus,
-			}),
+			...(userId && { user_id: userId }),
+			...(tripStatus && { trip_status: tripStatus }),
+			...(trip_type && { trip_type }),
+			...(car_tab && { car_tab }),
+			...(converted === "1" || converted === "true" ? { is_converted_post: true } : {}),
+			...(converted === "0" || converted === "false" ? { is_converted_post: false } : {}),
+			...(andConditions.length && { [Op.and]: andConditions }),
 		};
 
 		// full details: Trip + full User + full Vehicle + full Transactions
@@ -759,11 +787,22 @@ exports.getAllTrips = async (req, res) => {
 };
 
 
+// Must match the DB ENUM on trips.trip_status / transactions.trip_status:
+// ("active", "reserved", "completed", "cancel")
 const ALLOWED_TRANSITIONS = {
-	reserved: ["ongoing", "cancelled"],
-	ongoing: ["completed", "cancelled"],
+	reserved: ["active", "completed", "cancel"],
+	active: ["completed", "cancel"],
 	completed: [],
-	cancelled: [],
+	cancel: [],
+};
+
+// keep the paid booking row (transactions) in sync with its trip
+const syncTransactionStatus = async (tripId, status) => {
+	try {
+		await Transaction.update({ trip_status: status }, { where: { trip_id: tripId } });
+	} catch (e) {
+		console.error("Failed to sync transaction status:", e.message);
+	}
 };
 
 exports.markConverted = async (req, res) => {
@@ -850,25 +889,23 @@ exports.markUnConverted = async (req, res) => {
 exports.cancelTrip = async (req, res) => {
 	try {
 		const { id } = req.params;
-		const { reason } = req.body || {};
-
 		const trip = await Trip.findOne({ where: { id } });
 		if (!trip) {
 			return res.status(404).json({ status: false, message: "Trip not found" });
 		}
-
+		if (req.user?.role === "customer" && String(trip.user_id) !== String(req.user.id)) {
+			return res.status(403).json({ status: false, message: "Forbidden" });
+		}
 		const current = trip.trip_status;
-		if (!ALLOWED_TRANSITIONS[current]?.includes("cancelled")) {
+		if (!ALLOWED_TRANSITIONS[current]?.includes("cancel")) {
 			return res.status(400).json({
 				status: false,
 				message: `Trip cannot be cancelled from status "${current}"`,
 			});
 		}
-
-		trip.trip_status = "cancelled";
-		if (reason) trip.cancellation_reason = reason;
+		trip.trip_status = "cancel";
 		await trip.save();
-
+		await syncTransactionStatus(trip.id, "cancel");
 		return res.status(200).json({
 			status: true,
 			data: trip,
@@ -880,13 +917,13 @@ exports.cancelTrip = async (req, res) => {
 	}
 };
 
-const VALID_STATUSES = ["reserved", "ongoing", "completed", "cancelled"];
+const VALID_STATUSES = ["reserved", "active", "completed", "cancel"];
 
 
 exports.changeTripStatus = async (req, res) => {
 	try {
 		const { id } = req.params;
-		const { status, reason } = req.body || {};
+		const { status } = req.body || {};
 
 		if (!status || !VALID_STATUSES.includes(status)) {
 			return res.status(400).json({
@@ -917,8 +954,8 @@ exports.changeTripStatus = async (req, res) => {
 		}
 
 		trip.trip_status = status;
-		if (reason) trip.cancellation_reason = reason;
 		await trip.save();
+		await syncTransactionStatus(trip.id, status);
 
 		return res.status(200).json({
 			status: true,
@@ -950,6 +987,7 @@ exports.completeTrip = async (req, res) => {
 
 		trip.trip_status = "completed";
 		await trip.save();
+		await syncTransactionStatus(trip.id, "completed");
 
 		return res.status(200).json({
 			status: true,

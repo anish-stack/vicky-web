@@ -129,11 +129,16 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                                         <img className="me-3" src="/images/icons/mytrip-menu-icon.png" width={24} />
                                         <p className="mb-0">My Trip</p>
                                     </Link>
-
+       <Link href="/tour-bookings" className="d-flex align-items-center mt-4">
+                                        <img className="me-3" src="/images/icons/notifications-menu-icon.png" width={24} />
+                                        <p className="mb-0">Tour Packages Bookings</p>
+                                    </Link>
                                     <Link href="#" className="d-flex align-items-center mt-4">
                                         <img className="me-3" src="/images/icons/notifications-menu-icon.png" width={24} />
                                         <p className="mb-0">Notification</p>
                                     </Link>
+
+                              
                                 </div>
                             </div>
 

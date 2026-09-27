@@ -11,7 +11,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Both origins and destinations are required' });
     }
 
-    const apiKey = 'AIzaSyDcp4L3kpVue3TMWpELG3_TLsO6h52ykQo';
+    const apiKey = 'AIzaSyDg3Y_xm8zX0V1tWajJOEsuWsXgx7uE4gs';
 
     try {
         // const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(

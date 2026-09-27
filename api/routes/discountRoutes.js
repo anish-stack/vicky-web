@@ -1,10 +1,9 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { createOrUpdate, getFirstRecord } = require('../controllers/discountController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const { createOrUpdate, getFirstRecord } = require("../controllers/discountController");
+const admin = require("../middlewares/adminMiddleware");
 
-
-router.post('/',authMiddleware, createOrUpdate);
-router.get('/', getFirstRecord);
+router.post("/", admin, createOrUpdate);
+router.get("/", getFirstRecord);
 
 module.exports = router;

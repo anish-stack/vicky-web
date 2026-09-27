@@ -28,26 +28,24 @@ exports.create = async (req, res) => {
 
 			if (data) {
 				await data.update({ percentage });
-				message = "Percentage Updated Successfully";
 			} else {
 				data = await advancePayments.create({ percentage });
-				message = "Percentage Added Successfully";
 			}
 
 			// Create or update a setting
 			await Setting.upsert({
 				key: "toll_tax",
-				value: toll_tax,
+				value: toll_tax ?? null,
 			});
 			await Setting.upsert({
 				key: "roundtrip_toll_tax",
-				value: roundtrip_toll_tax,
+				value: roundtrip_toll_tax ?? null,
 			});
 
 			res.status(200).json({
 				status: true,
 				data: data,
-				message: "Percentage Added Successfully",
+				message: "Settings saved successfully",
 			});
 		} catch (error) {
         res.status(500).json({
@@ -76,7 +74,7 @@ exports.get = async (req, res) => {
 			res.status(200).json({
 				status: true,
 				data: {
-					percentage: data.percentage,
+					percentage: data ? data.percentage : 0,
 					toll_tax,
 					roundtrip_toll_tax,
 				},

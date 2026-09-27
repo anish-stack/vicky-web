@@ -30,6 +30,7 @@ exports.createVehicle = async (req, res) => {
 					luggage,
 					createdBy,
 					perdaystatetaxcharges,
+					additional_time_charge,
 				} = req.body;
 
         let one_way_trip_pricings = [];
@@ -139,6 +140,7 @@ exports.createVehicle = async (req, res) => {
             ac_cab,
             luggage,
             perdaystatetaxcharges,
+            additional_time_charge: additional_time_charge || 0,
             createdBy,
         });
 
@@ -242,7 +244,7 @@ exports.updateVehicle = async (req, res) => {
 					additional_time_charge: Joi.number()
                     .precision(2)
                     .min(0)
-                    .required()
+                    .optional()
                     .messages({
                         "number.base": "Additional time charge must be a number",
                         "number.min": "Additional time charge cannot be negative",
@@ -285,8 +287,8 @@ exports.updateVehicle = async (req, res) => {
         }
 
         if (req.file) {
-            const existingImagePath = path.join(__dirname, '../public/vehicle', vehicle.image);
-            if (fs.existsSync(existingImagePath)) {
+            const existingImagePath = vehicle.image ? path.join(__dirname, '../public/vehicle', vehicle.image) : null;
+            if (existingImagePath && fs.existsSync(existingImagePath)) {
                 fs.unlinkSync(existingImagePath);
             }
             vehicle.image = req.file.filename;
@@ -311,7 +313,7 @@ exports.updateVehicle = async (req, res) => {
         vehicle.luggage = luggage;
         vehicle.updatedBy = updatedBy;
         vehicle.perdaystatetaxcharges = perdaystatetaxcharges;
-        vehicle.additional_time_charge = additional_time_charge;
+        vehicle.additional_time_charge = additional_time_charge || 0;
 
         await vehicle.save();
 
@@ -634,18 +636,20 @@ exports.deleteById = async (req, res) => {
         const data = await Vehicle.findByPk(id);
 
         if (data) {
-            const rentalPricing = await LocalRentalPricing.findOne({
-                where: { vehicle_id: id }
-            });
-            if (rentalPricing) {
+            const [rentalPricing, airportPricing, dhamPricing] = await Promise.all([
+                LocalRentalPricing.findOne({ where: { vehicle_id: id } }),
+                AirportPricing.findOne({ where: { vehicle_id: id } }),
+                DhamPricing.findOne({ where: { vehicle_id: id } }),
+            ]);
+            if (rentalPricing || airportPricing || dhamPricing) {
                 res.status(200).json({
                     status: false,
-                    message: `Vehicle is used somewhere!!`
+                    message: `Vehicle is used in rental / airport / dham pricing. Remove it there first.`
                 });
             } else {
                 await OneWayTripPricing.destroy({ where: { vehicle_id: id } });
-                const existingImagePath = path.join(__dirname, '../public/vehicle', data.image);
-                if (fs.existsSync(existingImagePath)) {
+                const existingImagePath = data.image ? path.join(__dirname, '../public/vehicle', data.image) : null;
+                if (existingImagePath && fs.existsSync(existingImagePath)) {
                     fs.unlinkSync(existingImagePath);
                 }
                 await data.destroy();

@@ -15,9 +15,8 @@ exports.autocompletecity = async (req, res) => {
 
 		const googleMapsApiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
 			query
-		)}&key=${googleMapApiKey}&components=country:in${
-			city == 1 ? "&types=(cities)" : ""
-		}`;
+		)}&key=${googleMapApiKey}&components=country:in${city == 1 ? "&types=(cities)" : ""
+			}`;
 
 		const response = await fetch(googleMapsApiUrl);
 
@@ -149,7 +148,7 @@ exports.getLocalityPlaceId = async (req, res) => {
 exports.distancematrix = async (req, res) => {
 	try {
 		const { origins, destinations } = req.query;
-
+		console.log(req.query)
 		if (!origins || !destinations) {
 			return res.status(400).json({
 				error: "Missing required origins and destinations.",
@@ -157,16 +156,17 @@ exports.distancematrix = async (req, res) => {
 		}
 
 		const googleMapApiKey = process.env.GOOGLE_MAPS_API_KEY;
-
+		console.log(googleMapApiKey)
 		const googleMapsApiUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origins}&destinations=${destinations}&mode=driving&key=${googleMapApiKey}`;
 
 		const response = await fetch(googleMapsApiUrl);
-
+		console.log("response.statusText",response.statusText)
 		if (!response.ok) {
 			throw new Error(`Google Maps API error: ${response.statusText}`);
 		}
 
 		const data = await response.json();
+		console.log("data",data)
 		res.status(200).json(data);
 	} catch (error) {
 		console.error("Error fetching Google Maps Places data:", error);

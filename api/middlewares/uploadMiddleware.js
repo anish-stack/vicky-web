@@ -3,7 +3,7 @@ const path = require("path");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "./public"); // Directory to store uploaded files
+    cb(null, path.join(__dirname, "../public"));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -29,7 +29,7 @@ const upload = multer({
     if (extname && mimetype) {
       cb(null, true);
     } else {
-      cb(new Error("Only Excel files are allowed!"));
+      cb(Object.assign(new Error("Only Excel files are allowed!"), { status: 400 }));
     }
   },
 });

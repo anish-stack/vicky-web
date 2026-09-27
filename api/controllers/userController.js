@@ -73,7 +73,11 @@ exports.getAllUsers = async (req, res) => {
 
     const whereCondition = {
       ...(search && {
-        [Op.or]: [{ name: { [Op.like]: `%${search}%` } }],
+        [Op.or]: [
+          { name: { [Op.like]: `%${search}%` } },
+          { phone_number: { [Op.like]: `%${search}%` } },
+          { email: { [Op.like]: `%${search}%` } },
+        ],
       }),
       ...(role
         ? { role: { [Op.eq]: role, [Op.ne]: "superadmin" } }
@@ -82,9 +86,10 @@ exports.getAllUsers = async (req, res) => {
 
     const { count, rows: Users } = await User.findAndCountAll({
       where: whereCondition,
+      attributes: { exclude: ["password"] },
       offset: (pageNumber - 1) * itemsPerPage,
       limit: itemsPerPage,
-      order: [["name", "ASC"]],
+      order: [["createdAt", "DESC"]],
     });
 
     const totalPages = Math.ceil(count / itemsPerPage);
@@ -201,9 +206,10 @@ exports.createUser = async (req, res) => {
       phone_number,
       role,
     });
+    const { password: _pw, ...safeUser } = user.toJSON();
     res.status(200).json({
       status: true,
-      data: user,
+      data: safeUser,
       message: "Regestered Successfully!",
     });
   } catch (error) {
@@ -217,7 +223,7 @@ exports.createUser = async (req, res) => {
 exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await User.findByPk(id);
+    const user = await User.findByPk(id, { attributes: { exclude: ["password"] } });
     if (user) {
       res.status(200).json({
         status: true,
@@ -241,8 +247,9 @@ exports.getUserById = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    let { name, email, address, city, pin_code, gender, phone_number } =
+    let { name, email, address, city, pin_code, gender, phone_number, role, password } =
       req.body;
+    const isAdmin = req.user?.role === "superadmin";
 
     email = email || null;
     const userSchema = Joi.object({
@@ -258,14 +265,16 @@ exports.updateUser = async (req, res) => {
         message: error?.details[0]?.message,
       });
     }
-    const existingUser = await User.findOne({
-      where: { phone_number, id: { $ne: id } },
-    });
-    if (existingUser) {
-      return res.json({
-        status: false,
-        message: "This user already registered",
+    if (phone_number) {
+      const existingUser = await User.findOne({
+        where: { phone_number, id: { [Op.ne]: id } },
       });
+      if (existingUser) {
+        return res.json({
+          status: false,
+          message: "This phone number is already registered",
+        });
+      }
     }
     const user = await User.findByPk(id);
     if (user) {
@@ -318,11 +327,19 @@ exports.updateUser = async (req, res) => {
       user.city = city ? city : user.city;
       user.pin_code = pin_code ? pin_code : user.pin_code;
       user.gender = gender ? gender : user.gender;
+      if (isAdmin) {
+        // admin-only fields
+        if (phone_number) user.phone_number = phone_number;
+        if (role && ["customer", "driver", "superadmin"].includes(role)) user.role = role;
+      }
+      if (password && String(password).length >= 6) {
+        user.password = await bcrypt.hash(String(password), 10);
+      }
       await user.save();
-
+      const { password: _pw, ...safeUser } = user.toJSON();
       res.status(200).json({
         status: true,
-        data: user,
+        data: safeUser,
         message: "Updated Successfully",
       });
     } else {
@@ -384,9 +401,11 @@ exports.loginUser = async (req, res) => {
         return res.json({ status: false, message: "Invalid credentials" });
       }
 
-      const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, {
-        expiresIn: "1d",
-      });
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        SECRET_KEY,
+        { expiresIn: "1d" }
+      );
       res.json({
         status: true,
         message: "Login successful",
@@ -408,7 +427,7 @@ exports.verifyToken = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, SECRET_KEY);
-    const user = await User.findByPk(decoded.id);
+    const user = await User.findByPk(decoded.id, { attributes: { exclude: ["password"] } });
     if (!user) {
       return res.json({ status: false, message: "User not found" });
     }
@@ -552,72 +571,72 @@ exports.verifyTokenByCustomer = async (req, res) => {
 };
 
 exports.getUserProfile = async (req, res) => {
-	try {
-		const { id } = req.user;
- 
-		const user = await User.findByPk(id);
-		if (user) {
-			res.status(200).json({
-				status: true,
-				data: user,
-				message: "User Details Fetched",
-			});
-		} else {
-			res.status(404).json({
-				status: false,
-				message: "User Not Found",
-			});
-		}
-	} catch (error) {
-		res.status(500).json({
-			status: false,
-			message: error.message,
-		});
-	}
+  try {
+    const { id } = req.user;
+
+    const user = await User.findByPk(id, { attributes: { exclude: ["password"] } });
+    if (user) {
+      res.status(200).json({
+        status: true,
+        data: user,
+        message: "User Details Fetched",
+      });
+    } else {
+      res.status(404).json({
+        status: false,
+        message: "User Not Found",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: error.message,
+    });
+  }
 };
 
 exports.updateUserProfile = async (req, res) => {
-	try {
-		const { id } = req.user;
-		let { name} =	req.body;
+  try {
+    const { id } = req.user;
+    let { name } = req.body;
 
-		const userSchema = Joi.object({
-			name: Joi.string().required().messages({
-			    'string.empty': 'Name is required',
-			    'any.required': 'Name is required',
-			}),
-		}).unknown(true);
-		const { error } = userSchema.validate(req.body, { abortEarly: false });
-		if (error) {
-			return res.json({
-				status: false,
-				message: error?.details[0]?.message,
-			});
-		}
-	
-		const user = await User.findByPk(id);
-		if (user) {
-			user.name = name ? name : user.name;
-	
-			await user.save();
+    const userSchema = Joi.object({
+      name: Joi.string().required().messages({
+        'string.empty': 'Name is required',
+        'any.required': 'Name is required',
+      }),
+    }).unknown(true);
+    const { error } = userSchema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.json({
+        status: false,
+        message: error?.details[0]?.message,
+      });
+    }
 
-			res.status(200).json({
-				status: true,
-				data: user,
-				message: "Details Updated Successfully",
-			});
-		} else {
-			res.status(404).json({
-				status: false,
-				message: "User Not Found",
-			});
-		}
-	} catch (error) {
-		res.status(500).json({
-			status: false,
-			message: error.message,
-		});
-	}
+    const user = await User.findByPk(id);
+    if (user) {
+      user.name = name ? name : user.name;
+
+      await user.save();
+
+      res.status(200).json({
+        status: true,
+        data: user,
+        message: "Details Updated Successfully",
+      });
+    } else {
+      res.status(404).json({
+        status: false,
+        message: "User Not Found",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: error.message,
+    });
+  }
 };
 
 // exports.sendOTP = async (req, res) => {
@@ -969,7 +988,7 @@ exports.sendOTPForLogin = async (req, res) => {
       }),
     });
 
-const { error } = schema.validate(req.body, { allowUnknown: true });
+    const { error } = schema.validate(req.body, { allowUnknown: true });
     if (error) {
       return res.status(400).json({
         status: false,

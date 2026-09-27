@@ -1,0 +1,27 @@
+/* 1 card on mobile, 2 on tablet, 3 on desktop; snaps while swiping */
+.ts-track {
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.ts-track::-webkit-scrollbar {
+  display: none;
+}
+.ts-track > .ts-card {
+  flex: 0 0 88%;
+  scroll-snap-align: start;
+}
+@media (min-width: 768px) {
+  .ts-track > .ts-card {
+    flex-basis: calc((100% - 24px) / 2);
+  }
+}
+@media (min-width: 1200px) {
+  .ts-track > .ts-card {
+    flex-basis: calc((100% - 48px) / 3);
+  }
+}
+
+/* bootstrap underlines links; keep card text clean */
+.ts-card a {
+  text-decoration: none;
+}

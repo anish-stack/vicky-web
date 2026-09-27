@@ -315,8 +315,11 @@ exports.getAllTransactions = async (req, res) => {
 			filter_tripstatus,
 			filter_vehicle_id,
 			filter_start_pickup_date,
-
+			filter_trip_type,
+			filter_car_tab,
 		} = req.query;
+		// customers can only list their own bookings
+		const scopedUserId = req.user?.role === "customer" ? req.user.id : userId;
 		const pageNumber = parseInt(page, 10);
 		const itemsPerPage = parseInt(items_per_page, 10);
 
@@ -324,6 +327,9 @@ exports.getAllTransactions = async (req, res) => {
 			...(search && {
 				[Op.or]: [
 					{ invoice_id: { [Op.like]: `%${search}%` } },
+					{ name: { [Op.like]: `%${search}%` } },
+					{ contact: { [Op.like]: `%${search}%` } },
+					{ payment_id: { [Op.like]: `%${search}%` } },
 					// trip_id as formatted 'TS001'
 					Sequelize.where(
 						Sequelize.fn(
@@ -338,9 +344,11 @@ exports.getAllTransactions = async (req, res) => {
 				],
 			}),
 
-			...(userId && {
-				user_id: userId,
+			...(scopedUserId && {
+				user_id: scopedUserId,
 			}),
+			...(filter_trip_type && { trip_type: filter_trip_type }),
+			...(filter_car_tab && { car_tab: filter_car_tab }),
 
 			...(tripStatus && {
 				trip_status: tripStatus,
@@ -1634,29 +1642,28 @@ exports.completeTransaction = async (req, res) => {
 			});
 		}
 
+		if (!["reserved", "active", "completed", "cancel"].includes(trip_status)) {
+			return res.json({ status: false, message: "Invalid trip status" });
+		}
 		const data = await Transaction.findByPk(id);
 		if (!data) {
-			return res.json({
-				status: false,
-				message: 'Data not found',
-			});
+			return res.status(404).json({ status: false, message: "Booking not found" });
 		}
 		const Trip_data = await Trip.findByPk(data.trip_id);
-
-		Trip_data.trip_status = trip_status;
-		Trip_data.additional_kilometers = additional_kilometers;
-		Trip_data.additional_time = additional_time;
-		await Trip_data.save();
+		if (Trip_data) {
+			Trip_data.trip_status = trip_status;
+			await Trip_data.save();
+		}
 
 		data.trip_status = trip_status;
-		data.additional_kilometers = additional_kilometers;
-		data.additional_time = additional_time;
+		data.additional_kilometers = Number(additional_kilometers) || 0;
+		data.additional_time = Number(additional_time) || 0;
 		await data.save();
 
 		res.status(200).json({
 			status: true,
 			data: data,
-			message: "Transaction completed Successfully",
+			message: "Booking updated successfully",
 		});
 	} catch (error) {
 		res.status(500).json({

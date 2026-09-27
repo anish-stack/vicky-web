@@ -11,15 +11,17 @@ const {
   markUnConverted,
 } = require("../controllers/tripController");
 const authMiddleware = require("../middlewares/authMiddleware");
+const admin = require("../middlewares/adminMiddleware");
 
 router.post("/", authMiddleware, createTrip);
 router.get("/:id", getById);
-router.get("/", getAllTrips);
-router.patch("/:id/cancel", cancelTrip);
-router.patch("/:id/convert", markConverted);
-router.patch("/:id/unconvert", markUnConverted);
-router.patch("/:id/status", changeTripStatus);
-router.patch("/:id/complete", completeTrip);
-
+// customers only see their own trips (scoped inside the controller)
+router.get("/", authMiddleware, getAllTrips);
+// customers may cancel their own trip; admins any trip
+router.patch("/:id/cancel", authMiddleware, cancelTrip);
+router.patch("/:id/convert", admin, markConverted);
+router.patch("/:id/unconvert", admin, markUnConverted);
+router.patch("/:id/status", admin, changeTripStatus);
+router.patch("/:id/complete", admin, completeTrip);
 
 module.exports = router;

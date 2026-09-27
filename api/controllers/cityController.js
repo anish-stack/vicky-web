@@ -12,42 +12,141 @@ const fs = require("fs");
 
 const { Op } = require("sequelize");
 
+const pincodeSchema = Joi.object({
+	id: Joi.number().optional().allow(null),
+	area_name: Joi.string().max(100).required().messages({
+		"string.empty": "Area name is required",
+		"any.required": "Area name is required",
+	}),
+	pincode: Joi.alternatives()
+		.try(
+			Joi.string().length(6).pattern(/^\d+$/),
+			Joi.number().integer().min(100000).max(999999)
+		)
+		.required()
+		.messages({
+			"any.required": "Pincode is required",
+			"alternatives.match": "Pincode must be 6 digits",
+		}),
+}).unknown(true);
+
+const citySchema = Joi.object({
+	name: Joi.string().trim().required().messages({
+		"string.empty": "Name is required",
+		"any.required": "Name is required",
+	}),
+	airport_id: Joi.number().integer().optional().allow(null, "").messages({
+		"number.base": "Please Select a valid Airport",
+	}),
+	distance: Joi.number().optional().allow(null, "").messages({
+		"number.base": "Distance must be a number",
+	}),
+	hotel: Joi.boolean().optional(),
+	Pincodes: Joi.array().items(pincodeSchema).optional(),
+	booking_limits: Joi.array()
+		.items(
+			Joi.object({
+				vehicle_id: Joi.number().required(),
+				max_limit: Joi.number().integer().min(0).required(),
+			}).unknown(true)
+		)
+		.optional(),
+}).unknown(true);
+
+/**
+ * Sync pincodes (insert/update/delete) and default (no-date) booking limits.
+ * Returns an error message string, or null on success.
+ */
+const syncCityChildren = async (cityId, Pincodes, booking_limits) => {
+	if (Array.isArray(Pincodes)) {
+		const existing = await Pincode.findAll({ where: { city_id: cityId } });
+		const existingIds = existing.map((p) => p.id);
+		const incomingIds = Pincodes.filter((p) => p.id).map((p) => Number(p.id));
+
+		const seen = new Set();
+		for (const p of Pincodes) {
+			const key = String(p.pincode);
+			if (seen.has(key)) return `Duplicate pincode "${p.pincode}" in the list.`;
+			seen.add(key);
+		}
+
+		// pincode is globally unique: make sure no other city already owns one
+		if (Pincodes.length > 0) {
+			const clash = await Pincode.findOne({
+				where: {
+					pincode: Pincodes.map((p) => Number(p.pincode)),
+					city_id: { [Op.ne]: cityId },
+				},
+			});
+			if (clash) return `Pincode "${clash.pincode}" already belongs to another city.`;
+		}
+
+		const toDelete = existingIds.filter((id) => !incomingIds.includes(id));
+		if (toDelete.length) await Pincode.destroy({ where: { id: toDelete, city_id: cityId } });
+
+		for (const p of Pincodes.filter((x) => x.id)) {
+			await Pincode.update(
+				{ area_name: p.area_name, pincode: p.pincode },
+				{ where: { id: p.id, city_id: cityId } }
+			);
+		}
+
+		const toInsert = Pincodes.filter((p) => !p.id).map((p) => ({
+			area_name: p.area_name,
+			pincode: p.pincode,
+			city_id: cityId,
+		}));
+		if (toInsert.length) await Pincode.bulkCreate(toInsert);
+	}
+
+	if (Array.isArray(booking_limits)) {
+		for (const limit of booking_limits) {
+			const existing = await BookingLimit.findOne({
+				where: { city_id: cityId, vehicle_id: limit.vehicle_id, limit_date: null },
+			});
+			const max = Number(limit.max_limit) || 0;
+			if (existing) {
+				if (max > 0) await existing.update({ max_limit: max });
+				else await existing.destroy(); // 0 / empty = no limit
+			} else if (max > 0) {
+				await BookingLimit.create({
+					city_id: cityId,
+					vehicle_id: limit.vehicle_id,
+					max_limit: max,
+					limit_date: null,
+				});
+			}
+		}
+	}
+	return null;
+};
+
 exports.create = async (req, res) => {
 	try {
-		const { name, airport_id, distance, hotel } = req.body;
-
-		const validationSchema = Joi.object({
-			name: Joi.string().required().messages({
-				"string.empty": "Name is required",
-				"any.required": "Name is required",
-			}),
-			airport_id: Joi.number().integer().required().messages({
-				"number.base": "Please Select a valid Airport",
-				"any.required": "Please Select Airport",
-			}),
-			distance: Joi.number().required().messages({
-				"number.base": "Distance is required",
-				"any.required": "Distance is required",
-			}),
-		}).unknown(true);
-
-		const { error } = validationSchema.validate(
-			{ ...req.body },
-			{ abortEarly: false }
-		);
+		const { error } = citySchema.validate(req.body, { abortEarly: false });
 		if (error) {
 			return res.json({
 				status: false,
 				message: error.details.map((err) => err.message).join(", "),
 			});
 		}
+		const { name, airport_id, distance, hotel, Pincodes, booking_limits } = req.body;
 
 		const city = await cities.create({
-			name,
-			airport_id,
-			distance,
-			hotel,
+			name: name.trim(),
+			airport_id: airport_id ? airport_id : null,
+			distance: airport_id ? distance || 0 : 0,
+			hotel: !!hotel,
 		});
+
+		const childError = await syncCityChildren(city.id, Pincodes, booking_limits);
+		if (childError) {
+			return res.json({
+				status: false,
+				data: city,
+				message: `City created, but: ${childError}`,
+			});
+		}
 
 		res.status(200).json({
 			status: true,
@@ -65,190 +164,29 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
 	try {
 		const { id } = req.params;
-		const {
-			name,
-			airport_id,
-			distance,
-			hotel,
-			Pincodes = [],
-			booking_limits,
-		} = req.body;
-
-		const validationSchema = Joi.object({
-			name: Joi.string().required().messages({
-				"string.empty": "Name is required",
-				"any.required": "Name is required",
-			}),
-			airport_id: Joi.number().optional().integer().messages({
-				"number.base": "Please Select a valid Airport",
-				"any.required": "Please Select Airport",
-			}),
-			distance: Joi.number().required().messages({
-				"number.base": "Distance is required",
-				"any.required": "Distance is required",
-			}),
-			Pincodes: Joi.array().items(
-				Joi.object({
-					id: Joi.number().optional(),
-					area_name: Joi.string().max(100).required(),
-					// pincode: Joi.string().length(6).pattern(/^\d+$/).required(),
-
-					pincode: Joi.alternatives()
-						.try(
-							Joi.string().length(6).pattern(/^\d+$/),
-							Joi.number().integer().min(100000).max(999999)
-						)
-						.required()
-						.messages({
-							"any.required": "Pincode is required",
-							"string.pattern.base": "Pincode must be 6 digits",
-							"number.base": "Pincode must be a number",
-							"number.min": "Pincode must be at least 6 digits",
-							"number.max": "Pincode must be at most 6 digits",
-						}),
-				}).unknown(true)
-			),
-		}).unknown(true);
-
-		const { error } = validationSchema.validate(
-			{ ...req.body },
-			{ abortEarly: false }
-		);
+		const { error } = citySchema.validate(req.body, { abortEarly: false });
 		if (error) {
 			return res.json({
 				status: false,
 				message: error.details.map((err) => err.message).join(", "),
 			});
 		}
+		const { name, airport_id, distance, hotel, Pincodes, booking_limits } = req.body;
 
-		const city = await cities.findByPk(id, { include: ["Pincodes"] });
+		const city = await cities.findByPk(id);
 		if (!city) {
-			return res.json({
-				status: false,
-				message: "City not found",
-			});
+			return res.status(404).json({ status: false, message: "City not found" });
 		}
 
-		city.name = name;
-		city.airport_id = airport_id?airport_id:null;
-		city.distance = airport_id? distance:0;
-		city.hotel = hotel;
+		city.name = name.trim();
+		city.airport_id = airport_id ? airport_id : null;
+		city.distance = airport_id ? distance || 0 : 0;
+		city.hotel = !!hotel;
 		await city.save();
 
-		// Process Pincodes
-		const existingPincodeIds = city.Pincodes.map((p) => p.id);
-		const incomingPincodeIds = Pincodes.filter((p) => p.id).map((p) => p.id);
-
-		// 1. Delete pincodes not in incoming data
-		const toDelete = existingPincodeIds.filter(
-			(id) => !incomingPincodeIds.includes(id)
-		);
-		if (toDelete.length > 0) {
-			await Pincode.destroy({ where: { id: toDelete, city_id: id } });
-		}
-
-		// // 2. Bulk update existing pincodes
-		// const toUpdate = Pincodes.filter((p) => p.id);
-		// for (const pincode of toUpdate) {
-		// 	await Pincode.update(
-		// 		{ area_name: pincode.area_name, pincode: pincode.pincode },
-		// 		{ where: { id: pincode.id, city_id: id } }
-		// 	);
-		// }
-
-		// // 3. Bulk insert new pincodes
-		// const toInsert = Pincodes.filter((p) => !p.id).map((p) => ({
-		// 	area_name: p.area_name,
-		// 	pincode: p.pincode,
-		// 	city_id: id,
-		// }));
-		// if (toInsert.length > 0) {
-		// 	await Pincode.bulkCreate(toInsert);
-		// }
-		// 1. Update existing Pincodes
-		const toUpdate = Pincodes.filter((p) => p.id);
-		for (const pincode of toUpdate) {
-			await Pincode.update(
-				{
-					area_name: pincode.area_name,
-					pincode: pincode.pincode,
-				},
-				{
-					where: { id: pincode.id, city_id: id },
-				}
-			);
-		}
-
-		// 2. Prepare new entries (without id)
-		const toInsert = Pincodes.filter((p) => !p.id);
-
-		//  Step 1: Check for duplicates in input itself
-		const seen = new Set();
-		for (const p of toInsert) {
-			const key = `${id}-${p.pincode}`;
-			if (seen.has(key)) {
-				return res.status(400).json({
-					status: false,
-					message: `Duplicate pincode "${p.pincode}" found in request body.`,
-				});
-			}
-			seen.add(key);
-		}
-
-		//  Step 2: Check for duplicates in DB
-		if (toInsert.length > 0) {
-			const pincodesOnly = toInsert.map((p) => p.pincode);
-
-			const existing = await Pincode.findAll({
-				where: {
-					// city_id: id,
-					pincode: pincodesOnly,
-				},
-			});
-
-			if (existing.length > 0) {
-				const dup = existing[0];
-				return res.status(200).json({
-					status: false,
-					message: `Pincode "${dup.pincode}" already exists in the database for this city.`,
-				});
-			}
-		}
-
-		// 3. Bulk insert if no duplicates
-		const mappedInsert = toInsert.map((p) => ({
-			area_name: p.area_name,
-			pincode: p.pincode,
-			city_id: id,
-		}));
-
-		if (mappedInsert.length > 0) {
-			await Pincode.bulkCreate(mappedInsert);
-		}
-
-		const updatedRecords = [];
-
-		for (const limit of booking_limits) {
-			const existing = await BookingLimit.findOne({
-				where: {
-					city_id: id,
-					vehicle_id: limit.vehicle_id,
-					limit_date: null,
-				},
-			});
-
-			if (existing) {
-				await existing.update({ max_limit: limit.max_limit });
-				updatedRecords.push(existing.id);
-			} else {
-				const created = await BookingLimit.create({
-					city_id: id,
-					vehicle_id: limit.vehicle_id,
-					max_limit: limit.max_limit,
-					limit_date: null,
-				});
-				updatedRecords.push(created.id);
-			}
+		const childError = await syncCityChildren(city.id, Pincodes, booking_limits);
+		if (childError) {
+			return res.json({ status: false, message: childError });
 		}
 
 		res.status(200).json({
@@ -257,8 +195,8 @@ exports.update = async (req, res) => {
 			message: "City Updated Successfully",
 		});
 	} catch (error) {
-		console.log("error".error)
-		res.status(500).json({	
+		console.error("City update error:", error);
+		res.status(500).json({
 			status: false,
 			message: error.message,
 		});
@@ -569,6 +507,8 @@ exports.deleteById = async (req, res) => {
 					message: `City is used somewhere!!`,
 				});
 			} else {
+				await Pincode.destroy({ where: { city_id: id } });
+				await BookingLimit.destroy({ where: { city_id: id } });
 				await data.destroy();
 				res.status(200).json({
 					status: true,
@@ -689,11 +629,9 @@ exports.importPincodes = async (req, res) => {
 		const pincodesToInsert = [];
 
 		// Fetch existing pincodes from DB for uniqueness check
-		const existingPincodes = await Pincode.findAll({
-			attributes: ["pincode"],
-			where: { city_id },
-		});
-		const existingPincodeSet = new Set(existingPincodes.map((p) => p.pincode));
+		// pincode column is globally unique, so check against every city
+		const existingPincodes = await Pincode.findAll({ attributes: ["pincode"] });
+		const existingPincodeSet = new Set(existingPincodes.map((p) => Number(p.pincode)));
 
 		for (const row of sheetData) {
 			const { error } = schema.validate(row);
@@ -702,7 +640,7 @@ exports.importPincodes = async (req, res) => {
 					...row,
 					error: error.details.map((x) => x.message).join(", "),
 				});
-			} else if (existingPincodeSet.has(row.pincode)) {
+			} else if (existingPincodeSet.has(Number(row.pincode))) {
 				errors.push({
 					...row,
 					error: `Duplicate pincode: ${row.pincode}`,
@@ -714,7 +652,7 @@ exports.importPincodes = async (req, res) => {
 					pincode: row.pincode,
 					area_name: row.area_name,
 				});
-				existingPincodeSet.add(row.pincode); // Add to set to avoid duplicates in same upload
+				existingPincodeSet.add(Number(row.pincode)); // avoid duplicates in same upload
 			}
 		}
 

@@ -18,7 +18,10 @@ const discountRoutes = require("./routes/discountRoutes");
 const bookingLimitRoutes = require("./routes/bookingLimitRoutes");
 const sequelize = require("./config/database");
 const paymentRoutes = require("./routes/paymentRoutes");
-// const { Sequelize } = require('sequelize');
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const tourPackagesRoutes = require("./routes/tourPackagesRoutes");
+const tourPackageBookingRoutes = require("./routes/tourPackageBookingRoutes");
+
 const config = require("./config/config.json");
 const cors = require("cors");
 require("dotenv").config();
@@ -28,6 +31,10 @@ const morgan = require("morgan");
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
+app.use(
+    "/uploads",
+    express.static(path.join(__dirname, "uploads"))
+);
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors());
@@ -52,4 +59,22 @@ app.use("/api/dham_category", dhamCategoryRoutes);
 app.use("/api/discount", discountRoutes);
 app.use("/api/booking_limit", bookingLimitRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/tour-package", tourPackagesRoutes);
+app.use("/api/tour-booking", tourPackageBookingRoutes);
+
+app.use("/api/dashboard", dashboardRoutes);
+
+// JSON 404 for unknown API routes
+app.use("/api", (req, res) => {
+    res.status(404).json({ status: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
+// JSON error handler (multer file-type errors, bad JSON bodies, etc.)
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    const status = err.status || err.statusCode || (err.name === "MulterError" ? 400 : 500);
+    if (status >= 500) console.error(err);
+    res.status(status).json({ status: false, message: err.message || "Internal server error" });
+});
+
 module.exports = app;

@@ -17,7 +17,7 @@
     "username": "vicky_user",
     "password": "TaxiSafar@123",
     "database": "vicky_db",
-    "host": "127.0.0.1",
+    "host": "31.97.203.168",
     "dialect": "mysql"
   }
 }

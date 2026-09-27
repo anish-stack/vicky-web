@@ -53,7 +53,11 @@ exports.create = async (req, res) => {
         });
 
         if (dham_pickup_cities) {
-            dham_pickup_cities = JSON.parse(dham_pickup_cities);
+            try {
+                dham_pickup_cities = JSON.parse(dham_pickup_cities);
+            } catch (e) {
+                dham_pickup_cities = [];
+            }
 
             if (Array.isArray(dham_pickup_cities) && dham_pickup_cities.length > 0) {
                 let cityRecords = [];
@@ -172,8 +176,18 @@ exports.update = async (req, res) => {
         await data.save();
 
         const existing = await DhamPickupCity.findAll({ where: { dham_package_id: id } });
-        dham_pickup_cities = JSON.parse(dham_pickup_cities);
-
+        try {
+            dham_pickup_cities = dham_pickup_cities ? JSON.parse(dham_pickup_cities) : [];
+        } catch (e) {
+            return res.status(400).json({ status: false, message: 'Invalid JSON for dham_pickup_cities' });
+        }
+        // empty list => remove every pickup city (and their stops/pricings)
+        if (Array.isArray(dham_pickup_cities) && dham_pickup_cities.length === 0 && existing.length) {
+            const ids = existing.map((c) => c.id);
+            await DhamStop.destroy({ where: { dham_pickup_city_id: ids } });
+            await DhamPricing.destroy({ where: { dham_pickup_city_id: ids } });
+            await DhamPickupCity.destroy({ where: { id: ids } });
+        }
         if (Array.isArray(dham_pickup_cities) && dham_pickup_cities.length > 0) {
             const existingMap = new Map();
             existing.forEach((data) => {
@@ -340,6 +354,8 @@ exports.update = async (req, res) => {
 
             // Remove cities that are no longer needed
             if (idsToDelete.length) {
+                await DhamStop.destroy({ where: { dham_pickup_city_id: idsToDelete } });
+                await DhamPricing.destroy({ where: { dham_pickup_city_id: idsToDelete } });
                 await DhamPickupCity.destroy({ where: { id: idsToDelete } });
             }
         }
@@ -643,8 +659,15 @@ exports.deleteById = async (req, res) => {
         const data = await dhamPackages.findByPk(id);
 
         if (data) {
-            const existingImagePath = path.join(__dirname, '../public/dham', data.image);
-            if (fs.existsSync(existingImagePath)) {
+            const pickupCities = await DhamPickupCity.findAll({ where: { dham_package_id: id } });
+            const pcIds = pickupCities.map((c) => c.id);
+            if (pcIds.length) {
+                await DhamStop.destroy({ where: { dham_pickup_city_id: pcIds } });
+                await DhamPricing.destroy({ where: { dham_pickup_city_id: pcIds } });
+                await DhamPickupCity.destroy({ where: { id: pcIds } });
+            }
+            const existingImagePath = data.image ? path.join(__dirname, '../public/dham', data.image) : null;
+            if (existingImagePath && fs.existsSync(existingImagePath)) {
                 fs.unlinkSync(existingImagePath);
             }
             await data.destroy();

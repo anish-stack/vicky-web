@@ -5,34 +5,6 @@ const moment = require("moment");
 // const Pincode = require("../models/Pincode");
 
 
-exports.getBookingLimit = async (req, res) => {
-	try {
-		const { cityId, vehicleId, date } = req.query;
-		const limit = await BookingLimit.findOne({
-			where: {
-				city_id: cityId,
-				vehicle_id: vehicleId,
-				[Op.or]: [{ limit_date: date }, { limit_date: null }],
-			},
-			order: [
-				// Prioritize specific date first
-				[
-					sequelize.literal(`CASE WHEN limit_date IS NULL THEN 1 ELSE 0 END`),
-					"ASC",
-				],
-			],
-		});
-
-		return limit ? limit.max_limit : null;
-	} catch (error) {
-		console.error("Error fetching Cities:", error);
-		res.status(500).json({
-			status: false,
-			message: error.message,
-		});
-	}
-}
-
 exports.update = async (req, res) => {
 	try {
 		const { id: city_id, booking_limits } = req.body;
@@ -48,7 +20,6 @@ exports.update = async (req, res) => {
 						max_limit: Joi.number().integer().min(1).required(),
 					}).unknown(true)
 				)
-				.min(1)
 				.required(),
 		}).unknown(true);
 
@@ -96,8 +67,9 @@ exports.update = async (req, res) => {
 			}
 		}
 
+		// only date-specific limits are managed here; default (no-date) limits live on the city
 		const existingLimits = await BookingLimit.findAll({
-			where: { city_id },
+			where: { city_id, limit_date: { [Op.ne]: null } },
 		});
 
 		const existingIds = existingLimits.map((item) => item.id);
@@ -166,7 +138,9 @@ exports.getById = async (req, res) => {
 			include: [
 				{
 					model: BookingLimit,
-					as: "booking_limits", // Use alias only if you defined it
+					as: "booking_limits",
+					where: { limit_date: { [Op.ne]: null } },
+					required: false,
 				},
 			],
 		});
@@ -202,11 +176,14 @@ exports.checkBookingAvailable = async (req, res) => {
 			});
 		}
 		// 1. find city id from pincode
-		let city = await Pincode.findOne({
-			where: {
-				pincode,
-			},
-		});
+		const city = await Pincode.findOne({ where: { pincode } });
+		if (!city) {
+			return res.status(200).json({
+				status: true,
+				available: true,
+				message: "Pincode not mapped to a city, booking is allowed",
+			});
+		}
 		const city_id = city.city_id;
 		// 1. Check if a limit exists for this city, vehicle, and date
 		let bookingLimit = await BookingLimit.findOne({
@@ -274,13 +251,6 @@ exports.checkBookingAvailable = async (req, res) => {
 			});
 		}
 
-		console.log({
-			status: true,
-			available: true,
-			message: "Booking is allowed",
-			limit: bookingLimit.max_limit,
-			current: bookingCount,
-		})
 		// 5. Allow booking
 		return res.status(200).json({
 			status: true,

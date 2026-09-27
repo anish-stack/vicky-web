@@ -201,6 +201,8 @@ exports.getById = async (req, res) => {
                     model: LocalRentalPricing,
                     as: 'local_rental_pricings',
                     where: whereCondition,
+                    // without a city filter, plans with no pricing rows still load (admin edit)
+                    required: !!city_id,
                     include: [
                         {
                             model: Vehicle,
@@ -233,7 +235,9 @@ exports.getById = async (req, res) => {
 
 exports.getAll = async (req, res) => {
     try {
-        const data = await localrentalplans.findAll();
+        const data = await localrentalplans.findAll({
+            order: [[Sequelize.literal('CAST(hours AS UNSIGNED)'), 'ASC']],
+        });
         // const data = await localrentalplans.findAll({
         //     include: {
         //         model: LocalRentalPricing,
@@ -264,6 +268,7 @@ exports.deleteById = async (req, res) => {
         const data = await localrentalplans.findByPk(id);
 
         if (data) {
+            await LocalRentalPricing.destroy({ where: { local_rental_plan_id: id } });
             await data.destroy();
             res.status(200).json({
                 status: true,
