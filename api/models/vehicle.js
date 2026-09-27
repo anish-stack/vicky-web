@@ -143,11 +143,11 @@ module.exports = (sequelize, DataTypes) => {
       large_size_bag: {
         type: DataTypes.INTEGER,
         allowNull: true,
-      }, 
+      },
       medium_size_bag: {
         type: DataTypes.INTEGER,
         allowNull: true,
-      }, 
+      },
       hand_bag: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -168,7 +168,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     {
       timestamps: true,
-      tableName: 'Vehicles',
+      tableName: 'vehicles',
     }
   );
 
