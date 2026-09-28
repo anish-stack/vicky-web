@@ -180,6 +180,68 @@ function MobileSlider({ images, title }: { images: string[]; title: string }) {
   );
 }
 
+function ScrollProgress() {
+  const [p, setP] = useState(0);
+
+  useEffect(() => {
+    let raf = 0;
+    const calc = () => {
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      setP(h > 0 ? Math.min(100, Math.max(0, (window.scrollY / h) * 100)) : 0);
+    };
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(calc);
+    };
+    calc();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  const R = 20;
+  const C = 2 * Math.PI * R;
+  const done = Math.round(p);
+  const left = 100 - done;
+
+  return (
+    <button
+      type="button"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      aria-label={`${done}% scrolled, ${left}% remaining. Back to top`}
+      title={`${done}% scrolled · ${left}% baki`}
+      className={`group fixed bottom-4 right-4 z-40 grid h-12 w-12 place-items-center rounded-full bg-white shadow-lg ring-1 ring-slate-200 transition-all duration-300 sm:bottom-6 sm:right-6 sm:h-14 sm:w-14 ${
+        p > 1 ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
+      }`}
+    >
+      <svg viewBox="0 0 48 48" className="absolute inset-0 h-full w-full -rotate-90">
+        <circle cx="24" cy="24" r={R} fill="none" stroke="#e2e8f0" strokeWidth="3" />
+        <circle
+          cx="24"
+          cy="24"
+          r={R}
+          fill="none"
+          stroke="#dc2626"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeDasharray={C}
+          strokeDashoffset={C * (1 - p / 100)}
+          style={{ transition: "stroke-dashoffset 80ms linear" }}
+        />
+      </svg>
+      <span className="relative text-[11px] font-bold text-slate-800 group-hover:hidden sm:text-[12px]">{done}%</span>
+      <i className="fa-solid fa-arrow-up relative hidden text-[13px] text-red-600 group-hover:block" />
+      <span className="pointer-events-none absolute -top-8 right-0 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11px] font-medium text-white group-hover:block">
+        {left}% baki
+      </span>
+    </button>
+  );
+}
+
 function Lightbox({
   images,
   index,
@@ -669,7 +731,7 @@ export default function TourDetailPage({ tour }: Props) {
           </div>
         </div>
       </main>
-
+ <ScrollProgress />
       {photo !== null && <Lightbox images={photos} index={photo} onClose={() => setPhoto(null)} onIndex={setPhoto} />}
     </>
   );

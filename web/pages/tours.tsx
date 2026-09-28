@@ -18,10 +18,12 @@ type TourPackage = {
     cover_image?: string | null;
     trip_type: "roundTrip" | "oneWay";
     hotel_optional: boolean;
+    hotel_options?: unknown[];
     days: number;
     nights: number;
     rating: string | number;
     review_count: number;
+    is_featured?: boolean;
     startingPrice?: number;
     vehicle_options?: VehicleOption[];
     from_city_name?: string;
@@ -64,6 +66,22 @@ const priceOf = (t: TourPackage) => {
 const reviewsText = (n: number) =>
     n >= 1000 ? `${Math.floor(n / 1000)}k+` : n >= 50 ? `${Math.floor(n / 50) * 50}+` : `${n}`;
 
+const durationShort = (t: TourPackage) => {
+    const d = Number(t.days) || 1;
+    const n = Number(t.nights) || 0;
+    if (d === 1 && n === 0) return "1 Day Trip";
+    return `${d} Day${d === 1 ? "" : "s"} / ${n} Night${n === 1 ? "" : "s"}`;
+};
+
+const hasHotel = (t: TourPackage) =>
+    Boolean(t.hotel_optional) || (Array.isArray(t.hotel_options) && t.hotel_options.length > 0);
+
+const badgeOf = (t: TourPackage): { text: string; cls: string } | null => {
+    if (Number(t.review_count) >= 200 && Number(t.rating) >= 4.8) return { text: "Best Seller", cls: "bg-red-600" };
+    if (t.is_featured) return { text: "Popular", cls: "bg-emerald-600" };
+    return null;
+};
+
 function isValidTour(t: Partial<TourPackage>): t is TourPackage {
     return Boolean(t && t.id && t.slug && t.title);
 }
@@ -97,7 +115,6 @@ function HeroSearch({
 
     useEffect(() => setDraft(filters), [filters]);
 
-    // Close the trip-type dropdown when clicking outside it
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
             if (tripMenuRef.current && !tripMenuRef.current.contains(e.target as Node)) {
@@ -108,12 +125,15 @@ function HeroSearch({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const fieldCls = "flex min-w-0 flex-col gap-0.5 px-2 py-1.5 sm:gap-1 sm:rounded-xl sm:px-3 sm:py-2";
+    const labelCls = "truncate text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[11px]";
+    const valueCls = "w-full min-w-0 truncate bg-transparent text-[12px] font-semibold text-slate-900 outline-none focus:outline-none sm:text-sm";
+
     return (
-        // NOTE: no overflow-hidden here — that was clipping the dropdown menu.
-        <section className="relative rounded-2xl sm:rounded-3xl">
-            {/* Background image, clipped to rounded corners in its own layer */}
+        <section className="relative sm:rounded-3xl">
+            {/* banner bg: tablet/desktop only */}
             <div
-                className="absolute inset-0 rounded-2xl sm:rounded-3xl overflow-hidden"
+                className="absolute inset-0 hidden overflow-hidden rounded-3xl sm:block"
                 style={{
                     backgroundImage: `linear-gradient(90deg, rgba(15,23,42,0.75) 0%, rgba(15,23,42,0.35) 55%, rgba(15,23,42,0.05) 100%), url(${HERO_IMG})`,
                     backgroundSize: "cover",
@@ -121,39 +141,34 @@ function HeroSearch({
                 }}
             />
 
-            <div className="relative px-5 py-8 sm:px-10 sm:py-12 lg:py-14">
-                <span className="inline-block rounded-md bg-red-600 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs">
-                    Outstation Taxi
-                </span>
-
-                <h1 className="mt-3 text-3xl font-extrabold leading-tight text-white sm:text-4xl lg:text-5xl">
-                    Tour Packages
-                </h1>
-                <p className="mt-1.5 text-base font-medium text-slate-100 sm:text-lg">
-                    Safe Journey, Happy Memories
-                </p>
-
-                <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-white">
-                    {[
-                        { icon: "fa-solid fa-shield-halved", label: "Verified Drivers" },
-                        { icon: "fa-solid fa-car-side", label: "Well Maintained Vehicles" },
-                        { icon: "fa-solid fa-headset", label: "24x7 Support" },
-                    ].map((b) => (
-                        <div key={b.label} className="flex items-center gap-2 text-[13px] font-medium sm:text-sm">
-                            <i className={`${b.icon} text-emerald-400`} />
-                            {b.label}
-                        </div>
-                    ))}
+            <div className="relative sm:px-10 sm:py-12 lg:py-14">
+                {/* banner text: tablet/desktop only */}
+                <div className="hidden sm:block">
+                    <span className="inline-block rounded-md bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
+                        Outstation Taxi
+                    </span>
+                    <h1 className="mt-3 text-4xl font-extrabold leading-tight text-white lg:text-5xl">Tour Packages</h1>
+                    <p className="mt-1.5 text-lg font-medium text-slate-100">Safe Journey, Happy Memories</p>
+                    <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-white">
+                        {[
+                            { icon: "fa-solid fa-shield-halved", label: "Verified Drivers" },
+                            { icon: "fa-solid fa-car-side", label: "Well Maintained Vehicles" },
+                            { icon: "fa-solid fa-headset", label: "24x7 Support" },
+                        ].map((b) => (
+                            <div key={b.label} className="flex items-center gap-2 text-sm font-medium">
+                                <i className={`${b.icon} text-emerald-400`} />
+                                {b.label}
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Search bar */}
-                <div className="relative z-10 mt-6 grid grid-cols-1 gap-2 rounded-2xl bg-white p-2.5 shadow-xl sm:grid-cols-[1fr_1fr_1fr_auto] sm:gap-0 sm:p-2">
-                    <label className="flex flex-col gap-1 rounded-xl px-3 py-2 sm:border-r sm:border-slate-200">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Pickup City
-                        </span>
+                {/* search: single row on all sizes */}
+                <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white p-1 shadow-md sm:mt-6 sm:rounded-2xl sm:border-0 sm:p-2 sm:shadow-xl">
+                    <label className={fieldCls}>
+                        <span className={labelCls}>Pickup City</span>
                         <select
-                            className="appearance-none bg-transparent text-sm font-semibold text-slate-900 outline-none focus:outline-none"
+                            className={`${valueCls} appearance-none`}
                             value={draft.from_city_id}
                             onChange={(e) => setDraft((d) => ({ ...d, from_city_id: e.target.value }))}
                         >
@@ -166,37 +181,37 @@ function HeroSearch({
                         </select>
                     </label>
 
-                    <label className="flex flex-col gap-1 rounded-xl px-3 py-2 sm:border-r sm:border-slate-200">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Tour Destination
-                        </span>
+                    <label className={fieldCls}>
+                        <span className={labelCls}>Destination</span>
                         <input
                             type="text"
-                            placeholder="Any Destination"
-                            className="bg-transparent text-sm font-semibold text-slate-900 outline-none focus:outline-none placeholder:text-slate-400 placeholder:font-medium"
+                            placeholder="Any"
+                            className={`${valueCls} placeholder:font-medium placeholder:text-slate-400`}
                             value={draft.search}
                             onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value }))}
+                            onKeyDown={(e) => e.key === "Enter" && onApply(draft)}
                         />
                     </label>
 
-                    <div ref={tripMenuRef} className="relative flex flex-col gap-1 rounded-xl px-3 py-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Tour Packages
-                        </span>
+                    <div ref={tripMenuRef} className={`relative ${fieldCls}`}>
+                        <span className={labelCls}>Packages</span>
                         <button
                             type="button"
                             onClick={() => setTripMenuOpen((v) => !v)}
-                            className="flex items-center justify-between rounded-md text-left text-sm font-semibold text-slate-900 outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+                            className="flex min-w-0 items-center justify-between gap-1 rounded-md text-left text-[12px] font-semibold text-slate-900 outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 sm:text-sm"
                         >
-                            {TRIP_TYPE_LABELS[draft.trip_type]}
+                            <span className="truncate">
+                                <span className="sm:hidden">{draft.trip_type ? TRIP_TYPE_LABELS[draft.trip_type] : "All"}</span>
+                                <span className="hidden sm:inline">{TRIP_TYPE_LABELS[draft.trip_type]}</span>
+                            </span>
                             <i
-                                className={`fa-solid fa-chevron-down ml-2 text-[10px] text-slate-400 transition-transform ${tripMenuOpen ? "rotate-180" : ""
+                                className={`fa-solid fa-chevron-down shrink-0 text-[9px] text-slate-400 transition-transform sm:text-[10px] ${tripMenuOpen ? "rotate-180" : ""
                                     }`}
                             />
                         </button>
 
                         {tripMenuOpen && (
-                            <div className="absolute left-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl">
+                            <div className="absolute right-0 top-full z-50 mt-2 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl sm:left-0 sm:right-auto sm:w-48">
                                 {(Object.keys(TRIP_TYPE_LABELS) as Filters["trip_type"][]).map((key) => (
                                     <button
                                         key={key || "all"}
@@ -205,7 +220,7 @@ function HeroSearch({
                                             setDraft((d) => ({ ...d, trip_type: key }));
                                             setTripMenuOpen(false);
                                         }}
-                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-slate-700 outline-none transition-colors hover:bg-slate-50 focus:outline-none"
+                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-[13px] font-medium text-slate-700 outline-none transition-colors hover:bg-slate-50 focus:outline-none sm:text-sm"
                                     >
                                         {TRIP_TYPE_LABELS[key]}
                                         {draft.trip_type === key && <i className="fa-solid fa-check text-red-600" />}
@@ -215,22 +230,26 @@ function HeroSearch({
                         )}
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setTripMenuOpen(false);
-                            onApply(draft);
-                        }}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white outline-none transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 sm:m-1"
-                    >
-                        View Packages <i className="fa-solid fa-arrow-right" />
-                    </button>
+                    <div className="border-l-0 pl-1 sm:pl-0">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setTripMenuOpen(false);
+                                onApply(draft);
+                            }}
+                            aria-label="View packages"
+                            className="flex h-10 w-10 items-center justify-center gap-2 rounded-lg bg-red-600 text-sm font-bold text-white outline-none transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 sm:m-1 sm:h-auto sm:w-auto sm:rounded-xl sm:px-6 sm:py-3"
+                        >
+                            <i className="fa-solid fa-magnifying-glass sm:hidden" />
+                            <span className="hidden sm:inline">View Packages</span>
+                            <i className="fa-solid fa-arrow-right hidden sm:inline" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
     );
 }
-
 /* ---------------- Cards ---------------- */
 
 function Stars({ value }: { value: number }) {
@@ -245,30 +264,89 @@ function Stars({ value }: { value: number }) {
     );
 }
 
-function Feature({
-  icon,
-  label,
-  tone,
-}: {
-  icon: string;
-  label: string;
-  tone: string;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col items-center gap-1 px-1 py-1 text-center">
-      <span
-        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full sm:h-9 sm:w-9 ${tone}`}
-      >
-        <i className={`${icon} text-[13px] sm:text-[15px]`} />
-      </span>
-
-      <span className="max-w-[84px] text-[9px] font-medium leading-[1.15] text-slate-700 sm:max-w-[96px] sm:text-[10px] lg:text-[11px]">
-        {label}
-      </span>
-    </div>
-  );
+function Feature({ icon, label, tone }: { icon: string; label: string; tone: string }) {
+    return (
+        <div className="flex min-w-0 flex-col items-center gap-1 px-1 py-1 text-center">
+            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full sm:h-9 sm:w-9 ${tone}`}>
+                <i className={`${icon} text-[13px] sm:text-[15px]`} />
+            </span>
+            <span className="max-w-[84px] text-[9px] font-medium leading-[1.15] text-slate-700 sm:max-w-[96px] sm:text-[10px] lg:text-[11px]">
+                {label}
+            </span>
+        </div>
+    );
 }
 
+/* ----- mobile compact card (2 per row) ----- */
+function TourCardCompact({ tour }: { tour: TourPackage }) {
+    const price = priceOf(tour);
+    const rating = Number(tour.rating) || 0;
+    const href = DETAIL_PATH(tour.slug);
+    const badge = badgeOf(tour);
+    const hotel = hasHotel(tour);
+
+    return (
+        <article className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <a href={href} className="relative block overflow-hidden">
+                <img
+                    src={tour.cover_image || FALLBACK_IMG}
+                    alt={tour.title}
+                    loading="lazy"
+                    onError={(e) => ((e.currentTarget as HTMLImageElement).src = FALLBACK_IMG)}
+                    className="aspect-[4/3] w-full object-cover"
+                />
+               
+            </a>
+
+            <div className="flex flex-1 flex-col p-2">
+                <a href={href} className="text-inherit no-underline">
+                    <h4 className="m-0 line-clamp-2 text-[13px] font-bold leading-snug text-slate-900">{tour.title}</h4>
+                </a>
+                <p className="m-0 mt-0.5 text-[11px] text-slate-600">{durationShort(tour)}</p>
+
+                <div className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] text-slate-600">
+                    <span className="inline-flex items-center gap-1">
+                        <i className={`fa-solid ${tour.trip_type === "oneWay" ? "fa-arrow-right" : "fa-car-side"} text-[10px] text-slate-500`} />
+                        {tour.trip_type === "oneWay" ? "One Way" : "Round Trip"}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                        <i className={`fa-solid ${hotel ? "fa-hotel" : "fa-bed"} text-[10px] text-slate-500`} />
+                        {hotel ? "Hotel Available" : "No Hotel"}
+                    </span>
+                </div>
+
+                <div className="mt-auto flex items-end justify-between gap-1 pt-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-800">
+                        <i className="fa-solid fa-star text-[10px] text-amber-400" />
+                        {rating.toFixed(1)}
+                        {tour.review_count > 0 && (
+                            <span className="text-[9.5px] font-normal text-slate-500">({reviewsText(tour.review_count)})</span>
+                        )}
+                    </span>
+                    <span className="text-right leading-none">
+                        {price ? (
+                            <>
+                                <span className="text-[10px] font-semibold text-slate-700">From </span>
+                                <span className="text-[14px] font-extrabold text-red-600">{inr(price)}</span>
+                            </>
+                        ) : (
+                            <span className="text-[11px] font-bold text-red-600">On request</span>
+                        )}
+                    </span>
+                </div>
+                <a
+
+                    href={href}
+                    className="mt-2 flex items-center justify-center gap-1.5 rounded-md border border-red-500 px-2 py-1.5 text-[11.5px] font-semibold text-red-600 no-underline transition-colors hover:bg-red-600 hover:text-white"
+                >
+                    View Details <i className="fa-solid fa-arrow-right text-[10px]" />
+                </a>
+            </div>
+        </article>
+    );
+}
+
+/* ----- tablet / desktop card ----- */
 function TourCard({ tour }: { tour: TourPackage }) {
     const price = priceOf(tour);
     const rating = Number(tour.rating) || 0;
@@ -288,50 +366,24 @@ function TourCard({ tour }: { tour: TourPackage }) {
 
             <div className="flex flex-1 flex-col p-3.5 sm:p-4">
                 <a href={href} className="text-inherit no-underline">
-                    <h4 className="m-0 line-clamp-2 text-[17px] font-bold leading-snug text-slate-900 sm:text-[20px]">
-                        {tour.title}
-                    </h4>
+                    <h4 className="m-0 line-clamp-2 text-[17px] font-bold leading-snug text-slate-900 sm:text-[20px]">{tour.title}</h4>
                 </a>
                 {tour.short_description && (
                     <p className="mb-0 mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-slate-600 sm:text-[14px]">
                         {tour.short_description}
                     </p>
                 )}
-<div className="mt-3 grid grid-cols-3 gap-y-3 rounded-xl border border-slate-200 bg-white px-2 py-2 sm:grid-cols-5 sm:divide-x sm:divide-slate-200">
-  <Feature
-    label="Hotel Option"
-    tone="bg-orange-50 text-orange-500"
-    icon="fa-solid fa-hotel"
-  />
-
-  <Feature
-    label="Commercial Vehicle"
-    tone="bg-blue-50 text-blue-600"
-    icon="fa-solid fa-car"
-  />
-
-  <Feature
-    label="Verified Driver"
-    tone="bg-green-50 text-green-600"
-    icon="fa-solid fa-user-shield"
-  />
-
-  <Feature
-    label={tour.trip_type === "oneWay" ? "One Way" : "Round Trip"}
-    tone="bg-violet-50 text-violet-600"
-    icon={`fa-solid ${
-      tour.trip_type === "oneWay"
-        ? "fa-arrow-right"
-        : "fa-rotate"
-    }`}
-  />
-
-  <Feature
-    label={`${tour.days}D / ${tour.nights}N`}
-    tone="bg-red-50 text-red-600"
-    icon="fa-regular fa-clock"
-  />
-</div>
+                <div className="mt-3 grid grid-cols-3 gap-y-3 rounded-xl border border-slate-200 bg-white px-2 py-2 sm:grid-cols-5 sm:divide-x sm:divide-slate-200">
+                    <Feature label="Hotel Option" tone="bg-orange-50 text-orange-500" icon="fa-solid fa-hotel" />
+                    <Feature label="Commercial Vehicle" tone="bg-blue-50 text-blue-600" icon="fa-solid fa-car" />
+                    <Feature label="Verified Driver" tone="bg-green-50 text-green-600" icon="fa-solid fa-user-shield" />
+                    <Feature
+                        label={tour.trip_type === "oneWay" ? "One Way" : "Round Trip"}
+                        tone="bg-violet-50 text-violet-600"
+                        icon={`fa-solid ${tour.trip_type === "oneWay" ? "fa-arrow-right" : "fa-rotate"}`}
+                    />
+                    <Feature label={`${tour.days}D / ${tour.nights}N`} tone="bg-red-50 text-red-600" icon="fa-regular fa-clock" />
+                </div>
                 <div className="mt-3.5 flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-[12px] leading-snug text-blue-800 sm:text-[13px]">
                     <i className="fa-solid fa-circle-info mt-0.5" />
                     <span>
@@ -349,7 +401,6 @@ function TourCard({ tour }: { tour: TourPackage }) {
                     </div>
                     <div className="flex-1 border-l border-slate-200 pl-3 sm:pl-4">
                         <div className="flex flex-wrap items-center gap-x-1.5">
-
                             <span className="text-[16px] font-bold text-slate-900 sm:text-[18px]">{rating.toFixed(1)}</span>
                             {tour.review_count > 0 && (
                                 <span className="text-[11px] text-slate-600 sm:text-[13px]">({reviewsText(tour.review_count)} Reviews)</span>
@@ -361,7 +412,6 @@ function TourCard({ tour }: { tour: TourPackage }) {
                     </div>
                 </div>
                 <a
-
                     href={href}
                     className="mt-3.5 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-[15px] font-semibold text-white no-underline transition-colors hover:bg-red-700 hover:text-white sm:py-3 sm:text-[16px]"
                 >
@@ -374,13 +424,13 @@ function TourCard({ tour }: { tour: TourPackage }) {
 
 function CardSkeleton() {
     return (
-        <div className="h-full animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="aspect-[16/10] bg-slate-200" />
-            <div className="space-y-3 p-4">
-                <div className="h-5 w-3/4 rounded bg-slate-200" />
-                <div className="h-4 w-full rounded bg-slate-100" />
-                <div className="h-12 rounded bg-slate-100" />
-                <div className="h-10 rounded bg-slate-200" />
+        <div className="h-full animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white sm:rounded-2xl">
+            <div className="aspect-[4/3] bg-slate-200 sm:aspect-[16/10]" />
+            <div className="space-y-2 p-2 sm:space-y-3 sm:p-4">
+                <div className="h-4 w-3/4 rounded bg-slate-200 sm:h-5" />
+                <div className="h-3 w-1/2 rounded bg-slate-100 sm:h-4 sm:w-full" />
+                <div className="hidden h-12 rounded bg-slate-100 sm:block" />
+                <div className="h-7 rounded bg-slate-200 sm:h-10" />
             </div>
         </div>
     );
@@ -433,9 +483,7 @@ function Pagination({ pagination, onPageChange }: { pagination: Pagination; onPa
                                 type="button"
                                 onClick={() => onPageChange(n)}
                                 aria-current={n === page ? "page" : undefined}
-                                className={`h-9 min-w-9 rounded-lg px-3 text-sm font-semibold transition-colors ${n === page
-                                        ? "bg-red-600 text-white"
-                                        : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                className={`h-9 min-w-9 rounded-lg px-3 text-sm font-semibold transition-colors ${n === page ? "bg-red-600 text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"
                                     }`}
                             >
                                 {n}
@@ -474,12 +522,7 @@ const Tours = () => {
             .then((r) => r.json())
             .then((j) => {
                 const list = Array.isArray(j?.data) ? j.data : [];
-                setCities(
-                    list.map((c: any) => ({
-                        id: c.id,
-                        name: String(c.name || "").trim(),
-                    }))
-                );
+                setCities(list.map((c: any) => ({ id: c.id, name: String(c.name || "").trim() })));
             })
             .catch(() => setCities([]));
     }, []);
@@ -536,33 +579,44 @@ const Tours = () => {
     };
 
     return (
-        <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-2 pb-10 pt-20 sm:px-6 sm:py-24 lg:px-8">
             <HeroSearch cities={cities} filters={filters} onApply={handleApplyFilters} />
 
-            <div className="mb-6 mt-10 flex items-end justify-between">
-                <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Popular Tour Packages</h2>
+            <div className="mb-3 mt-4 flex items-end justify-between px-0.5 sm:mb-6 sm:mt-10 sm:px-0">
+                <div>
+                    <h2 className="m-0 text-xl font-bold text-slate-900 sm:text-3xl">Popular Tour Packages</h2>
+                    <p className="m-0 mt-1 text-[12px] text-slate-500 sm:text-sm">
+                        Handpicked packages for a comfortable and memorable journey
+                    </p>
+                    <span className="mt-2 block h-0.5 w-10 rounded bg-red-600" />
+                </div>
                 {pagination && !loading && (
                     <span className="hidden text-sm text-slate-500 sm:block">{pagination.total} packages found</span>
                 )}
             </div>
 
-            {error && (
-                <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-            )}
+            {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-5 lg:grid-cols-3">
                 {loading
                     ? Array.from({ length: PER_PAGE }).map((_, i) => <CardSkeleton key={i} />)
-                    : tours.map((tour) => <TourCard key={tour.id} tour={tour} />)}
+                    : tours.map((tour) => (
+                        <React.Fragment key={tour.id}>
+                            <div className="sm:hidden">
+                                <TourCardCompact tour={tour} />
+                            </div>
+                            <div className="hidden sm:block">
+                                <TourCard tour={tour} />
+                            </div>
+                        </React.Fragment>
+                    ))}
             </div>
 
             {!loading && !error && tours.length === 0 && (
                 <p className="mt-10 text-center text-slate-500">No tours match your search — try clearing a filter.</p>
             )}
 
-            {!loading && pagination && (
-                <Pagination pagination={pagination} onPageChange={handlePageChange} />
-            )}
+            {!loading && pagination && <Pagination pagination={pagination} onPageChange={handlePageChange} />}
         </div>
     );
 };

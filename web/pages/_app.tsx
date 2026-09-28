@@ -29,6 +29,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   // footer hide (header stays): tour detail, book, summary
   const hideOnlyFooterRoutes = [
+    "/tours",
     "/tour/[slug]",
     "/tour/[slug]/book",
     "/tour/[slug]/summary",
