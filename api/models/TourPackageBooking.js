@@ -44,6 +44,18 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      pickup_lat: {
+        type: DataTypes.DECIMAL(10, 7),
+        allowNull: true,
+      },
+      pickup_lng: {
+        type: DataTypes.DECIMAL(10, 7),
+        allowNull: true,
+      },
+      pickup_place_id: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
       pickup_date: {
         type: DataTypes.DATEONLY,
         allowNull: true,
@@ -129,13 +141,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
       payment_status: {
-        type: DataTypes.ENUM(
-          "pending",
-          "partial",
-          "paid",
-          "failed",
-          "refunded"
-        ),
+        type: DataTypes.ENUM("pending", "partial", "paid", "failed", "refunded"),
         allowNull: false,
         defaultValue: "pending",
       },
@@ -143,17 +149,14 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING(150),
         allowNull: true,
       },
-
       driver_mobile: {
         type: DataTypes.STRING(15),
         allowNull: true,
       },
-
       vehicle_number: {
         type: DataTypes.STRING(50),
         allowNull: true,
       },
-
       assigned_vehicle_label: {
         type: DataTypes.STRING(150),
         allowNull: true,

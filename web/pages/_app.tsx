@@ -27,6 +27,13 @@ export default function App({ Component, pageProps }: AppProps) {
     "/car-mechanic-register",
   ];
 
+  // footer hide (header stays): tour detail, book, summary
+  const hideOnlyFooterRoutes = [
+    "/tour/[slug]",
+    "/tour/[slug]/book",
+    "/tour/[slug]/summary",
+  ];
+
   const isDriverThemeRoute =
     isTaxihero ||
     router.pathname === "/[driverId]/[themeId]" ||
@@ -34,6 +41,10 @@ export default function App({ Component, pageProps }: AppProps) {
 
   const shouldHideHeaderFooter =
     isDriverThemeRoute || hideLayoutRoutes.includes(router.pathname);
+
+  const shouldHideFooter =
+    hideOnlyFooterRoutes.includes(router.pathname) ||
+    router.pathname.startsWith("/tour/");
 
   // if (!host) {
   //   return null; // or a minimal skeleton / loading spinner
@@ -55,13 +66,13 @@ export default function App({ Component, pageProps }: AppProps) {
       `}
       </Script>
       <CustomerProvider>
-      {!shouldHideHeaderFooter && <HeaderWithoutMenu />}
+        {!shouldHideHeaderFooter && <HeaderWithoutMenu />}
 
         <div style={{ minHeight: "100vh" }}>
           <Component {...pageProps} />
         </div>
 
-        {!shouldHideHeaderFooter  && (
+        {!shouldHideHeaderFooter && !shouldHideFooter && (
           <div>
             <Container className="position-relative subscribe-section">
               <div className="subscribe-footer">

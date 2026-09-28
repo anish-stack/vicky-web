@@ -25,6 +25,19 @@ const toNum = (v, d = 0) => {
   return Number.isFinite(n) ? n : d;
 };
 
+// returns number within [min,max] or null
+const toCoord = (v, min, max) => {
+  if (v === undefined || v === null || v === "") return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < min || n > max) return null;
+  return Number(n.toFixed(7));
+};
+
+const cleanPlaceId = (v) => {
+  const s = String(v || "").trim();
+  return s && s.length <= 255 && /^[\w\-:]+$/.test(s) ? s : null;
+};
+
 // ============================================================
 // POST /send-otp  { mobile }
 // ============================================================
@@ -91,11 +104,7 @@ exports.verifyOtp = async (req, res) => {
 
     const user = await User.findOne({ where: { phone_number: mobile } });
 
-    const verify_token = jwt.sign(
-      { mobile, purpose: "tour_booking" },
-      SECRET_KEY,
-      { expiresIn: "30m" }
-    );
+    const verify_token = jwt.sign({ mobile, purpose: "tour_booking" }, SECRET_KEY, { expiresIn: "30m" });
 
     return res.status(200).json({
       status: true,
@@ -122,6 +131,9 @@ exports.createOrder = async (req, res) => {
       mobile,
       email,
       pickup_address,
+      pickup_lat,
+      pickup_lng,
+      pickup_place_id,
       pickup_date,
       pickup_time,
       return_date,
@@ -162,9 +174,21 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ status: false, message: "Missing required booking details" });
     }
 
+    if (!pickup_address || String(pickup_address).trim().length < 5) {
+      return res.status(400).json({ status: false, message: "Pickup location is required" });
+    }
+
     const advance = Math.round(toNum(advance_amount));
     if (!advance || advance < 1) {
       return res.status(400).json({ status: false, message: "Invalid payable amount" });
+    }
+
+    // coords: both or none
+    let lat = toCoord(pickup_lat, -90, 90);
+    let lng = toCoord(pickup_lng, -180, 180);
+    if (lat === null || lng === null) {
+      lat = null;
+      lng = null;
     }
 
     const user = await User.findOne({ where: { phone_number: normMobile } });
@@ -179,7 +203,10 @@ exports.createOrder = async (req, res) => {
       name,
       mobile: normMobile,
       email: email || null,
-      pickup_address: pickup_address || null,
+      pickup_address: String(pickup_address).trim(),
+      pickup_lat: lat,
+      pickup_lng: lng,
+      pickup_place_id: cleanPlaceId(pickup_place_id),
       pickup_date: pickup_date || null,
       pickup_time: pickup_time || null,
       return_date: return_date || null,
@@ -230,81 +257,34 @@ exports.createOrder = async (req, res) => {
 // ============================================================
 exports.verifyPayment = async (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    if (
-      !razorpay_order_id ||
-      !razorpay_payment_id ||
-      !razorpay_signature
-    ) {
-      return res.status(400).json({
-        status: false,
-        message: "Missing payment details",
-      });
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ status: false, message: "Missing payment details" });
     }
 
-    const booking = await TourPackageBooking.findOne({
-      where: {
-        razorpay_order_id,
-      },
-    });
-
+    const booking = await TourPackageBooking.findOne({ where: { razorpay_order_id } });
     if (!booking) {
-      return res.status(404).json({
-        status: false,
-        message: "Booking not found for this order",
-      });
+      return res.status(404).json({ status: false, message: "Booking not found for this order" });
     }
 
     const expected = crypto
       .createHmac("sha256", RZP_KEY_SECRET)
-      .update(
-        `${razorpay_order_id}|${razorpay_payment_id}`
-      )
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
     if (expected !== razorpay_signature) {
-      await booking.update({
-        payment_status: "failed",
-      });
-
-      return res.status(400).json({
-        status: false,
-        message: "Payment verification failed",
-      });
+      await booking.update({ payment_status: "failed" });
+      return res.status(400).json({ status: false, message: "Payment verification failed" });
     }
 
-    const totalAmount = Number(
-      booking.total_amount || 0
-    );
-
-    const advanceAmount = Number(
-      booking.advance_amount || 0
-    );
-
-    const balanceAmount = Number(
-      booking.balance_amount || 0
-    );
+    const totalAmount = Number(booking.total_amount || 0);
+    const advanceAmount = Number(booking.advance_amount || 0);
+    const balanceAmount = Number(booking.balance_amount || 0);
 
     let paymentStatus = "partial";
-
-    if (
-      totalAmount > 0 &&
-      balanceAmount <= 0
-    ) {
-      paymentStatus = "paid";
-    }
-
-    if (
-      advanceAmount <= 0 &&
-      balanceAmount > 0
-    ) {
-      paymentStatus = "pending";
-    }
+    if (totalAmount > 0 && balanceAmount <= 0) paymentStatus = "paid";
+    if (advanceAmount <= 0 && balanceAmount > 0) paymentStatus = "pending";
 
     await booking.update({
       razorpay_payment_id,
@@ -313,22 +293,9 @@ exports.verifyPayment = async (req, res) => {
       booking_status: "confirmed",
     });
 
-    sendTourPackageBooking(
-      booking.mobile,
-      booking.toJSON()
-    )
-      .then((result) => {
-        console.log(
-          "✅ Tour booking WhatsApp sent:",
-          result
-        );
-      })
-      .catch((error) => {
-        console.error(
-          "❌ Tour booking WhatsApp error:",
-          error
-        );
-      });
+    sendTourPackageBooking(booking.mobile, booking.toJSON())
+      .then((result) => console.log("✅ Tour booking WhatsApp sent:", result))
+      .catch((error) => console.error("❌ Tour booking WhatsApp error:", error));
 
     return res.status(200).json({
       status: true,
@@ -336,26 +303,16 @@ exports.verifyPayment = async (req, res) => {
       data: {
         booking_id: booking.id,
         booking_ref: booking.booking_ref,
-        payment_status:
-          booking.payment_status,
-        booking_status:
-          booking.booking_status,
+        payment_status: booking.payment_status,
+        booking_status: booking.booking_status,
       },
     });
   } catch (error) {
-    console.error(
-      "❌ tourBooking verifyPayment Error:",
-      error
-    );
-
-    return res.status(500).json({
-      status: false,
-      message:
-        error.message ||
-        "Failed to verify payment",
-    });
+    console.error("❌ tourBooking verifyPayment Error:", error);
+    return res.status(500).json({ status: false, message: error.message || "Failed to verify payment" });
   }
 };
+
 // ============================================================
 // GET /booking-ref/:ref  (booking success page)
 // ============================================================
@@ -378,10 +335,7 @@ exports.myBookings = async (req, res) => {
     if (!/^[6-9]\d{9}$/.test(mobile)) {
       return res.status(400).json({ status: false, message: "Enter a valid 10-digit mobile number" });
     }
-    const rows = await TourPackageBooking.findAll({
-      where: { mobile },
-      order: [["created_at", "DESC"]],
-    });
+    const rows = await TourPackageBooking.findAll({ where: { mobile }, order: [["created_at", "DESC"]] });
     return res.json({ status: true, data: rows });
   } catch (error) {
     return res.status(500).json({ status: false, message: error.message });
@@ -405,6 +359,7 @@ exports.adminList = async (req, res) => {
         { name: { [Op.like]: `%${term}%` } },
         { mobile: { [Op.like]: `%${term}%` } },
         { tour_title: { [Op.like]: `%${term}%` } },
+        { pickup_address: { [Op.like]: `%${term}%` } },
       ];
     }
     if (booking_status) where.booking_status = booking_status;
@@ -442,10 +397,17 @@ exports.adminGet = async (req, res) => {
     if (!booking) return res.status(404).json({ status: false, message: "Booking not found" });
 
     let tourPackage = null;
-    if (booking.tour_package_id) {
-      tourPackage = await TourPackage.findByPk(booking.tour_package_id);
-    }
-    return res.json({ status: true, data: { ...booking.toJSON(), tourPackage } });
+    if (booking.tour_package_id) tourPackage = await TourPackage.findByPk(booking.tour_package_id);
+
+    const b = booking.toJSON();
+    const pickup_map_url =
+      b.pickup_lat != null && b.pickup_lng != null
+        ? `https://www.google.com/maps/search/?api=1&query=${b.pickup_lat},${b.pickup_lng}${b.pickup_place_id ? `&query_place_id=${b.pickup_place_id}` : ""}`
+        : b.pickup_address
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.pickup_address)}`
+        : null;
+
+    return res.json({ status: true, data: { ...b, pickup_map_url, tourPackage } });
   } catch (error) {
     return res.status(500).json({ status: false, message: error.message });
   }
@@ -457,117 +419,49 @@ exports.adminGet = async (req, res) => {
 exports.adminUpdate = async (req, res) => {
   try {
     const booking = await TourPackageBooking.findByPk(req.params.id);
+    if (!booking) return res.status(404).json({ status: false, message: "Booking not found" });
 
-    if (!booking) {
-      return res.status(404).json({
-        status: false,
-        message: "Booking not found",
-      });
-    }
-
-    const {
-      booking_status,
-      payment_status,
-      admin_notes,
-    } = req.body;
-
+    const { booking_status, payment_status, admin_notes } = req.body;
     const patch = {};
 
-    if (
-      booking_status &&
-      [
-        "pending",
-        "confirmed",
-        "cancelled",
-        "completed",
-      ].includes(booking_status)
-    ) {
+    if (booking_status && ["pending", "confirmed", "cancelled", "completed"].includes(booking_status)) {
       patch.booking_status = booking_status;
     }
-
-    if (
-      payment_status &&
-      [
-        "pending",
-        "partial",
-        "paid",
-        "failed",
-        "refunded",
-      ].includes(payment_status)
-    ) {
+    if (payment_status && ["pending", "partial", "paid", "failed", "refunded"].includes(payment_status)) {
       patch.payment_status = payment_status;
     }
-
-    if (admin_notes !== undefined) {
-      patch.admin_notes = admin_notes;
-    }
+    if (admin_notes !== undefined) patch.admin_notes = admin_notes;
 
     await booking.update(patch);
 
-    return res.status(200).json({
-      status: true,
-      message: "Booking updated successfully",
-      data: booking,
-    });
+    return res.status(200).json({ status: true, message: "Booking updated successfully", data: booking });
   } catch (error) {
-    console.error(
-      "❌ tourBooking adminUpdate Error:",
-      error
-    );
-
-    return res.status(500).json({
-      status: false,
-      message:
-        error.message ||
-        "Failed to update booking",
-    });
+    console.error("❌ tourBooking adminUpdate Error:", error);
+    return res.status(500).json({ status: false, message: error.message || "Failed to update booking" });
   }
 };
 
-
 // ============================================================
 // ADMIN: POST /admin/:id/send-driver-details
-// body: { driver_name, driver_mobile, vehicle_label }
+// body: { driver_name, driver_mobile, vehicle_number, vehicle_label }
 // ============================================================
-
 exports.sendDriverDetails = async (req, res) => {
   try {
     const booking = await TourPackageBooking.findByPk(req.params.id);
+    if (!booking) return res.status(404).json({ status: false, message: "Booking not found" });
 
-    if (!booking) {
-      return res.status(404).json({
-        status: false,
-        message: "Booking not found",
-      });
-    }
+    const { driver_name, driver_mobile, vehicle_number, vehicle_label } = req.body;
 
-    const {
-      driver_name,
-      driver_mobile,
-      vehicle_number,
-      vehicle_label,
-    } = req.body;
-
-    if (
-      !driver_name ||
-      !driver_mobile ||
-      !vehicle_number ||
-      !vehicle_label
-    ) {
+    if (!driver_name || !driver_mobile || !vehicle_number || !vehicle_label) {
       return res.status(400).json({
         status: false,
-        message:
-          "driver_name, driver_mobile, vehicle_number and vehicle_label are required",
+        message: "driver_name, driver_mobile, vehicle_number and vehicle_label are required",
       });
     }
 
     const mobile = normalizePhone(driver_mobile);
-
     if (!/^[6-9]\d{9}$/.test(mobile)) {
-      return res.status(400).json({
-        status: false,
-        message: "Enter a valid 10-digit driver mobile number",
-      });
+      return res.status(400).json({ status: false, message: "Enter a valid 10-digit driver mobile number" });
     }
 
     await booking.update({
@@ -577,29 +471,18 @@ exports.sendDriverDetails = async (req, res) => {
       assigned_vehicle_label: vehicle_label,
     });
 
-    const result = await sendTourPackageDriver(
-      booking.mobile,
-      booking.toJSON(),
-      {
-        driver_name,
-        driver_mobile: mobile,
-        vehicle_number,
-        vehicle_label,
-      }
-    );
+    const result = await sendTourPackageDriver(booking.mobile, booking.toJSON(), {
+      driver_name,
+      driver_mobile: mobile,
+      vehicle_number,
+      vehicle_label,
+    });
 
     if (!result) {
       return res.status(500).json({
         status: false,
-        message:
-          "Driver details saved, but WhatsApp message could not be sent",
-        data: {
-          booking_ref: booking.booking_ref,
-          driver_name,
-          driver_mobile: mobile,
-          vehicle_number,
-          vehicle_label,
-        },
+        message: "Driver details saved, but WhatsApp message could not be sent",
+        data: { booking_ref: booking.booking_ref, driver_name, driver_mobile: mobile, vehicle_number, vehicle_label },
       });
     }
 
@@ -616,16 +499,7 @@ exports.sendDriverDetails = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(
-      "❌ tourBooking sendDriverDetails Error:",
-      error
-    );
-
-    return res.status(500).json({
-      status: false,
-      message:
-        error.message ||
-        "Failed to save and send driver details",
-    });
+    console.error("❌ tourBooking sendDriverDetails Error:", error);
+    return res.status(500).json({ status: false, message: error.message || "Failed to save and send driver details" });
   }
 };
