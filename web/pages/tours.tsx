@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { SocialLinks } from "@/components/tour/TourBits";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://webapi.taxisafar.com";
 const LIST_URL = `${API_URL}/api/tour-package`;
@@ -617,6 +618,10 @@ const Tours = () => {
             )}
 
             {!loading && pagination && <Pagination pagination={pagination} onPageChange={handlePageChange} />}
+
+            <div className="mt-8 border-t border-slate-200 pt-6">
+                <SocialLinks title="Follow us & chat with us" />
+            </div>
         </div>
     );
 };

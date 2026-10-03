@@ -144,7 +144,7 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
 
                         )}
 
-                        <div className="sidebar-bottom-menu">
+                        <div className="sidebar-inline-logout">
                             <div className="taxisafar-sidebar-logout d-flex align-items-center justify-content-center" onClick={signOut}>
                                 <img src="/images/icons/taxisafar-logout.png" height="24" width="24" className="me-2" />
                                 <p className="mb-0">Logout</p>
@@ -167,7 +167,7 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                             <img src="/images/logo/taxisafar-logo.png" width="181px" height="30px" />
                         </Link>
 
-                        <div className="sidebar-links mb-4">
+                        <div className="sidebar-links mb-2">
                             <Link href="/" className="d-flex align-items-center mt-4">
                                 <img className="me-3" src="/images/icons/home-menu-icon.png" width={24} />
                                 <p className="mb-0">Home</p>
@@ -190,7 +190,7 @@ const HeaderWithoutMenu: React.FC<HeaderWithoutMenuProps> = ({
                         </div>
 
                         <Link href={"/login"}>
-                            <div className="taxisafar-theme-button w-100 mt-2 text-center">Log In</div>
+                            <div className="taxisafar-theme-button w-100 mt-1 text-center">Log In</div>
                         </Link>
 
                     </div>

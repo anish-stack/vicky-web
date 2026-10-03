@@ -1,5 +1,8 @@
 const {
     TourPackage,
+    TourHotel,
+    Setting,
+    sequelize,
 } = require("../models");
 
 const fs = require("fs");
@@ -60,15 +63,57 @@ const parsePackage = (data) => {
     return out;
 };
 // GET responses: parsed JSON + startingPrice + absolute image URLs
-const toResponse = (instance, req) => {
+const toResponse = (instance, req, masters = null) => {
     const base = getBaseUrl(req);
     const plain =
         typeof instance?.toJSON === "function" ? instance.toJSON() : instance;
+    const parsed = parsePackage(plain);
+    if (masters) {
+        parsed.hotel_options = overlayMasterHotels(parsed.hotel_options, masters);
+    }
     return mapPackageImages(
-        addStartingPrice(parsePackage(plain)),
+        addStartingPrice(parsed),
         (url) => withBaseUrl(url, base)
     );
 };
+
+// ---- hotel master data -------------------------------------------------
+// A tour hotel row that carries `hotel: <master id>` always shows the master's
+// current name / location / photos (and its default price unless the tour sets
+// its own priceOverride). Edit a hotel once in the master -> every tour follows.
+const loadMasters = async (packages) => {
+    const ids = new Set();
+    packages.forEach((p) => {
+        const plain = typeof p?.toJSON === "function" ? p.toJSON() : p;
+        asArray(plain?.hotel_options).forEach((h) => {
+            if (h?.hotel) ids.add(Number(h.hotel));
+        });
+    });
+    if (!ids.size) return new Map();
+    const rows = await TourHotel.findAll({ where: { id: { [Op.in]: [...ids] } } });
+    return new Map(rows.map((r) => [Number(r.id), r.toJSON()]));
+};
+
+const overlayMasterHotels = (hotels, masters) =>
+    asArray(hotels).map((h) => {
+        const m = h?.hotel ? masters.get(Number(h.hotel)) : null;
+        if (!m) return h;
+        const price =
+            h.priceOverride !== null && h.priceOverride !== undefined && h.priceOverride !== ""
+                ? h.priceOverride
+                : m.price_per_night === null || m.price_per_night === undefined
+                    ? null
+                    : Number(m.price_per_night);
+        return {
+            ...h,
+            name: m.name,
+            location: m.location || "",
+            images: asArray(m.images),
+            priceOverride: price,
+            masterPrice: m.price_per_night === null || m.price_per_night === undefined ? null : Number(m.price_per_night),
+            isActive: h.isActive !== false && !!m.is_active,
+        };
+    });
 
 const parseBoolean = (
     value,
@@ -146,6 +191,10 @@ const toBoolFilter = (value) => {
     return undefined;
 };
 
+const DEFAULT_TEMPLATE_KEY = "tour_default_template_id";
+const STATUSES = ["live", "new", "duplicate"];
+const UPLOAD_ROOT = path.join(__dirname, "..");
+
 const SORTS = {
     sort_order: [["sort_order", "ASC"], ["id", "DESC"]],
     latest: [["created_at", "DESC"]],
@@ -167,11 +216,19 @@ const getSingleFile = (
 };
 
 
-const getBaseUrl = (req) =>
-    (
-        process.env.BASE_URL ||
-        `${req.protocol}://${req.get("host")}`
-    ).replace(/\/+$/, "");
+const getBaseUrl = (req) => {
+    if (process.env.BASE_URL) {
+        return process.env.BASE_URL.replace(/\/+$/, "");
+    }
+
+    // behind nginx / cloudflare the socket is plain http -> trust the forwarded proto
+    const proto =
+        String(req.get("x-forwarded-proto") || req.protocol || "https")
+            .split(",")[0]
+            .trim();
+
+    return `${proto}://${req.get("host")}`.replace(/\/+$/, "");
+};
 
 
 const withBaseUrl = (url, base) => {
@@ -198,6 +255,12 @@ const toRelative = (url, base) => {
 
     if (base && url.startsWith(base)) {
         return url.slice(base.length) || null;
+    }
+
+    // any other origin (http/https mismatch, old domain) -> keep only /uploads/... path
+    const m = url.match(/^(?:https?:)?\/\/[^/]+(\/uploads\/.*)$/i);
+    if (m) {
+        return m[1];
     }
 
     return url;
@@ -258,7 +321,45 @@ const stripBaseUrl = (data, req) => {
     const base = getBaseUrl(req);
     return mapPackageImages(data, (url) => toRelative(url, base));
 };
-const removeFile = (fileUrl) => {
+// Every uploaded file path currently used by any tour package (except `exceptId`).
+// Duplicated packages / default templates share files, so a file is only
+// deleted from disk when nothing else points to it.
+const getReferencedFiles = async (exceptId = null) => {
+    const rows = await TourPackage.findAll({
+        attributes: [
+            "id",
+            "cover_image",
+            "gallery",
+            "itinerary",
+            "places_covered",
+            "vehicle_options",
+            "hotel_options",
+        ],
+        raw: true,
+    });
+
+    const used = new Set();
+
+    rows.forEach((row) => {
+        if (exceptId !== null && String(row.id) === String(exceptId)) {
+            return;
+        }
+
+        const blob = JSON.stringify(row);
+        const found = blob.match(/\/uploads\/tour-packages\/[^"\\\s]+/g) || [];
+        found.forEach((f) => used.add(f));
+    });
+
+    // photos owned by the hotel master
+    const hotels = await TourHotel.findAll({ attributes: ["images"], raw: true });
+    hotels.forEach((h) => {
+        (JSON.stringify(h.images || []).match(/\/uploads\/tour-packages\/[^"\\\s]+/g) || []).forEach((f) => used.add(f));
+    });
+
+    return used;
+};
+
+const removeFile = (fileUrl, referenced = null) => {
     if (
         !fileUrl ||
         typeof fileUrl !== "string"
@@ -266,18 +367,26 @@ const removeFile = (fileUrl) => {
         return;
     }
 
+    const rel = toRelative(fileUrl, null);
+
     if (
-        !fileUrl.startsWith(
+        !rel ||
+        !rel.startsWith(
             "/uploads/tour-packages/"
         )
     ) {
         return;
     }
 
+    // still used by another package -> keep the file
+    if (referenced && referenced.has(rel)) {
+        return;
+    }
+
     try {
         const fullPath = path.join(
-            process.cwd(),
-            fileUrl.replace(
+            UPLOAD_ROOT,
+            rel.replace(
                 /^\//,
                 ""
             )
@@ -415,6 +524,9 @@ const buildPackageData = (
     if (coverFile) {
         coverImage =
             getFilePath(coverFile);
+    } else if (body.cover_image !== undefined) {
+        // text field: retained path, or "" when the admin removed the cover
+        coverImage = body.cover_image || null;
     }
 
 
@@ -552,11 +664,8 @@ const buildPackageData = (
                                 0
                             ),
 
-                        sortOrder:
-                            parseNumber(
-                                item.sortOrder,
-                                index
-                            ),
+                        // array order == display order (WagonR -> Dzire -> Ertiga -> Innova)
+                        sortOrder: index + 1,
 
                         isActive:
                             item.isActive !==
@@ -632,11 +741,7 @@ const buildPackageData = (
                                 1
                             ),
 
-                        sortOrder:
-                            parseNumber(
-                                item.sortOrder,
-                                index
-                            ),
+                        sortOrder: index + 1,
 
                         isActive:
                             item.isActive !==
@@ -674,6 +779,10 @@ const buildPackageData = (
         durationLabel =
             `${days} Days / ${nights} Night Tour`;
     }
+
+    const status = STATUSES.includes(body.status)
+        ? body.status
+        : existing?.status || "live";
 
     return {
         title:
@@ -830,6 +939,18 @@ const buildPackageData = (
                 : existing?.sort_order ||
                 0,
 
+        status,
+
+        daily_booking_limit:
+            body.daily_booking_limit !== undefined
+                ? Math.max(parseNumber(body.daily_booking_limit, 0), 0)
+                : existing?.daily_booking_limit || 0,
+
+        min_advance_hours:
+            body.min_advance_hours !== undefined
+                ? Math.max(parseNumber(body.min_advance_hours, 0), 0)
+                : existing?.min_advance_hours || 0,
+
         seo,
 
         created_by:
@@ -854,6 +975,11 @@ exports.createTourPackage =
                 buildPackageData(req),
                 req
             );
+
+            // a draft copy never goes live by accident
+            if (data.status === "duplicate") {
+                data.is_active = false;
+            }
             if (
                 !data.title ||
                 !data.slug ||
@@ -1011,6 +1137,10 @@ exports.updateTourPackage =
                 req
             );
 
+            if (data.status === "duplicate") {
+                data.is_active = false;
+            }
+
             if (
                 data.slug !==
                 oldData.slug
@@ -1047,15 +1177,16 @@ exports.updateTourPackage =
             );
 
 
-            // Remove old cover image when replaced
+            // Remove old cover image when replaced / removed
+            // (skipped while another package still uses the same file)
             if (
-                data.cover_image &&
                 oldData.cover_image &&
                 data.cover_image !==
                 oldData.cover_image
             ) {
                 removeFile(
-                    oldData.cover_image
+                    oldData.cover_image,
+                    await getReferencedFiles()
                 );
             }
 
@@ -1131,6 +1262,10 @@ exports.getTourPackages = async (req, res) => {
             ];
         }
         if (isActive !== undefined) where.is_active = isActive;
+        // public website (is_active=1) must never receive draft copies
+        if (isActive === true) where.status = { [Op.ne]: "duplicate" };
+        const statusFilter = String(req.query.status || "");
+        if (STATUSES.includes(statusFilter)) where.status = statusFilter;
         if (isFeatured !== undefined) where.is_featured = isFeatured;
         if (["roundTrip", "oneWay"].includes(trip_type)) where.trip_type = trip_type;
         if (from_city_id && !Number.isNaN(Number(from_city_id))) where.from_city_id = Number(from_city_id);
@@ -1141,9 +1276,10 @@ exports.getTourPackages = async (req, res) => {
         // ---------- no pagination ----------
         if (all) {
             const rows = await TourPackage.findAll({ where, order });
+            const masters = await loadMasters(rows);
             return res.json({
                 success: true,
-                data: rows.map((item) => toResponse(item, req)),
+                data: rows.map((item) => toResponse(item, req, masters)),
                 query: { search: term, is_active: isActive, is_featured: isFeatured, trip_type: trip_type || null, from_city_id: from_city_id || null, days: days || null, sort },
                 message: "Tour packages fetched successfully",
             });
@@ -1157,6 +1293,7 @@ exports.getTourPackages = async (req, res) => {
             limit: perPage,
         });
 
+        const masters = await loadMasters(rows);
         const lastPage = Math.max(Math.ceil(count / perPage), 1);
         const from = count ? (page - 1) * perPage + 1 : 0;
         const to = Math.min(page * perPage, count);
@@ -1177,7 +1314,7 @@ exports.getTourPackages = async (req, res) => {
         return res.json({
             success: true,
             data: rows.map((item, index) => ({
-                ...toResponse(item, req),
+                ...toResponse(item, req, masters),
                 index_no: from + index,
             })),
             query: {
@@ -1228,12 +1365,7 @@ exports.getTourPackageById =
             return res.json({
                 success: true,
 
-                data: applyBaseUrl(
-                    addStartingPrice(
-                        item.toJSON()
-                    ),
-                    req
-                ),
+                data: toResponse(item, req, await loadMasters([item])),
             });
         } catch (error) {
             return res
@@ -1259,6 +1391,7 @@ exports.getTourPackageBySlug =
                     where: {
                         slug: req.params.slug,
                         is_active: true,
+                        status: { [Op.ne]: "duplicate" },
                     },
                 });
 
@@ -1276,12 +1409,7 @@ exports.getTourPackageBySlug =
             return res.json({
                 success: true,
 
-                data: applyBaseUrl(
-                    addStartingPrice(
-                        item.toJSON()
-                    ),
-                    req
-                ),
+                data: toResponse(item, req, await loadMasters([item])),
             });
         } catch (error) {
             return res
@@ -1319,57 +1447,37 @@ exports.deleteTourPackage =
                     });
             }
 
-            const data =
-                item.toJSON();
-
-            // Cover
-            removeFile(
-                data.cover_image
+            const data = parsePackage(
+                item.toJSON()
             );
 
-            // Gallery
-            (
-                data.gallery || []
-            ).forEach(removeFile);
+            // files still used by other packages (duplicates / default template) stay on disk
+            const referenced =
+                await getReferencedFiles(
+                    item.id
+                );
 
-            // Itinerary
-            (
-                data.itinerary || []
-            ).forEach((day) =>
-                removeFile(day.image)
+            const drop = (u) =>
+                removeFile(u, referenced);
+
+            drop(data.cover_image);
+            data.gallery.forEach(drop);
+            data.itinerary.forEach((day) => drop(day?.image));
+            data.places_covered.forEach((place) => drop(place?.image));
+            data.vehicle_options.forEach((vehicle) => drop(vehicle?.image));
+            data.hotel_options.forEach((hotel) =>
+                asArray(hotel?.images).forEach(drop)
             );
-
-            // Places
-            (
-                data.places_covered ||
-                []
-            ).forEach((place) =>
-                removeFile(
-                    place.image
-                )
-            );
-
-            // Vehicles
-            (
-                data.vehicle_options ||
-                []
-            ).forEach((vehicle) =>
-                removeFile(
-                    vehicle.image
-                )
-            );
-
-            // Hotels
-            (
-                data.hotel_options ||
-                []
-            ).forEach((hotel) => {
-                (
-                    hotel.images || []
-                ).forEach(removeFile);
-            });
 
             await item.destroy();
+
+            // template deleted -> clear the default source
+            const tpl = await Setting.findOne({
+                where: { key: DEFAULT_TEMPLATE_KEY },
+            });
+            if (tpl && String(tpl.value) === String(item.id)) {
+                await tpl.destroy();
+            }
 
             return res.json({
                 success: true,
@@ -1433,3 +1541,214 @@ function addStartingPrice(
                 : 0,
     };
 }
+
+
+// ============================================
+// REORDER  (POST /reorder  { ids: [3,1,2] })
+// first id -> sort_order 1 (top / left of "All Tours")
+// ============================================
+
+exports.reorderTourPackages = async (req, res) => {
+    try {
+        const ids = (Array.isArray(req.body?.ids) ? req.body.ids : [])
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n > 0);
+
+        if (!ids.length || new Set(ids).size !== ids.length) {
+            return res.status(400).json({
+                success: false,
+                message: "ids must be a non-empty list of unique package ids",
+            });
+        }
+
+        await sequelize.transaction(async (t) => {
+            for (let i = 0; i < ids.length; i += 1) {
+                await TourPackage.update(
+                    { sort_order: i + 1 },
+                    { where: { id: ids[i] }, transaction: t }
+                );
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: "Tour order saved",
+        });
+    } catch (error) {
+        console.error("Reorder Tour Packages:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Unable to save order",
+        });
+    }
+};
+
+
+// ============================================
+// DUPLICATE  (POST /:id/duplicate)
+// Copies every field + photo reference. The copy is a hidden draft
+// (status "duplicate") until the admin finalises it as Live / New.
+// ============================================
+
+const uniqueSlug = async (base) => {
+    const root = String(base || "tour").replace(/-copy(-\d+)?$/, "");
+    let candidate = `${root}-copy`;
+    let n = 1;
+
+    // eslint-disable-next-line no-await-in-loop
+    while (await TourPackage.findOne({ where: { slug: candidate } })) {
+        n += 1;
+        candidate = `${root}-copy-${n}`;
+    }
+
+    return candidate;
+};
+
+exports.duplicateTourPackage = async (req, res) => {
+    try {
+        const source = await TourPackage.findByPk(req.params.id);
+
+        if (!source) {
+            return res.status(404).json({
+                success: false,
+                message: "Tour package not found",
+            });
+        }
+
+        const src = parsePackage(source.toJSON());
+
+        const maxOrder = (await TourPackage.max("sort_order")) || 0;
+
+        const copy = await TourPackage.create({
+            title: `${src.title} (Copy)`,
+            slug: await uniqueSlug(src.slug),
+            from_city_name: src.from_city_name,
+            to_city_name: src.to_city_name,
+            from_city_id: src.from_city_id,
+            cover_image: src.cover_image,
+            gallery: src.gallery,
+            days: src.days,
+            nights: src.nights,
+            duration_label: src.duration_label,
+            trip_type: src.trip_type,
+            short_description: src.short_description,
+            description: src.description,
+            highlights: src.highlights,
+            hotel_optional: src.hotel_optional,
+            itinerary: src.itinerary,
+            places_covered: src.places_covered,
+            inclusions: src.inclusions,
+            exclusions: src.exclusions,
+            important_notes: src.important_notes,
+            faqs: src.faqs,
+            vehicle_options: src.vehicle_options,
+            hotel_options: src.hotel_options,
+            booking_charge_percent: src.booking_charge_percent,
+            rating: src.rating,
+            review_count: src.review_count,
+            is_featured: false,
+            is_active: false,
+            status: "duplicate",
+            daily_booking_limit: src.daily_booking_limit || 0,
+            min_advance_hours: src.min_advance_hours || 0,
+            sort_order: Number(maxOrder) + 1,
+            seo: src.seo,
+            created_by: req.user?.id || null,
+            updated_by: req.user?.id || null,
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Duplicate created. Edit it and set it Live when ready.",
+            data: { id: copy.id, slug: copy.slug },
+        });
+    } catch (error) {
+        console.error("Duplicate Tour Package:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Unable to duplicate tour package",
+        });
+    }
+};
+
+
+// ============================================
+// DEFAULT TEMPLATE
+// One tour is marked as the template: new tours start with its
+// highlights, inclusions, exclusions, notes, FAQs and hotels.
+// ============================================
+
+exports.getDefaults = async (req, res) => {
+    try {
+        const row = await Setting.findOne({
+            where: { key: DEFAULT_TEMPLATE_KEY },
+        });
+
+        const id = row ? Number(row.value) : null;
+        const tpl = id ? await TourPackage.findByPk(id) : null;
+
+        if (!tpl) {
+            return res.json({ success: true, data: null });
+        }
+
+        const t = toResponse(tpl, req, await loadMasters([tpl]));
+
+        return res.json({
+            success: true,
+            data: {
+                template_id: t.id,
+                template_title: t.title,
+                highlights: t.highlights,
+                inclusions: t.inclusions,
+                exclusions: t.exclusions,
+                important_notes: t.important_notes,
+                faqs: t.faqs,
+                hotel_options: t.hotel_options,
+                hotel_optional: !!t.hotel_optional,
+                booking_charge_percent: Number(t.booking_charge_percent),
+                daily_booking_limit: t.daily_booking_limit || 0,
+                min_advance_hours: t.min_advance_hours || 0,
+            },
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};
+
+exports.setDefaults = async (req, res) => {
+    try {
+        const id = Number(req.body?.template_id);
+
+        // template_id: null / 0 clears the default
+        if (!id) {
+            await Setting.destroy({ where: { key: DEFAULT_TEMPLATE_KEY } });
+            return res.json({ success: true, message: "Default template cleared" });
+        }
+
+        const tpl = await TourPackage.findByPk(id);
+        if (!tpl) {
+            return res.status(404).json({
+                success: false,
+                message: "Tour package not found",
+            });
+        }
+
+        await Setting.upsert({
+            key: DEFAULT_TEMPLATE_KEY,
+            value: String(id),
+        });
+
+        return res.json({
+            success: true,
+            message: `"${tpl.title}" is now the default template for new tours`,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
+};

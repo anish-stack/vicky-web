@@ -12,16 +12,20 @@ import {
   activeVehicles,
   createTourBookingOrder,
   durationText,
+  getTourAvailability,
   getTourBySlug,
   hotelTotal,
   inr,
   readSelection,
+  SIMILAR_TAXI_TEXT,
   selectionQuery,
   sendTourBookingOtp,
   tripTypeText,
   verifyTourBookingOtp,
   verifyTourBookingPayment,
+  TourAvailability,
 } from "@/lib/tourPackage";
+import TourDatePicker from "@/components/tour/TourDatePicker";
 import PlacesInput from "@/components/tour/PlacesInput";
 
 declare global {
@@ -152,6 +156,7 @@ export default function TourSummaryPage({ tour, sel }: Props) {
   });
   const [errors, setErrors] = useState<Partial<Record<keyof Traveller, string>>>({});
   const [minDate, setMinDate] = useState("");
+  const [avail, setAvail] = useState<TourAvailability | null>(null);
 
   // round trip: return date auto = pickup + (days - 1)
   const returnDate = isRound && form.pickup_date ? addDays(form.pickup_date, tripDays - 1) : "";
@@ -170,6 +175,12 @@ export default function TourSummaryPage({ tour, sel }: Props) {
   useEffect(() => {
     const today = todayISO();
     setMinDate(today);
+    getTourAvailability(tour.id).then((a) => {
+      if (!a) return;
+      setAvail(a);
+      if (a.earliest_date) setMinDate(a.earliest_date);
+      setForm((f) => (f.pickup_date && (f.pickup_date < a.earliest_date || a.sold_out.includes(f.pickup_date)) ? { ...f, pickup_date: "" } : f));
+    });
     try {
       const saved = JSON.parse(sessionStorage.getItem(storageKey) || "null");
       if (saved && typeof saved === "object") {
@@ -188,7 +199,7 @@ export default function TourSummaryPage({ tour, sel }: Props) {
     } catch {
       /* ignore */
     }
-  }, [storageKey]);
+  }, [storageKey, tour.id]);
 
   useEffect(() => {
     const rest: Partial<Traveller> = { ...form };
@@ -210,7 +221,10 @@ export default function TourSummaryPage({ tour, sel }: Props) {
     if (form.pickup_address.trim().length < 5) e.pickup_address = "Search and select your pickup location";
     if (!form.pickup_date) e.pickup_date = "Choose pickup date";
     else if (minDate && form.pickup_date < minDate) e.pickup_date = "Pickup date can't be in the past";
+    else if (avail?.sold_out.includes(form.pickup_date)) e.pickup_date = "Sold Out for this date. Please choose another date.";
     if (!form.pickup_time) e.pickup_time = "Choose pickup time";
+    else if (avail && avail.min_advance_hours > 0 && form.pickup_date === avail.earliest_date && form.pickup_time < avail.earliest_time)
+      e.pickup_time = `Needs ${avail.min_advance_hours}h advance booking. Earliest pickup today is ${avail.earliest_time}.`;
     if (isRound) {
       if (!form.return_time) e.return_time = "Choose return time";
       else if (tripDays === 1 && form.return_time <= form.pickup_time) e.return_time = "Return time must be after pickup";
@@ -352,6 +366,10 @@ export default function TourSummaryPage({ tour, sel }: Props) {
       });
       rzp.open();
     } catch (err: any) {
+      if (err?.code === "SOLD_OUT") {
+        setForm((f) => ({ ...f, pickup_date: "" }));
+        getTourAvailability(tour.id).then((a) => a && setAvail(a));
+      }
       setPayError(err?.message || "Couldn't start payment");
       setPaying(false);
     }
@@ -416,6 +434,7 @@ export default function TourSummaryPage({ tour, sel }: Props) {
                     <img src={vehicle.image || FALLBACK_IMG} alt="" className="h-12 w-20 shrink-0 rounded-md bg-slate-50 object-contain sm:w-24" />
                     <div className="min-w-0 flex-1">
                       <p className="m-0 text-[15px] font-bold text-slate-900">{vehicle.label}</p>
+                      <p className="m-0 text-[11px] leading-tight text-slate-500">{SIMILAR_TAXI_TEXT}</p>
                       <p className="m-0 flex flex-wrap gap-x-3 text-[12px] text-slate-600">
                         {vehicle.seats && <span>{vehicle.seats}</span>}
                         {vehicle.suitcases && <span>{vehicle.suitcases}</span>}
@@ -483,10 +502,22 @@ export default function TourSummaryPage({ tour, sel }: Props) {
                     <div>
                       <Label required>Pickup date &amp; time</Label>
                       <div className="grid grid-cols-[1fr_110px] gap-2">
-                        <input type="date" min={minDate || undefined} value={form.pickup_date} onChange={(e) => set("pickup_date", e.target.value)} className={inputCls(errors.pickup_date)} aria-label="Pickup date" />
+                        <TourDatePicker
+                          value={form.pickup_date}
+                          min={minDate}
+                          soldOut={avail?.sold_out || []}
+                          invalid={!!errors.pickup_date}
+                          onChange={(d) => set("pickup_date", d)}
+                        />
                         <input type="time" value={form.pickup_time} onChange={(e) => set("pickup_time", e.target.value)} className={inputCls(errors.pickup_time)} aria-label="Pickup time" />
                       </div>
                       <Err>{errors.pickup_date || errors.pickup_time}</Err>
+                      {avail && avail.min_advance_hours > 0 && !errors.pickup_date && !errors.pickup_time && (
+                        <span className="mt-1 block text-[11.5px] text-slate-500">Book at least {avail.min_advance_hours} hour{avail.min_advance_hours === 1 ? "" : "s"} before pickup.</span>
+                      )}
+                      {avail && avail.sold_out.length > 0 && !errors.pickup_date && (
+                        <span className="mt-1 block text-[11.5px] text-red-600">Dates marked Sold Out are full.</span>
+                      )}
                     </div>
 
                     {isRound && (

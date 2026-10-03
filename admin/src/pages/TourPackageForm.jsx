@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, ImagePlus, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Copy, ExternalLink, ImagePlus, Plus, Trash2, Wand2, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import api, { API_ORIGIN } from "../lib/api";
 import useOptions from "../hooks/useOptions";
 import { parseJSON } from "../lib/format";
+import { IMG_SPECS, prepareImage, specText } from "../lib/imageTools";
 import { Button, Card, Field, Input, Loading, PageHeader, Select, Textarea, Toggle, cx } from "../components/ui";
 import { BackLink, SaveBar } from "../components/FormBits";
 import { useToast } from "../components/Toast";
@@ -15,7 +17,8 @@ import { useToast } from "../components/Toast";
 export const TOUR_API = "/tour-package";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_IMAGE_MB = 5;
+// raw picks are resized + compressed in the browser before upload, so a large original is fine
+const MAX_IMAGE_MB = 25;
 
 const blank = {
   title: "",
@@ -47,8 +50,36 @@ const blank = {
   is_featured: false,
   is_active: true,
   sort_order: 0,
+  status: "live",
+  daily_booking_limit: 0,
+  min_advance_hours: 0,
   seo: { title: "", description: "", keywords: "", canonical: "" },
 };
+
+/** sections that start closed (they are usually the same for every tour) */
+const DEFAULT_OPEN = {
+  basic: true,
+  route: true,
+  desc: true,
+  highlights: false,
+  itinerary: true,
+  places: false,
+  inclusions: false,
+  exclusions: false,
+  notes: false,
+  faqs: false,
+  vehicles: true,
+  hotels: false,
+  seo: false,
+  cover: false,
+  gallery: false,
+};
+
+const STATUS_OPTIONS = [
+  { value: "live", label: "Live (visible on website)" },
+  { value: "new", label: "New (visible, marked New)" },
+  { value: "duplicate", label: "Duplicate (hidden draft)" },
+];
 
 let keySeq = 0;
 const newKey = () => `k${Date.now().toString(36)}${(keySeq++).toString(36)}`;
@@ -68,7 +99,11 @@ const durationFor = (d, n) => `${d} Days / ${n} Night${Number(n) === 1 ? "" : "s
 /** Stored paths are relative ("/uploads/tours/x.webp"); preview them against the API origin. */
 export const imgSrc = (path) => {
   if (!path) return "";
-  if (/^(https?:|blob:|data:)/i.test(path)) return path;
+  if (/^(blob:|data:)/i.test(path)) return path;
+  // uploaded files always load from the API origin (fixes old http:// or wrong-host URLs)
+  const m = String(path).match(/^(?:https?:)?\/\/[^/]+(\/uploads\/.*)$/i);
+  if (m) return `${API_ORIGIN}${m[1]}`;
+  if (/^https?:/i.test(path)) return path;
   return `${API_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
@@ -143,7 +178,12 @@ export const normalizeTour = (t = {}) => ({
     name: h?.name ?? "",
     location: h?.location ?? "",
     images: strList(h?.images).filter(Boolean),
-    priceOverride: numOrEmpty(h?.priceOverride),
+    masterPrice: h?.masterPrice ?? null,
+    // price equal to the master's default = "inherit" (so master price changes keep flowing to the tour)
+    priceOverride:
+      h?.hotel && h?.masterPrice !== null && h?.masterPrice !== undefined && Number(h?.priceOverride) === Number(h.masterPrice)
+        ? ""
+        : numOrEmpty(h?.priceOverride),
     nights: numOrEmpty(h?.nights ?? 1),
     sortOrder: numOrEmpty(h?.sortOrder ?? i + 1),
     isActive: bool(h?.isActive, true),
@@ -154,6 +194,9 @@ export const normalizeTour = (t = {}) => ({
   is_featured: bool(t.is_featured, false),
   is_active: bool(t.is_active, true),
   sort_order: numOrEmpty(t.sort_order ?? 0),
+  status: ["live", "new", "duplicate"].includes(t.status) ? t.status : "live",
+  daily_booking_limit: numOrEmpty(t.daily_booking_limit ?? 0),
+  min_advance_hours: numOrEmpty(t.min_advance_hours ?? 0),
   seo: { ...blank.seo, ...obj(t.seo) },
 });
 
@@ -179,7 +222,7 @@ const serializeJson = (f) => ({
   exclusions: f.exclusions.map(clean).filter(Boolean),
   important_notes: f.important_notes.map(clean).filter(Boolean),
   faqs: f.faqs.filter((q) => clean(q.question) || clean(q.answer)).map((q) => ({ question: clean(q.question), answer: clean(q.answer) })),
-  vehicle_options: f.vehicle_options.map((v) => ({
+  vehicle_options: f.vehicle_options.map((v, i) => ({
     vehicle: toNum(v.vehicle),
     label: clean(v.label),
     image: v.image || null,
@@ -187,17 +230,17 @@ const serializeJson = (f) => ({
     suitcases: clean(v.suitcases),
     ac: !!v.ac,
     price: toNum(v.price, 0),
-    sortOrder: toNum(v.sortOrder, 0),
+    sortOrder: i + 1, // list order == website order
     isActive: !!v.isActive,
   })),
-  hotel_options: f.hotel_options.map((h) => ({
+  hotel_options: f.hotel_options.map((h, i) => ({
     hotel: toNum(h.hotel),
     name: clean(h.name),
     location: clean(h.location),
     images: h.images.filter(Boolean),
     priceOverride: toNum(h.priceOverride),
     nights: toNum(h.nights, 1),
-    sortOrder: toNum(h.sortOrder, 0),
+    sortOrder: i + 1,
     isActive: !!h.isActive,
   })),
   seo: { title: clean(f.seo.title), description: clean(f.seo.description), keywords: clean(f.seo.keywords), canonical: clean(f.seo.canonical) },
@@ -228,6 +271,9 @@ export const buildTourFormData = (f, files = {}) => {
     is_featured: String(!!f.is_featured),
     is_active: String(!!f.is_active),
     sort_order: f.sort_order === "" ? 0 : f.sort_order,
+    status: f.status || "live",
+    daily_booking_limit: f.daily_booking_limit === "" ? 0 : f.daily_booking_limit,
+    min_advance_hours: f.min_advance_hours === "" ? 0 : f.min_advance_hours,
   };
   Object.entries(scalars).forEach(([k, v]) => {
     if (v === "" && (k === "from_city_id")) return; // nullable FK: omit when empty
@@ -259,6 +305,31 @@ const checkImage = (file) => {
   return null;
 };
 
+/** validate -> crop to ratio / resize / compress. Returns the ready File or null (error already reported). */
+const processPick = async (file, spec, toast) => {
+  const bad = checkImage(file);
+  if (bad) {
+    toast.error(bad);
+    return null;
+  }
+  try {
+    const r = await prepareImage(file, spec);
+    if (r.cropped) toast.info(`${file.name}: cropped to ${spec.ratio} (${r.from} → ${r.to}).`);
+    return r.file;
+  } catch (e) {
+    toast.error(e.message || `${file.name}: could not process this image`);
+    return null;
+  }
+};
+
+function SpecBadge({ spec }) {
+  return (
+    <span className="ml-1.5 inline-block rounded bg-stone-100 px-1.5 py-0.5 align-middle text-[11px] font-medium text-slate-600">
+      {specText(spec)}
+    </span>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* small building blocks                                              */
 /* ------------------------------------------------------------------ */
@@ -271,20 +342,30 @@ const useObjectUrl = (file) => {
 
 const Err = ({ children }) => (children ? <p className="mt-1 text-xs text-red-600">{children}</p> : null);
 
-function SectionCard({ n, title, count, action, children }) {
+function SectionCard({ n, title, count, action, open = true, onToggle, summary, thumb, children }) {
   return (
-    <Card
-      title={
-        <span className="flex items-center gap-2.5">
-          <span className="grid size-6 place-items-center rounded-full bg-road-800 text-xs font-semibold text-white">{n}</span>
-          {title}
+    <section className="rounded-xl border border-stone-200 bg-white">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={!onToggle}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-2.5 text-left disabled:cursor-default"
+        >
+          {n !== undefined && (
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-road-800 text-xs font-semibold text-white">{n}</span>
+          )}
+          <span className="font-semibold text-slate-900">{title}</span>
           {count !== undefined && <span className="tnum text-sm font-normal text-slate-500">({count})</span>}
-        </span>
-      }
-      actions={action}
-    >
-      {children}
-    </Card>
+          {!open && summary && <span className="hidden truncate text-xs font-normal text-slate-500 sm:inline">{summary}</span>}
+          {!open && thumb && <img src={thumb} alt="" className="ml-1 h-8 w-12 rounded object-cover" />}
+          {onToggle && (open ? <ChevronDown className="ml-auto size-4 shrink-0 text-slate-500" /> : <ChevronRight className="ml-auto size-4 shrink-0 text-slate-500" />)}
+        </button>
+        {open && action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
+      </header>
+      {open && <div className="border-t border-stone-200 p-5">{children}</div>}
+    </section>
   );
 }
 
@@ -299,14 +380,19 @@ function RowTools({ index, total, onMove, onRemove, removeLabel = "Remove" }) {
 }
 
 /** One image: existing path OR newly picked file. */
-function SingleImage({ path, file, onPick, onRemove, onError, label = "Image", aspect = "aspect-video" }) {
+function SingleImage({ path, file, onPick, onRemove, toast, spec, label = "Image" }) {
   const inputRef = useRef(null);
   const blobUrl = useObjectUrl(file);
   const src = blobUrl || imgSrc(path);
+  const [busy, setBusy] = useState(false);
+  const aspectStyle = { aspectRatio: `${spec.w} / ${spec.h}` };
   return (
     <div>
-      <p className="mb-1.5 text-sm font-medium text-slate-700">{label}</p>
-      <div className={cx("relative grid w-full place-items-center overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50", aspect)}>
+      <p className="mb-1 text-sm font-medium text-slate-700">{label}</p>
+      <p className="mb-1.5 text-[11px] leading-snug text-slate-500">
+        Size: <b className="font-semibold text-slate-700">{spec.w} × {spec.h} px</b> · Ratio: <b className="font-semibold text-slate-700">{spec.ratio}</b>
+      </p>
+      <div style={aspectStyle} className="relative grid w-full place-items-center overflow-hidden rounded-lg border border-dashed border-stone-300 bg-stone-50">
         {src ? (
           <>
             <img src={src} alt="" className="size-full object-cover" />
@@ -314,7 +400,7 @@ function SingleImage({ path, file, onPick, onRemove, onError, label = "Image", a
           </>
         ) : (
           <button type="button" onClick={() => inputRef.current?.click()} className="flex flex-col items-center gap-1 p-4 text-sm text-slate-500 hover:text-slate-800">
-            <ImagePlus className="size-5" /> Upload image
+            <ImagePlus className="size-5" /> {busy ? "Processing…" : "Upload image"}
           </button>
         )}
       </div>
@@ -323,18 +409,19 @@ function SingleImage({ path, file, onPick, onRemove, onError, label = "Image", a
         type="file"
         hidden
         accept={IMAGE_TYPES.join(",")}
-        onChange={(e) => {
+        onChange={async (e) => {
           const f = e.target.files?.[0];
           e.target.value = "";
           if (!f) return;
-          const err = checkImage(f);
-          if (err) return onError(err);
-          onPick(f);
+          setBusy(true);
+          const ready = await processPick(f, spec, toast);
+          setBusy(false);
+          if (ready) onPick(ready);
         }}
       />
       {src && (
         <div className="mt-2 flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()}>Replace</Button>
+          <Button type="button" size="sm" variant="outline" loading={busy} onClick={() => inputRef.current?.click()}>Replace</Button>
           <Button type="button" size="sm" variant="ghost" onClick={onRemove}>Remove</Button>
         </div>
       )}
@@ -364,11 +451,15 @@ function NewThumb({ file, onRemove }) {
 }
 
 /** Many images: existing paths (reorderable) + pending new files. */
-function MultiImage({ paths, files, onPaths, onFiles, onError, label, hint }) {
+export function MultiImage({ paths, files, onPaths, onFiles, toast, spec, label, hint }) {
   const inputRef = useRef(null);
+  const [busy, setBusy] = useState(false);
   return (
     <div>
-      {label && <p className="mb-1.5 text-sm font-medium text-slate-700">{label}</p>}
+      {label && <p className="mb-1 text-sm font-medium text-slate-700">{label}</p>}
+      <p className="mb-1.5 text-[11px] leading-snug text-slate-500">
+        Each photo — Size: <b className="font-semibold text-slate-700">{spec.w} × {spec.h} px</b> · Ratio: <b className="font-semibold text-slate-700">{spec.ratio}</b>
+      </p>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
         {paths.map((p, i) => (
           <Thumb
@@ -387,7 +478,7 @@ function MultiImage({ paths, files, onPaths, onFiles, onError, label, hint }) {
           onClick={() => inputRef.current?.click()}
           className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border border-dashed border-stone-300 text-xs text-slate-500 hover:border-slate-400 hover:text-slate-800"
         >
-          <ImagePlus className="size-5" /> Add
+          <ImagePlus className="size-5" /> {busy ? "…" : "Add"}
         </button>
       </div>
       {hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>}
@@ -397,15 +488,17 @@ function MultiImage({ paths, files, onPaths, onFiles, onError, label, hint }) {
         hidden
         multiple
         accept={IMAGE_TYPES.join(",")}
-        onChange={(e) => {
+        onChange={async (e) => {
           const picked = Array.from(e.target.files || []);
           e.target.value = "";
+          setBusy(true);
           const ok = [];
           for (const f of picked) {
-            const err = checkImage(f);
-            if (err) onError(err);
-            else ok.push(f);
+            // eslint-disable-next-line no-await-in-loop
+            const ready = await processPick(f, spec, toast);
+            if (ready) ok.push(ready);
           }
+          setBusy(false);
           if (ok.length) onFiles([...files, ...ok]);
         }}
       />
@@ -457,6 +550,8 @@ const validate = (f, byKey) => {
   if (!isNum(f.rating) || Number(f.rating) < 0 || Number(f.rating) > 5) e.rating = "Between 0 and 5";
   if (!isInt(f.review_count) || Number(f.review_count) < 0) e.review_count = "Whole number, 0 or more";
   if (String(f.sort_order).trim() !== "" && !isInt(f.sort_order)) e.sort_order = "Whole number";
+  if (String(f.daily_booking_limit).trim() !== "" && (!isInt(f.daily_booking_limit) || Number(f.daily_booking_limit) < 0)) e.daily_booking_limit = "0 (no limit) or more";
+  if (String(f.min_advance_hours).trim() !== "" && (!isInt(f.min_advance_hours) || Number(f.min_advance_hours) < 0)) e.min_advance_hours = "0 or more hours";
 
   f.highlights.forEach((h, i) => {
     if (!clean(h.title) && (clean(h.icon) || clean(h.subtitle))) e[`highlights.${i}.title`] = "Title is required";
@@ -496,7 +591,6 @@ const validate = (f, byKey) => {
   f.vehicle_options.forEach((v, i) => {
     if (!clean(v.label)) e[`vehicles.${i}.label`] = "Label is required";
     if (!isNum(v.price) || Number(v.price) < 0) e[`vehicles.${i}.price`] = "Price is required (0 or more)";
-    if (String(v.sortOrder).trim() !== "" && !isInt(v.sortOrder)) e[`vehicles.${i}.sortOrder`] = "Whole number";
   });
 
   f.hotel_options.forEach((h, i) => {
@@ -504,7 +598,6 @@ const validate = (f, byKey) => {
     if (!isInt(h.nights) || Number(h.nights) < 1) e[`hotels.${i}.nights`] = "At least 1 night";
     if (String(h.priceOverride).trim() !== "" && (!isNum(h.priceOverride) || Number(h.priceOverride) < 0)) e[`hotels.${i}.priceOverride`] = "Leave empty or 0 or more";
     if (String(h.hotel).trim() !== "" && !isInt(h.hotel)) e[`hotels.${i}.hotel`] = "Hotel ID must be a number";
-    if (String(h.sortOrder).trim() !== "" && !isInt(h.sortOrder)) e[`hotels.${i}.sortOrder`] = "Whole number";
     const total = h.images.length + (Array.isArray(byKey[h._k]) ? byKey[h._k].length : 0);
     if (total > 12) e[`hotels.${i}.images`] = "Up to 12 images per hotel";
   });
@@ -524,15 +617,20 @@ export default function TourPackageForm() {
   const toast = useToast();
   const { data: vehicles } = useOptions("/vehicles");
   const { data: cities } = useOptions("/cities");
+  const { data: masterHotels } = useOptions("/tour-hotel?all=1", { fresh: true });
 
   const [form, setForm] = useState(blank);
   const [slugTouched, setSlugTouched] = useState(false);
   const [durationTouched, setDurationTouched] = useState(false);
   const [coverFile, setCoverFile] = useState(null);
+  const coverBlob = useObjectUrl(coverFile);
   const [galleryFiles, setGalleryFiles] = useState([]);
   // new files keyed by the row's `_k` (itinerary / place / vehicle -> File, hotel -> File[])
   const [rowFiles, setRowFiles] = useState({});
   const [collapsed, setCollapsed] = useState({});
+  const [openSec, setOpenSec] = useState({});
+  const [defaultsFrom, setDefaultsFrom] = useState("");
+  const [busyAction, setBusyAction] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(!!id);
   const [loadError, setLoadError] = useState("");
@@ -559,7 +657,112 @@ export default function TourPackageForm() {
     return () => { alive = false; };
   }, [id]);
 
+  // New tour: start from the default template (highlights, inclusions, exclusions, notes, FAQs, hotels)
+  useEffect(() => {
+    if (id) return;
+    let alive = true;
+    api
+      .get(`${TOUR_API}/defaults`)
+      .then((r) => {
+        const d = r?.data;
+        if (!alive || !d) return;
+        const t = normalizeTour(d);
+        setForm((f) => ({
+          ...f,
+          highlights: t.highlights,
+          inclusions: t.inclusions,
+          exclusions: t.exclusions,
+          important_notes: t.important_notes,
+          faqs: t.faqs,
+          hotel_options: t.hotel_options,
+          hotel_optional: t.hotel_optional,
+          booking_charge_percent: t.booking_charge_percent,
+          daily_booking_limit: t.daily_booking_limit,
+          min_advance_hours: t.min_advance_hours,
+        }));
+        const c = {};
+        t.hotel_options.forEach((x) => (c[x._k] = true));
+        setCollapsed((prev) => ({ ...prev, ...c }));
+        setDefaultsFrom(d.template_title || "default template");
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [id]);
+
+  // New tour: hotels flagged "auto-add" in the master list are added automatically
+  useEffect(() => {
+    if (id) return;
+    const picks = masterHotels.filter((m) => m.is_active && m.is_default);
+    if (!picks.length) return;
+    const rows = picks.map((m, i) => ({
+      _k: newKey(),
+      hotel: String(m.id),
+      name: m.name,
+      location: m.location || "",
+      images: Array.isArray(m.images) ? m.images : [],
+      masterPrice: m.price_per_night,
+      priceOverride: "",
+      nights: 1,
+      sortOrder: i + 1,
+      isActive: true,
+    }));
+    setForm((f) => ({ ...f, hotel_options: rows.map((r) => ({ ...r, nights: f.nights > 0 ? f.nights : 1 })) }));
+    setCollapsed((c) => ({ ...c, ...Object.fromEntries(rows.map((r) => [r._k, true])) }));
+  }, [id, masterHotels]);
+
+  const addMasterHotel = (masterId) => {
+    const m = masterHotels.find((x) => String(x.id) === String(masterId));
+    if (!m) return;
+    if (form.hotel_options.some((h) => String(h.hotel) === String(m.id))) {
+      toast.error(`${m.name} is already added`);
+      return;
+    }
+    addRow("hotel_options", {
+      _k: newKey(),
+      hotel: String(m.id),
+      name: m.name,
+      location: m.location || "",
+      images: Array.isArray(m.images) ? m.images : [],
+      masterPrice: m.price_per_night,
+      priceOverride: "",
+      nights: form.nights > 0 ? form.nights : 1,
+      sortOrder: form.hotel_options.length + 1,
+      isActive: true,
+    });
+  };
+
   /* ---------- state helpers ---------- */
+  const sec = (key) => ({
+    open: openSec[key] ?? DEFAULT_OPEN[key],
+    onToggle: () => setOpenSec((o) => ({ ...o, [key]: !(o[key] ?? DEFAULT_OPEN[key]) })),
+  });
+  const setStatus = (status) =>
+    setForm((f) => ({ ...f, status, is_active: status === "duplicate" ? false : f.status === "duplicate" ? true : f.is_active }));
+
+  const duplicateTour = async () => {
+    setBusyAction("dup");
+    try {
+      const r = await api.post(`${TOUR_API}/${id}/duplicate`);
+      toast.success(r?.message || "Duplicate created");
+      navigate(`/tour-packages/${r.data.id}`);
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const useAsTemplate = async () => {
+    setBusyAction("tpl");
+    try {
+      const r = await api.put(`${TOUR_API}/defaults`, { template_id: Number(id) });
+      toast.success(r?.message || "Saved as default template");
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setBusyAction("");
+    }
+  };
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setSeo = (k, v) => setForm((f) => ({ ...f, seo: { ...f.seo, [k]: v } }));
   const setRow = (list, i, patch) => setForm((f) => ({ ...f, [list]: f[list].map((r, j) => (j === i ? { ...r, ...patch } : r)) }));
@@ -627,8 +830,23 @@ export default function TourPackageForm() {
         form[list].forEach((r, i) => Object.keys(e).some((k) => k.startsWith(`${prefix}.${i}.`)) && (open[r._k] = false))
       );
       setCollapsed((c) => ({ ...c, ...open }));
+      const secOf = (k) =>
+        k.startsWith("highlights.") ? "highlights"
+          : k.startsWith("itinerary.") ? "itinerary"
+          : k.startsWith("places.") ? "places"
+          : k.startsWith("inclusions.") ? "inclusions"
+          : k.startsWith("exclusions.") ? "exclusions"
+          : k.startsWith("important_notes.") ? "notes"
+          : k.startsWith("faqs.") ? "faqs"
+          : k.startsWith("vehicles.") ? "vehicles"
+          : k.startsWith("hotels.") ? "hotels"
+          : k.startsWith("seo.") ? "seo"
+          : null;
+      const openSecs = {};
+      Object.keys(e).forEach((k) => { const g = secOf(k); if (g) openSecs[g] = true; });
+      setOpenSec((o) => ({ ...o, ...openSecs }));
       toast.error(`Fix ${Object.keys(e).length} highlighted field${Object.keys(e).length > 1 ? "s" : ""} before saving`);
-      requestAnimationFrame(() => document.querySelector("[data-invalid='true']")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+      setTimeout(() => document.querySelector("[data-invalid='true']")?.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
       return;
     }
     const fd = buildTourFormData(form, { cover: coverFile, gallery: galleryFiles, byKey: rowFiles });
@@ -668,12 +886,30 @@ export default function TourPackageForm() {
         back={<BackLink to="/tour-packages">Tour packages</BackLink>}
         title={id ? `Edit ${form.title || "tour package"}` : "Add tour package"}
         subtitle={form.from_city_name && form.to_city_name ? `${form.from_city_name} → ${form.to_city_name}` : undefined}
+        actions={
+          id ? (
+            <Button type="button" variant="outline" icon={Copy} loading={busyAction === "dup"} onClick={duplicateTour}>
+              Duplicate this tour
+            </Button>
+          ) : undefined
+        }
       />
+
+      {form.status === "duplicate" && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <b>Duplicate draft.</b> This copy is hidden from the website. Change the title, slug, photos and details, then set Status to <b>Live</b> or <b>New</b> and save.
+        </div>
+      )}
+      {!id && defaultsFrom && (
+        <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          Highlights, inclusions, exclusions, notes, FAQs and hotels are pre-filled from <b>{defaultsFrom}</b>. Open a section to edit it for this tour.
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         {/* ================= main column ================= */}
         <div className="min-w-0 space-y-6">
-          <SectionCard n={1} title="Basic information">
+          <SectionCard n={1} title="Basic information" {...sec("basic")}>
             <div className="grid gap-4 sm:grid-cols-2">
               {F({ name: "title", label: "Title", required: true, className: "sm:col-span-2", children: (
                 <Input value={form.title} onChange={(e) => onTitle(e.target.value)} placeholder="Delhi to Mathura Vrindavan Tour" />
@@ -699,7 +935,7 @@ export default function TourPackageForm() {
             </div>
           </SectionCard>
 
-          <SectionCard n={2} title="Route & duration">
+          <SectionCard n={2} title="Route & duration" {...sec("route")}>
             <div className="grid gap-4 sm:grid-cols-[120px_120px_1fr]">
               {F({ name: "days", label: "Days", required: true, children: (
                 <Input inputMode="numeric" value={form.days} onChange={(e) => onDays("days", e.target.value.replace(/\D/g, ""))} />
@@ -718,7 +954,7 @@ export default function TourPackageForm() {
             </div>
           </SectionCard>
 
-          <SectionCard n={3} title="Descriptions">
+          <SectionCard n={3} title="Descriptions" {...sec("desc")}>
             <div className="space-y-4">
               <Field label="Short description" hint={`${form.short_description.length} characters. Shown on package cards`}>
                 <Textarea rows={3} value={form.short_description} onChange={(e) => set("short_description", e.target.value)} />
@@ -732,6 +968,7 @@ export default function TourPackageForm() {
           <SectionCard
             n={4}
             title="Highlights"
+            {...sec("highlights")}
             count={form.highlights.length}
             action={<Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => addRow("highlights", { _k: newKey(), icon: "", title: "", subtitle: "" })}>Add highlight</Button>}
           >
@@ -756,6 +993,7 @@ export default function TourPackageForm() {
           <SectionCard
             n={5}
             title="Itinerary"
+            {...sec("itinerary")}
             count={form.itinerary.length}
             action={
               <Button type="button" size="sm" variant="outline" icon={Plus}
@@ -826,9 +1064,10 @@ export default function TourPackageForm() {
                         </div>
                         <SingleImage
                           label="Day image"
+                          spec={IMG_SPECS.day}
                           path={d.image}
                           file={rowFiles[d._k]}
-                          onError={toast.error}
+                          toast={toast}
                           onPick={(f) => setFile(d._k, f)}
                           onRemove={() => { setFile(d._k, undefined); setRow("itinerary", i, { image: null }); }}
                         />
@@ -843,6 +1082,7 @@ export default function TourPackageForm() {
           <SectionCard
             n={6}
             title="Places covered"
+            {...sec("places")}
             count={form.places_covered.length}
             action={<Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => addRow("places_covered", { _k: newKey(), name: "", icon: "", image: null })}>Add place</Button>}
           >
@@ -854,7 +1094,7 @@ export default function TourPackageForm() {
                     <span className="text-sm font-medium text-slate-700">Place #{i + 1}</span>
                     <RowTools index={i} total={form.places_covered.length} onMove={moveRow("places_covered")} onRemove={() => removeRow("places_covered", i)} />
                   </div>
-                  <div className="grid grid-cols-[1fr_110px] gap-3">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_170px]">
                     <div className="space-y-3">
                       {F({ name: `places.${i}.name`, label: "Name", required: true, children: (
                         <Input value={p.name} onChange={(e) => setRow("places_covered", i, { name: e.target.value })} placeholder="Krishna Janmabhoomi" />
@@ -862,11 +1102,11 @@ export default function TourPackageForm() {
                       <Field label="Icon"><Input value={p.icon} onChange={(e) => setRow("places_covered", i, { icon: e.target.value })} placeholder="temple" /></Field>
                     </div>
                     <SingleImage
-                      label="Image"
-                      aspect="aspect-square"
+                      label="Place photo"
+                      spec={IMG_SPECS.place}
                       path={p.image}
                       file={rowFiles[p._k]}
-                      onError={toast.error}
+                      toast={toast}
                       onPick={(f) => setFile(p._k, f)}
                       onRemove={() => { setFile(p._k, undefined); setRow("places_covered", i, { image: null }); }}
                     />
@@ -876,17 +1116,17 @@ export default function TourPackageForm() {
             </div>
           </SectionCard>
 
-          <SectionCard n={7} title="Inclusions" count={form.inclusions.length}>
+          <SectionCard n={7} title="Inclusions" {...sec("inclusions")} count={form.inclusions.length}>
             <StringList items={form.inclusions} onChange={(v) => set("inclusions", v)} placeholder="Private AC cab" addLabel="Add inclusion"
               errors={Object.fromEntries(form.inclusions.map((_, i) => [i, err(`inclusions.${i}`)]))} />
           </SectionCard>
 
-          <SectionCard n={8} title="Exclusions" count={form.exclusions.length}>
+          <SectionCard n={8} title="Exclusions" {...sec("exclusions")} count={form.exclusions.length}>
             <StringList items={form.exclusions} onChange={(v) => set("exclusions", v)} placeholder="Meals" addLabel="Add exclusion"
               errors={Object.fromEntries(form.exclusions.map((_, i) => [i, err(`exclusions.${i}`)]))} />
           </SectionCard>
 
-          <SectionCard n={9} title="Important notes" count={form.important_notes.length}>
+          <SectionCard n={9} title="Important notes" {...sec("notes")} count={form.important_notes.length}>
             <StringList multiline items={form.important_notes} onChange={(v) => set("important_notes", v)} placeholder="Carry valid government ID proof." addLabel="Add note"
               errors={Object.fromEntries(form.important_notes.map((_, i) => [i, err(`important_notes.${i}`)]))} />
           </SectionCard>
@@ -894,6 +1134,7 @@ export default function TourPackageForm() {
           <SectionCard
             n={10}
             title="FAQs"
+            {...sec("faqs")}
             count={form.faqs.length}
             action={<Button type="button" size="sm" variant="outline" icon={Plus} onClick={() => addRow("faqs", { _k: newKey(), question: "", answer: "" })}>Add FAQ</Button>}
           >
@@ -921,6 +1162,7 @@ export default function TourPackageForm() {
           <SectionCard
             n={11}
             title="Vehicle options"
+            {...sec("vehicles")}
             count={form.vehicle_options.length}
             action={
               <Button type="button" size="sm" variant="outline" icon={Plus}
@@ -930,6 +1172,7 @@ export default function TourPackageForm() {
             }
           >
             {form.vehicle_options.length === 0 && <p className="text-sm text-slate-500">Add at least one vehicle so customers can book. The lowest active price shows as “starting from”.</p>}
+            {form.vehicle_options.length > 1 && <p className="mb-3 text-xs text-slate-500">The order here (use ▲ ▼) is exactly the order customers see on the tour page, selection page and summary.</p>}
             <div className="space-y-4">
               {form.vehicle_options.map((v, i) => {
                 const open = !collapsed[v._k];
@@ -959,17 +1202,15 @@ export default function TourPackageForm() {
                           {F({ name: `vehicles.${i}.price`, label: "Package price (₹)", required: true, children: (
                             <Input inputMode="decimal" value={v.price} onChange={(e) => setRow("vehicle_options", i, { price: e.target.value })} placeholder="9999" />
                           ) })}
-                          {F({ name: `vehicles.${i}.sortOrder`, label: "Sort order", children: (
-                            <Input inputMode="numeric" value={v.sortOrder} onChange={(e) => setRow("vehicle_options", i, { sortOrder: e.target.value.replace(/[^\d-]/g, "") })} />
-                          ) })}
                           <Toggle checked={v.ac} onChange={(val) => setRow("vehicle_options", i, { ac: val })} label="Air conditioned" />
                           <Toggle checked={v.isActive} onChange={(val) => setRow("vehicle_options", i, { isActive: val })} label="Active" />
                         </div>
                         <SingleImage
-                          label="Image"
+                          label="Vehicle photo"
+                          spec={IMG_SPECS.vehicle}
                           path={v.image}
                           file={rowFiles[v._k]}
-                          onError={toast.error}
+                          toast={toast}
                           onPick={(f) => setFile(v._k, f)}
                           onRemove={() => { setFile(v._k, undefined); setRow("vehicle_options", i, { image: null }); }}
                         />
@@ -984,59 +1225,99 @@ export default function TourPackageForm() {
           <SectionCard
             n={12}
             title="Hotel options"
+            {...sec("hotels")}
             count={form.hotel_options.length}
             action={
-              <Button type="button" size="sm" variant="outline" icon={Plus}
-                onClick={() => addRow("hotel_options", { _k: newKey(), hotel: "", name: "", location: "", images: [], priceOverride: "", nights: form.nights > 0 ? form.nights : 1, sortOrder: form.hotel_options.length + 1, isActive: true })}>
-                Add hotel
-              </Button>
+              <>
+                <Select
+                  className="!h-8 w-52 text-sm"
+                  value=""
+                  onChange={(e) => addMasterHotel(e.target.value)}
+                  placeholder="+ Add from master hotels"
+                  options={masterHotels
+                    .filter((m) => m.is_active && !form.hotel_options.some((h) => String(h.hotel) === String(m.id)))
+                    .map((m) => ({ value: String(m.id), label: `${m.name}${m.location ? `, ${m.location}` : ""}` }))}
+                />
+                <Button type="button" size="sm" variant="outline" icon={Plus}
+                  onClick={() => addRow("hotel_options", { _k: newKey(), hotel: "", name: "", location: "", images: [], masterPrice: null, priceOverride: "", nights: form.nights > 0 ? form.nights : 1, sortOrder: form.hotel_options.length + 1, isActive: true })}>
+                  Custom hotel
+                </Button>
+              </>
             }
           >
-            {form.hotel_options.length === 0 && <p className="text-sm text-slate-500">Optional stays customers can add to the package.</p>}
+            {form.hotel_options.length === 0 && (
+              <p className="text-sm text-slate-500">
+                Optional stays customers can add to the package. Pick hotels from the master list — <Link to="/tour-hotels/new" className="font-medium text-brand-600 underline">add a new master hotel</Link>.
+              </p>
+            )}
             <div className="space-y-4">
               {form.hotel_options.map((h, i) => {
                 const open = !collapsed[h._k];
+                const master = h.hotel ? masterHotels.find((m) => String(m.id) === String(h.hotel)) : null;
                 const newFiles = Array.isArray(rowFiles[h._k]) ? rowFiles[h._k] : [];
                 const hasErr = Object.keys(errors).some((k) => k.startsWith(`hotels.${i}.`));
+                const photoCount = master ? (master.images?.length || 0) : h.images.length + newFiles.length;
                 return (
                   <div key={h._k} className={cx("rounded-lg border", h.isActive ? "border-stone-200" : "border-dashed border-stone-300 opacity-80")}>
                     <div className="flex items-center gap-2 border-b border-stone-200 bg-stone-50 px-3 py-2">
                       <button type="button" onClick={() => toggle(h._k)} className="flex min-w-0 flex-1 items-center gap-2 text-left" aria-expanded={open}>
                         {open ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
                         <span className="font-medium">Hotel #{i + 1}</span>
-                        <span className="truncate text-sm text-slate-500">{h.name}{h.location ? `, ${h.location}` : ""} · {h.images.length + newFiles.length} photos{!h.isActive ? " · inactive" : ""}</span>
+                        <span className="truncate text-sm text-slate-500">{(master?.name || h.name)}{(master?.location || h.location) ? `, ${master?.location || h.location}` : ""} · {photoCount} photos{master ? " · master" : ""}{!h.isActive ? " · inactive" : ""}</span>
                         {hasErr && <span className="text-xs text-red-600">has errors</span>}
                       </button>
                       <RowTools index={i} total={form.hotel_options.length} onMove={moveRow("hotel_options")} onRemove={() => removeRow("hotel_options", i)} removeLabel="Remove hotel" />
                     </div>
-                    {open && (
+                    {open && master && (
                       <div className="space-y-4 p-4">
+                        <div className="flex flex-wrap items-center gap-3 rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">
+                          <span className="min-w-0 flex-1">
+                            From master data — name, location and photos update everywhere when you edit the hotel.
+                          </span>
+                          <Link to={`/tour-hotels/${master.id}`} className="inline-flex items-center gap-1 font-medium underline"><ExternalLink className="size-3.5" /> Edit hotel</Link>
+                        </div>
+                        {master.images?.length > 0 && (
+                          <div className="flex gap-2 overflow-x-auto">
+                            {master.images.slice(0, 6).map((src) => (
+                              <img key={src} src={imgSrc(src)} alt="" className="h-14 w-20 shrink-0 rounded object-cover" loading="lazy" />
+                            ))}
+                          </div>
+                        )}
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {F({ name: `hotels.${i}.hotel`, label: "Hotel ID", hint: "Optional reference to your hotel records", children: (
-                            <Input inputMode="numeric" value={h.hotel} onChange={(e) => setRow("hotel_options", i, { hotel: e.target.value.replace(/\D/g, "") })} />
+                          {F({ name: `hotels.${i}.nights`, label: "Nights", required: true, children: (
+                            <Input inputMode="numeric" value={h.nights} onChange={(e) => setRow("hotel_options", i, { nights: e.target.value.replace(/\D/g, "") })} />
                           ) })}
+                          {F({ name: `hotels.${i}.priceOverride`, label: "Price for this tour (₹)", hint: master.price_per_night !== null && master.price_per_night !== undefined ? `Empty = master price ₹${master.price_per_night}` : "Empty = “On request”", children: (
+                            <Input inputMode="decimal" value={h.priceOverride} onChange={(e) => setRow("hotel_options", i, { priceOverride: e.target.value })} />
+                          ) })}
+                        </div>
+                        <Toggle checked={h.isActive} onChange={(val) => setRow("hotel_options", i, { isActive: val })} label="Active" />
+                      </div>
+                    )}
+                    {open && !master && (
+                      <div className="space-y-4 p-4">
+                        {h.hotel && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">This hotel was removed from the master list. This tour keeps its saved copy.</p>}
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                           {F({ name: `hotels.${i}.name`, label: "Name", required: true, children: (
                             <Input value={h.name} onChange={(e) => setRow("hotel_options", i, { name: e.target.value })} placeholder="Hotel Brijwasi Royal" />
                           ) })}
                           <Field label="Location"><Input value={h.location} onChange={(e) => setRow("hotel_options", i, { location: e.target.value })} placeholder="Mathura" /></Field>
-                          {F({ name: `hotels.${i}.priceOverride`, label: "Price override (₹)", hint: "Empty = default hotel price", children: (
+                          {F({ name: `hotels.${i}.priceOverride`, label: "Price (₹)", hint: "Empty = On request", children: (
                             <Input inputMode="decimal" value={h.priceOverride} onChange={(e) => setRow("hotel_options", i, { priceOverride: e.target.value })} />
                           ) })}
                           {F({ name: `hotels.${i}.nights`, label: "Nights", required: true, children: (
                             <Input inputMode="numeric" value={h.nights} onChange={(e) => setRow("hotel_options", i, { nights: e.target.value.replace(/\D/g, "") })} />
-                          ) })}
-                          {F({ name: `hotels.${i}.sortOrder`, label: "Sort order", children: (
-                            <Input inputMode="numeric" value={h.sortOrder} onChange={(e) => setRow("hotel_options", i, { sortOrder: e.target.value.replace(/[^\d-]/g, "") })} />
                           ) })}
                         </div>
                         <Toggle checked={h.isActive} onChange={(val) => setRow("hotel_options", i, { isActive: val })} label="Active" />
                         <div data-invalid={err(`hotels.${i}.images`) ? "true" : undefined}>
                           <MultiImage
                             label="Photos"
+                            spec={IMG_SPECS.hotel}
                             hint="4–5 photos work best. First photo is the main one; use ‹ › to reorder saved photos."
                             paths={h.images}
                             files={newFiles}
-                            onError={toast.error}
+                            toast={toast}
                             onPaths={(paths) => setRow("hotel_options", i, { images: paths })}
                             onFiles={(files) => setFile(h._k, files)}
                           />
@@ -1050,7 +1331,7 @@ export default function TourPackageForm() {
             </div>
           </SectionCard>
 
-          <SectionCard n={13} title="SEO">
+          <SectionCard n={13} title="SEO" {...sec("seo")}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="SEO title" hint={`${form.seo.title.length}/60`} className="sm:col-span-2">
                 <Input value={form.seo.title} onChange={(e) => setSeo("title", e.target.value)} placeholder={form.title} />
@@ -1071,32 +1352,58 @@ export default function TourPackageForm() {
 
         {/* ================= sidebar ================= */}
         <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-          <Card title="Cover image">
+          <SectionCard title="Cover image" {...sec("cover")} thumb={coverBlob || imgSrc(form.cover_image)}>
             <SingleImage
               label="Shown on listing cards and the page header"
+              spec={IMG_SPECS.cover}
               path={form.cover_image}
               file={coverFile}
-              onError={toast.error}
+              toast={toast}
               onPick={setCoverFile}
               onRemove={() => { setCoverFile(null); set("cover_image", null); }}
             />
-          </Card>
+          </SectionCard>
 
-          <Card title={`Gallery (${form.gallery.length + galleryFiles.length})`}>
+          <SectionCard title={`Gallery (${form.gallery.length + galleryFiles.length})`} {...sec("gallery")}>
             <MultiImage
               paths={form.gallery}
               files={galleryFiles}
-              onError={toast.error}
+              spec={IMG_SPECS.gallery}
+              toast={toast}
               onPaths={(p) => set("gallery", p)}
               onFiles={setGalleryFiles}
               hint="New photos are added after saved ones."
             />
+          </SectionCard>
+
+          <Card title="Status & visibility">
+            <div className="space-y-4">
+              <Field label="Status" hint="Duplicate = hidden draft. Set Live or New when the copy is ready.">
+                <Select value={form.status} onChange={(e) => setStatus(e.target.value)} options={STATUS_OPTIONS} />
+              </Field>
+              <Toggle checked={form.is_active} disabled={form.status === "duplicate"} onChange={(v) => set("is_active", v)} label="Active (visible on website)" />
+              <Toggle checked={form.is_featured} onChange={(v) => set("is_featured", v)} label="Featured" />
+              {id && (
+                <Button type="button" variant="outline" size="sm" icon={Wand2} loading={busyAction === "tpl"} onClick={useAsTemplate}>
+                  Use as default for new tours
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          <Card title="Booking rules">
+            <div className="space-y-4">
+              {F({ name: "daily_booking_limit", label: "Bookings allowed per day", hint: "0 = unlimited. When a date is full it shows Sold Out.", children: (
+                <Input inputMode="numeric" value={form.daily_booking_limit} onChange={(e) => set("daily_booking_limit", e.target.value.replace(/\D/g, ""))} />
+              ) })}
+              {F({ name: "min_advance_hours", label: "Minimum advance booking (hours)", hint: "0 = same-day booking allowed. e.g. 24 = pickup must be a day away.", children: (
+                <Input inputMode="numeric" value={form.min_advance_hours} onChange={(e) => set("min_advance_hours", e.target.value.replace(/\D/g, ""))} />
+              ) })}
+            </div>
           </Card>
 
           <Card title="Settings">
             <div className="space-y-4">
-              <Toggle checked={form.is_active} onChange={(v) => set("is_active", v)} label="Active (visible on website)" />
-              <Toggle checked={form.is_featured} onChange={(v) => set("is_featured", v)} label="Featured" />
               <Toggle checked={form.hotel_optional} onChange={(v) => set("hotel_optional", v)} label="Hotel is optional" />
               {F({ name: "booking_charge_percent", label: "Booking charge (%)", hint: "Advance paid online to confirm", children: (
                 <Input inputMode="decimal" value={form.booking_charge_percent} onChange={(e) => set("booking_charge_percent", e.target.value)} />
@@ -1109,7 +1416,7 @@ export default function TourPackageForm() {
                   <Input inputMode="numeric" value={form.review_count} onChange={(e) => set("review_count", e.target.value.replace(/\D/g, ""))} />
                 ) })}
               </div>
-              {F({ name: "sort_order", label: "Sort order", hint: "Lower shows first", children: (
+              {F({ name: "sort_order", label: "Website order", hint: "Lower shows first. Easier: use “Arrange order” on the tour list.", children: (
                 <Input inputMode="numeric" value={form.sort_order} onChange={(e) => set("sort_order", e.target.value.replace(/[^\d-]/g, ""))} />
               ) })}
             </div>

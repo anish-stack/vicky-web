@@ -20,6 +20,16 @@ function getTemplateBody(templateName, data = {}) {
                 8: String(data.advance_amount ?? data.advanceAmount ?? 0),
                 9: String(data.balance_amount ?? data.balanceAmount ?? 0)
             };
+
+        case "tour_package_alert_admin":
+            return {
+                1: String(data.admin || "Admin"),
+                2: String(data.booking_ref || "NA"),
+                3: String(data.customer_name || "NA"),
+                4: String(data.customer_mobile || "NA"),
+                5: String(data.trip_booked || "NA"),
+                6: String(data.amount_paid ?? "NA"),
+            };
         case "tour_package_driver":
             return {
                 1: String(data.name || "Customer"),
@@ -65,6 +75,11 @@ exports.sendWhatsappTemplate = async (data) => {
     }
 };
 
+// ---------------------------------------------------------------------------
+// Tour package helpers (all via MyOperator)
+// ---------------------------------------------------------------------------
+
+/** Customer: booking confirmation. */
 exports.sendTourPackageBooking = (phone, booking) => exports.sendWhatsappTemplate({
     templateName: "tour_package_book",
     number: phone || booking?.mobile,
@@ -75,44 +90,63 @@ exports.sendTourPackageBooking = (phone, booking) => exports.sendWhatsappTemplat
     pickup_address: booking?.pickup_address,
     pickup_time: booking?.pickup_date && booking?.pickup_time
         ? `${booking.pickup_date} at ${booking.pickup_time}`
-        : booking?.pickup_date || booking?.pickup_time || "NA", vehicle_label: booking?.vehicle_label,
+        : booking?.pickup_date || booking?.pickup_time || "NA",
+    vehicle_label: booking?.vehicle_label,
     total_amount: booking?.total_amount,
     advance_amount: booking?.advance_amount,
     balance_amount: booking?.balance_amount
 });
 
-exports.sendTourPackageDriver = (
-    phone,
-    booking,
-    driver = {}
-) =>
+/**
+ * Admin: new confirmed + paid booking alert.
+ * Numbers come from TOUR_ADMIN_WHATSAPP (comma separated, 10 digit); one message per number.
+ * Template vars: 1 admin name, 2 booking id, 3 customer name, 4 customer mobile,
+ *                5 trip booked (tour + vehicle + pickup), 6 amount paid.
+ */
+exports.sendTourPackageAdmin = async (booking) => {
+    const numbers = String(process.env.TOUR_ADMIN_WHATSAPP || "")
+        .split(",")
+        .map((n) => n.replace(/\D/g, "").slice(-10))
+        .filter((n) => /^[6-9]\d{9}$/.test(n));
+
+    if (!numbers.length) {
+        console.error("TOUR_ADMIN_WHATSAPP is empty - admin tour alert skipped");
+        return null;
+    }
+
+    const when = booking?.pickup_date && booking?.pickup_time
+        ? `${booking.pickup_date} at ${booking.pickup_time}`
+        : booking?.pickup_date || booking?.pickup_time || "";
+    const trip = [booking?.tour_title, booking?.vehicle_label, when].filter(Boolean).join(" | ");
+
+    const results = await Promise.all(
+        numbers.map((number) =>
+            exports.sendWhatsappTemplate({
+                templateName: "tour_package_alert_admin",
+                number,
+                id: booking?.id,
+                admin: process.env.TOUR_ADMIN_NAME || "Admin",
+                booking_ref: booking?.booking_ref,
+                customer_name: booking?.name,
+                customer_mobile: booking?.mobile,
+                trip_booked: trip || "NA",
+                amount_paid: `Rs ${booking?.advance_amount ?? 0}`,
+            })
+        )
+    );
+    return results.some(Boolean) ? results : null;
+};
+
+/** Customer: driver + vehicle details. */
+exports.sendTourPackageDriver = (phone, booking, driver = {}) =>
     exports.sendWhatsappTemplate({
         templateName: "tour_package_driver",
         number: phone || booking?.mobile,
         id: booking?.id,
-
         name: booking?.name,
         booking_ref: booking?.booking_ref,
-
-        driver_name:
-            driver?.driver_name ||
-            driver?.name ||
-            "NA",
-
-        driver_mobile:
-            driver?.driver_mobile ||
-            driver?.mobile ||
-            "NA",
-
-        vehicle_number:
-            driver?.vehicle_number ||
-            driver?.vehicleNumber ||
-            "NA",
-
-        vehicle_label:
-            driver?.vehicle_label ||
-            driver?.vehicle_name ||
-            driver?.vehicle ||
-            booking?.vehicle_label ||
-            "NA",
+        driver_name: driver?.driver_name || driver?.name || "NA",
+        driver_mobile: driver?.driver_mobile || driver?.mobile || "NA",
+        vehicle_number: driver?.vehicle_number || driver?.vehicleNumber || "NA",
+        vehicle_label: driver?.vehicle_label || driver?.vehicle_name || driver?.vehicle || booking?.vehicle_label || "NA",
     });

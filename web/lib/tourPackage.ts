@@ -2,8 +2,25 @@
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "https://webapi.taxisafar.com").replace(/\/+$/, "");
 export const FALLBACK_IMG = "/images/tour-placeholder.jpg";
-export const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919999999999"; // 91XXXXXXXXXX
-export const CALL_NUMBER = process.env.NEXT_PUBLIC_CALL_NUMBER || "+919999999999";
+export const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "919412222722"; // 91XXXXXXXXXX
+export const CALL_NUMBER = process.env.NEXT_PUBLIC_CALL_NUMBER || "+919412222722";
+
+/** Social profiles shown on the tour pages (same as the site footer). */
+export const SOCIAL_LINKS = [
+  { key: "facebook", label: "Facebook", icon: "fa-brands fa-facebook-f", href: process.env.NEXT_PUBLIC_FACEBOOK_URL || "https://www.facebook.com/Taxisafar22", color: "#1877f2" },
+  { key: "youtube", label: "YouTube", icon: "fa-brands fa-youtube", href: process.env.NEXT_PUBLIC_YOUTUBE_URL || "https://www.youtube.com/@taxisafar_com", color: "#ff0000" },
+  { key: "instagram", label: "Instagram", icon: "fa-brands fa-instagram", href: process.env.NEXT_PUBLIC_INSTAGRAM_URL || "https://www.instagram.com/taxisafar_/", color: "#e1306c" },
+  { key: "whatsapp", label: "WhatsApp", icon: "fa-brands fa-whatsapp", href: `https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, "")}`, color: "#25d366" },
+] as const;
+
+/** Any uploaded-file URL is served from the API origin (fixes http://, old hosts). */
+export const fixUploadUrl = (u?: string | null): string | null => {
+  if (!u || typeof u !== "string") return null;
+  const m = u.match(/^(?:https?:)?\/\/[^/]+(\/uploads\/.*)$/i);
+  if (m) return `${API_URL}${m[1]}`;
+  if (u.startsWith("/uploads/")) return `${API_URL}${u}`;
+  return u;
+};
 
 export type Highlight = { icon?: string; title?: string; subtitle?: string };
 export type ItineraryItem = { title?: string; description?: string };
@@ -69,6 +86,9 @@ export type TourPackage = {
   rating: number;
   review_count: number;
   startingPrice: number;
+  daily_booking_limit: number;
+  min_advance_hours: number;
+  status: "live" | "new" | "duplicate";
   seo: Seo;
 };
 
@@ -104,8 +124,8 @@ export function normalizeTour(raw: any): TourPackage {
     slug: raw?.slug || "",
     from_city_name: raw?.from_city_name || "",
     to_city_name: raw?.to_city_name || "",
-    cover_image: raw?.cover_image || null,
-    gallery: arr<string>(raw?.gallery).filter(Boolean),
+    cover_image: fixUploadUrl(raw?.cover_image),
+    gallery: arr<string>(raw?.gallery).map((g) => fixUploadUrl(g)).filter(Boolean) as string[],
     days: num(raw?.days, 1),
     nights: num(raw?.nights, 0),
     duration_label: raw?.duration_label || null,
@@ -114,14 +134,15 @@ export function normalizeTour(raw: any): TourPackage {
     description: raw?.description || "",
     highlights: arr<Highlight>(raw?.highlights),
     hotel_optional: bool(raw?.hotel_optional, true),
-    itinerary: arr<ItineraryDay>(raw?.itinerary).map((d) => ({ ...d, items: arr<ItineraryItem>(d?.items) })),
-    places_covered: arr<Place>(raw?.places_covered),
+    itinerary: arr<ItineraryDay>(raw?.itinerary).map((d) => ({ ...d, image: fixUploadUrl(d?.image), items: arr<ItineraryItem>(d?.items) })),
+    places_covered: arr<Place>(raw?.places_covered).map((p) => ({ ...p, image: fixUploadUrl(p?.image) })),
     inclusions: arr<string>(raw?.inclusions).filter(Boolean),
     exclusions: arr<string>(raw?.exclusions).filter(Boolean),
     important_notes: arr<string>(raw?.important_notes).filter(Boolean),
     faqs: arr<Faq>(raw?.faqs).filter((f) => f?.question),
     vehicle_options: arr<any>(raw?.vehicle_options).map((v) => ({
       ...v,
+      image: fixUploadUrl(v?.image),
       label: v?.label || "Vehicle",
       price: num(v?.price),
       ac: v?.ac !== false,
@@ -131,7 +152,7 @@ export function normalizeTour(raw: any): TourPackage {
     hotel_options: arr<any>(raw?.hotel_options).map((h) => ({
       ...h,
       name: h?.name || "Hotel",
-      images: arr<string>(h?.images).filter(Boolean),
+      images: arr<string>(h?.images).map((i) => fixUploadUrl(i)).filter(Boolean) as string[],
       priceOverride: h?.priceOverride === null || h?.priceOverride === undefined || h?.priceOverride === "" ? null : num(h.priceOverride),
       nights: Math.max(num(h?.nights, 1), 1),
       isActive: h?.isActive !== false,
@@ -141,6 +162,9 @@ export function normalizeTour(raw: any): TourPackage {
     rating: num(raw?.rating, 0),
     review_count: num(raw?.review_count, 0),
     startingPrice: num(raw?.startingPrice, 0),
+    daily_booking_limit: Math.max(num(raw?.daily_booking_limit, 0), 0),
+    min_advance_hours: Math.max(num(raw?.min_advance_hours, 0), 0),
+    status: raw?.status === "new" ? "new" : raw?.status === "duplicate" ? "duplicate" : "live",
     seo: seo && typeof seo === "object" && !Array.isArray(seo) ? (seo as Seo) : {},
   };
 }
@@ -176,18 +200,19 @@ export async function getTourBySlug(slug: string): Promise<TourPackage | null> {
 export type IndexedVehicle = VehicleOption & { idx: number };
 export type IndexedHotel = HotelOption & { idx: number };
 
-/** Active vehicles, sorted. `idx` is the position in the original JSON array (stable id for URLs). */
+/**
+ * Active vehicles in EXACTLY the order the admin arranged them (array order).
+ * `idx` is the position in the original JSON array (stable id for URLs).
+ * (sortOrder is no longer used for display: old records could hold stale numbers.)
+ */
 export const activeVehicles = (t: TourPackage): IndexedVehicle[] =>
-  t.vehicle_options
-    .map((v, idx) => ({ ...v, idx }))
-    .filter((v) => v.isActive !== false)
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  t.vehicle_options.map((v, idx) => ({ ...v, idx })).filter((v) => v.isActive !== false);
 
 export const activeHotels = (t: TourPackage): IndexedHotel[] =>
-  t.hotel_options
-    .map((h, idx) => ({ ...h, idx }))
-    .filter((h) => h.isActive !== false)
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  t.hotel_options.map((h, idx) => ({ ...h, idx })).filter((h) => h.isActive !== false);
+
+/** Small subtitle shown under every vehicle name. */
+export const SIMILAR_TAXI_TEXT = "Any other similar taxi";
 
 export const startingPrice = (t: TourPackage) => {
   if (t.startingPrice > 0) return t.startingPrice;
@@ -304,7 +329,7 @@ export type TourBooking = {
   booking_charge_percent: number;
   advance_amount: number;
   balance_amount: number;
-  payment_status: "pending" | "paid" | "failed" | "refunded";
+  payment_status: "pending" | "partial" | "paid" | "failed" | "refunded";
   booking_status: "pending" | "confirmed" | "cancelled" | "completed";
   created_at: string;
 };
@@ -316,7 +341,11 @@ async function postJSON(path: string, body: unknown) {
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok || json?.status === false) throw new Error(json?.message || "Something went wrong");
+  if (!res.ok || json?.status === false) {
+    const err: any = new Error(json?.message || "Something went wrong");
+    err.code = json?.code;
+    throw err;
+  }
   return json;
 }
 
@@ -363,6 +392,25 @@ export const verifyTourBookingPayment = (data: {
   razorpay_payment_id: string;
   razorpay_signature: string;
 }) => postJSON("/api/tour-booking/verify-payment", data) as Promise<{ status: true; data: { booking_id: number; booking_ref: string } }>;
+
+export type TourAvailability = {
+  limit: number;
+  min_advance_hours: number;
+  earliest_date: string;
+  earliest_time: string;
+  sold_out: string[];
+};
+
+export async function getTourAvailability(tourId: number, days = 120): Promise<TourAvailability | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/tour-booking/availability?tour_package_id=${tourId}&days=${days}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data || null;
+  } catch {
+    return null;
+  }
+}
 
 export async function getTourBookingByRef(ref: string): Promise<TourBooking | null> {
   try {

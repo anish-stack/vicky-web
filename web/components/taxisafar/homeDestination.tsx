@@ -68,15 +68,14 @@ function TourCard({ tour }: { tour: TourPackage }) {
   const price = priceOf(tour);
   const rating = Number(tour.rating) || 0;
   const href = DETAIL_PATH(tour.slug);
-
+  console.log(tour)
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-lg">
       <a href={href} className="block overflow-hidden">
         <img
-          src={tour.cover_image || FALLBACK_IMG}
+          src={tour?.cover_image}
           alt={tour.title}
           loading="lazy"
-          onError={(e) => ((e.currentTarget as HTMLImageElement).src = FALLBACK_IMG)}
           className="aspect-[16/10] w-full object-cover transition-transform duration-500 hover:scale-105"
         />
       </a>

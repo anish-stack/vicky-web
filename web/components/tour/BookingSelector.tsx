@@ -12,6 +12,7 @@ import {
   activeVehicles,
   hotelTotal,
   inr,
+  SIMILAR_TAXI_TEXT,
   selectionQuery,
 } from "@/lib/tourPackage";
 
@@ -46,29 +47,17 @@ function Stepper({ value, min, max, onChange, label }: { value: number; min: num
   );
 }
 
-function Radio({ checked }: { checked: boolean }) {
-  return (
-    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${checked ? "border-red-600" : "border-slate-300"}`}>
-      {checked && <span className="h-2.5 w-2.5 rounded-full bg-red-600" />}
-    </span>
-  );
-}
-
 export default function BookingSelector({ tour, initial }: { tour: TourPackage; initial: Selection }) {
   const router = useRouter();
   const vehicles = useMemo(() => activeVehicles(tour), [tour]);
   const hotels = useMemo(() => activeHotels(tour), [tour]);
-
-  const [sel, setSel] = useState<Selection>(() => ({
-    ...initial,
-    v: vehicles.some((v) => v.idx === initial.v) ? initial.v : null,
-    h:
-      initial.h === "none" && tour.hotel_optional
-        ? "none"
-        : hotels.some((h) => h.idx === initial.h)
-          ? initial.h
-          : null,
-  }));
+const [sel, setSel] = useState<Selection>(() => ({
+  ...initial,
+  v: vehicles.some((v) => v.idx === initial.v)
+    ? initial.v
+    : null,
+  h: "none",
+}));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hotelPhoto, setHotelPhoto] = useState<Record<number, number>>({});
 
@@ -87,12 +76,6 @@ export default function BookingSelector({ tour, initial }: { tour: TourPackage; 
   };
 
 const submit = () => {
-  console.log("========== SUBMIT START ==========");
-  console.log("Current selection:", sel);
-  console.log("Selected vehicle:", vehicle);
-  console.log("Selected hotel:", hotel);
-  console.log("Hotels exist:", hotelsExist);
-  console.log("Hotel optional:", tour.hotel_optional);
 
   const e: Record<string, string> = {};
 
@@ -100,20 +83,16 @@ const submit = () => {
     e.v = "Please select a vehicle";
   }
 
-  if (hotelsExist && sel.h === null) {
-    e.h = tour.hotel_optional
-      ? "Select a hotel or choose No Hotel Required"
-      : "Please select a hotel";
-  }
-
-  console.log("Validation errors:", e);
+  // if (hotelsExist && sel.h === null) {
+  //   e.h = tour.hotel_optional
+  //     ? "Select a hotel or choose No Hotel Required"
+  //     : "Please select a hotel";
+  // }
 
   setErrors(e);
 
   if (Object.keys(e).length) {
     const first = ["v", "h"].find((k) => e[k]);
-
-    console.log("First error field:", first);
 
     document
       .getElementById(`sec-${first}`)
@@ -121,8 +100,6 @@ const submit = () => {
         behavior: "smooth",
         block: "start",
       });
-
-    console.log("========== SUBMIT STOPPED ==========");
     return;
   }
 
@@ -132,16 +109,9 @@ const submit = () => {
     r: hotel ? sel.r : 1,
   };
 
-  console.log("Final selection:", final);
-
   const query = selectionQuery(final);
 
-  console.log("Generated query:", query);
-
   const url = `/tour/${tour.slug}/summary?${query}`;
-
-  console.log("Redirect URL:", url);
-  console.log("========== SUBMIT SUCCESS ==========");
 
   router.push(url);
 };
@@ -179,10 +149,10 @@ const submit = () => {
                         onClick={() => set({ v: v.idx })}
                         className={`flex w-full items-center gap-2.5 rounded-xl  p-2.5 text-left transition-colors sm:gap-4 sm:p-3 ${on ? "border-red-600 bg-red-50/40" : "border-slate-200 bg-white hover:border-slate-300"}`}
                       >
-                        <Radio checked={on} />
-                        <img src={v.image || FALLBACK_IMG} alt="" loading="lazy" className="h-11 w-16 shrink-0 rounded-md bg-slate-50 object-contain sm:h-16 sm:w-28" />
+                        <img src={v.image || FALLBACK_IMG} alt="" loading="lazy" className="h-16 w-24 shrink-0 rounded-md bg-slate-50 object-contain sm:h-24 sm:w-36" />
                         <div className="min-w-0 flex-1">
                           <p className="m-0 text-[14px] font-bold leading-tight text-slate-900 sm:text-[16px]">{v.label}</p>
+                          <p className="m-0 text-[10.5px] leading-tight text-slate-500 sm:text-[11.5px]">{SIMILAR_TAXI_TEXT}</p>
                           <p className="m-0 mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11.5px] text-slate-600 sm:text-[13px]">
                             {v.seats && <span><i className="fa-solid fa-user mr-1 text-slate-400" />{v.seats}</span>}
                             {v.suitcases && <span><i className="fa-solid fa-suitcase mr-1 text-slate-400" />{v.suitcases}</span>}
@@ -215,18 +185,15 @@ const submit = () => {
                     const photos = h.images.length ? h.images : [FALLBACK_IMG];
                     const pi = Math.min(hotelPhoto[h.idx] || 0, photos.length - 1);
                     return (
-                      <div key={h.idx} className={`rounded-xl border-2 p-2.5 transition-colors sm:p-3 ${on ? "border-red-600 bg-red-50/40" : "border-slate-200 bg-white"}`}>
+                      <div key={h.idx} role="radio" aria-checked={on} onClick={() => set({ h: h.idx })} className={`cursor-pointer rounded-xl border-2 p-2.5 transition-colors sm:p-3 ${on ? "border-red-600 bg-red-50/40" : "border-slate-200 bg-white"}`}>
                         <div className="flex gap-2.5 sm:gap-4">
-                          <button type="button" role="radio" aria-checked={on} onClick={() => set({ h: h.idx })} className="mt-0.5 self-start" aria-label={`Select ${h.name}`}>
-                            <Radio checked={on} />
-                          </button>
-                          <div className="w-24 shrink-0 sm:w-36">
+                          <div className="w-32 shrink-0 sm:w-52">
                             <img src={photos[pi]} alt={h.name} loading="lazy" className="aspect-[4/3] w-full rounded-md object-cover" />
                             {photos.length > 1 && (
                               <div className="mt-1 overflow-hidden">
                                 <div className="-mb-6 flex gap-1 overflow-x-auto pb-6" style={NO_SB}>
                                   {photos.map((p, i) => (
-                                    <button key={i} type="button" onClick={() => setHotelPhoto((s) => ({ ...s, [h.idx]: i }))} className={`shrink-0 overflow-hidden rounded ${i === pi ? "ring-2 ring-red-500" : "opacity-70"}`} aria-label={`Photo ${i + 1}`}>
+                                    <button key={i} type="button" onClick={(e) => { e.stopPropagation(); setHotelPhoto((s) => ({ ...s, [h.idx]: i })); }} className={`shrink-0 overflow-hidden rounded ${i === pi ? "ring-2 ring-red-500" : "opacity-70"}`} aria-label={`Photo ${i + 1}`}>
                                       <img src={p} alt="" loading="lazy" className="h-6 w-8 object-cover sm:h-8 sm:w-10" />
                                     </button>
                                   ))}
@@ -250,7 +217,7 @@ const submit = () => {
                           </button>
                         </div>
                         {on && (
-                          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-2.5">
+                          <div onClick={(e) => e.stopPropagation()} className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-2.5">
                             <span className="flex items-center gap-2.5 text-[13px] font-semibold text-slate-700">
                               Rooms <Stepper value={sel.r} min={1} max={MAX_ROOMS} onChange={(r) => set({ r })} label="rooms" />
                             </span>
@@ -266,11 +233,14 @@ const submit = () => {
                     <button
                       type="button"
                       role="radio"
-                      aria-checked={sel.h === "none"}
+                  
                       onClick={() => set({ h: "none" })}
-                      className={`flex w-full items-center gap-2.5 rounded-xl border-2 p-2.5 text-left sm:p-3 ${sel.h === "none" ? "border-red-600 bg-red-50/40" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                     className={`... ${
+  sel.h === "none"
+    ? "border-red-600 bg-red-50/40"
+    : "border-slate-200 bg-white hover:border-slate-300"
+}`}
                     >
-                      <Radio checked={sel.h === "none"} />
                       <span className="text-[14px] font-semibold text-slate-900 sm:text-[15px]">No Hotel Required</span>
                       <span className="ml-auto text-[11.5px] text-slate-500 sm:text-[12px]">I&apos;ll arrange my own stay</span>
                     </button>

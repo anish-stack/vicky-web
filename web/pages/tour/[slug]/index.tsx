@@ -12,10 +12,13 @@ import {
   faIcon,
   getTourBySlug,
   inr,
+  SIMILAR_TAXI_TEXT,
   startingPrice,
   tripTypeText,
 } from "@/lib/tourPackage";
-import { CheckList, Stars } from "@/components/tour/TourBits";
+import { CheckList, SocialLinks, Stars } from "@/components/tour/TourBits";
+
+const FAQ_PREVIEW = 3;
 
 type Props = { tour: TourPackage };
 
@@ -60,8 +63,10 @@ function Acc({
     <details open={defaultOpen} className={`group rounded-xl border px-3 py-2.5 ${bg} [&_summary::-webkit-details-marker]:hidden`}>
       <summary className={`flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] font-semibold ${titleColor}`}>
         {title}
-        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/80 transition-transform group-open:rotate-45">
-          <i className="fa-solid fa-plus text-[10px] text-slate-600" />
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11.5px] font-semibold text-slate-700 ring-1 ring-slate-200">
+          <span className="group-open:hidden">View</span>
+          <span className="hidden group-open:inline">Hide</span>
+          <i className="fa-solid fa-chevron-down text-[9px] transition-transform group-open:rotate-180" />
         </span>
       </summary>
       <div className="mt-2.5">{children}</div>
@@ -247,9 +252,11 @@ function Lightbox({
   index,
   onClose,
   onIndex,
+  captions,
 }: {
   images: string[];
   index: number;
+  captions?: string[];
   onClose: () => void;
   onIndex: (i: number) => void;
 }) {
@@ -297,9 +304,15 @@ function Lightbox({
       >
         <img
           src={images[index]}
-          alt={`Gallery image ${index + 1}`}
+          alt={captions?.[index] || `Gallery image ${index + 1}`}
           className="max-h-[80vh] max-w-[90vw] rounded-xl object-contain shadow-2xl sm:max-h-[82vh] sm:max-w-[85vw] lg:max-h-[78vh] lg:max-w-[1100px]"
         />
+
+        {captions?.[index] && (
+          <p className="pointer-events-none absolute bottom-0 left-1/2 m-0 max-w-[90%] -translate-x-1/2 rounded-full bg-black/60 px-4 py-1.5 text-center text-[13px] font-semibold text-white backdrop-blur-sm sm:text-[14px]">
+            {captions[index]}
+          </p>
+        )}
 
         {images.length > 1 && (
           <>
@@ -333,12 +346,15 @@ function Lightbox({
 
 export default function TourDetailPage({ tour }: Props) {
   const [photo, setPhoto] = useState<number | null>(null);
+  const [showAllFaqs, setShowAllFaqs] = useState(false);
+  const [placePhoto, setPlacePhoto] = useState<number | null>(null);
 
   const from = startingPrice(tour);
   const bookHref = `/tour/${tour.slug}/book`;
   const vehicles = activeVehicles(tour);
   const hotels = activeHotels(tour);
   const photos = [tour.cover_image || FALLBACK_IMG, ...tour.gallery].filter(Boolean) as string[];
+  const placeImgs = tour.places_covered.filter((p) => p.image);
   const seoTitle = tour.seo.title || tour.title;
   const seoDesc = tour.seo.description || tour.short_description;
   const whatsapp = `https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi, I'd like details for the tour: ${tour.title}`)}`;
@@ -521,7 +537,7 @@ export default function TourDetailPage({ tour }: Props) {
                   <ol className="m-0 list-none space-y-2 p-0 sm:space-y-3">
                     {tour.itinerary.map((d, i) => (
                       <li key={i}>
-                        <details open={i === 0} className="group overflow-hidden rounded-xl border-[0.5px] border-slate-200 bg-white [&_summary::-webkit-details-marker]:hidden">
+                        <details open className="group overflow-hidden rounded-xl border-[0.5px] border-slate-200 bg-white [&_summary::-webkit-details-marker]:hidden">
                           <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-3 sm:p-4">
                             <div className="min-w-0">
                    
@@ -540,7 +556,7 @@ export default function TourDetailPage({ tour }: Props) {
                           <div className="border-t border-slate-100 p-3 sm:p-4">
                             <div className={`grid gap-3 sm:gap-4 ${d.image ? "md:grid-cols-[minmax(0,1fr)_240px]" : ""}`}>
                               {d.image && (
-                                <img src={d.image} alt={d.title || ""} loading="lazy" className="aspect-[16/9] w-full rounded-lg object-cover md:order-2 md:aspect-[3/4]" />
+                                <img src={d.image} alt={d.title || ""} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover md:order-2" />
                               )}
                               <div className="min-w-0 md:order-1">
                                 {d.summary && <p className="mb-2 mt-0 text-[13.5px] leading-relaxed text-slate-700 sm:mb-3 sm:text-[14px]">{d.summary}</p>}
@@ -572,18 +588,31 @@ export default function TourDetailPage({ tour }: Props) {
                 <Section id="places" title="Places We Cover" icon="fa-solid fa-place-of-worship">
                   <div className="-mx-3 overflow-hidden sm:mx-0 sm:overflow-visible">
                   <div className="no-sb -mb-6 flex gap-2.5 overflow-x-auto px-3 pb-6 sm:mb-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                    {tour.places_covered.map((p, i) => (
-                      <figure key={i} className="m-0 w-32 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white sm:w-auto">
-                        {p.image ? (
-                          <img src={p.image} alt={p.name || ""} loading="lazy" className="aspect-[4/3] w-full object-cover" />
-                        ) : (
-                          <div className="grid aspect-[4/3] w-full place-items-center bg-red-50 text-red-600">
-                            <i className={`${faIcon(p.icon)} text-[24px]`} />
-                          </div>
-                        )}
-                        <figcaption className="px-2 py-1.5 text-[12.5px] font-semibold leading-tight text-slate-800 sm:px-2.5 sm:py-2 sm:text-[13px]">{p.name}</figcaption>
-                      </figure>
-                    ))}
+                    {tour.places_covered.map((p, i) => {
+                      const li = placeImgs.findIndex((x) => x === p);
+                      return (
+                        <figure key={i} className="m-0 w-28 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white sm:w-auto">
+                          {p.image ? (
+                            <button
+                              type="button"
+                              onClick={() => setPlacePhoto(li)}
+                              aria-label={`View ${p.name || "photo"}`}
+                              className="group relative block w-full cursor-zoom-in bg-slate-100"
+                            >
+                              <img src={p.image} alt={p.name || ""} loading="lazy" className="block h-auto w-full" />
+                              <span className="absolute bottom-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-black/55 text-[10px] text-white opacity-90">
+                                <i className="fa-solid fa-expand" />
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="grid aspect-[4/3] w-full place-items-center bg-red-50 text-red-600">
+                              <i className={`${faIcon(p.icon)} text-[22px]`} />
+                            </div>
+                          )}
+                          <figcaption className="px-2 py-1 text-[11.5px] font-semibold leading-tight text-slate-800 sm:text-[12px]">{p.name}</figcaption>
+                        </figure>
+                      );
+                    })}
                   </div>
                   </div>
                 </Section>
@@ -644,7 +673,7 @@ export default function TourDetailPage({ tour }: Props) {
               {tour.faqs.length > 0 && (
                 <Section id="faqs" title="Frequently Asked Questions" icon="fa-regular fa-circle-question">
                   <div className="space-y-2 sm:space-y-2.5">
-                    {tour.faqs.map((f, i) => (
+                    {(showAllFaqs ? tour.faqs : tour.faqs.slice(0, FAQ_PREVIEW)).map((f, i) => (
                       <details key={i} className="group rounded-xl border border-slate-200 bg-white px-3 py-2.5 open:border-red-200 open:bg-red-50/30 sm:px-4 sm:py-3 [&_summary::-webkit-details-marker]:hidden">
                         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13.5px] font-semibold text-slate-900 sm:text-[15px]">
                           {f.question}
@@ -656,29 +685,53 @@ export default function TourDetailPage({ tour }: Props) {
                       </details>
                     ))}
                   </div>
+                  {!showAllFaqs && tour.faqs.length > FAQ_PREVIEW && (
+                    <div className="mt-3 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowAllFaqs(true)}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-5 py-2 text-[13.5px] font-semibold text-slate-800 hover:border-red-500 hover:text-red-600"
+                      >
+                        More <i className="fa-solid fa-chevron-down text-[10px]" />
+                      </button>
+                    </div>
+                  )}
                 </Section>
               )}
 
               {/* mobile / tablet booking card (after FAQs, not fixed) */}
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:hidden">
-                <div className="flex items-center justify-between gap-3 bg-gradient-to-br from-red-600 to-red-700 px-4 py-3 text-white">
-                  <div className="min-w-0">
-                    <p className="m-0 text-[11px] opacity-90">Starting from</p>
-                    <p className="m-0 text-[24px] font-extrabold leading-tight">{from ? inr(from) : "On request"}</p>
-                  </div>
-                  <p className="m-0 text-right text-[11.5px] leading-snug opacity-90">
-                    {tour.days}D / {tour.nights}N<br />{tripTypeText(tour)}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between gap-3 bg-white px-4 py-3 text-slate-900 sm:bg-gradient-to-br sm:from-red-600 sm:to-red-700 sm:text-white">
+  <div className="min-w-0">
+    <p className="m-0 text-[11px] text-slate-500 sm:text-white sm:opacity-90">
+      Starting from
+    </p>
+
+    <p className="m-0 text-[24px] font-extrabold leading-tight text-red-600 sm:text-white">
+      {from ? inr(from) : "On request"}
+    </p>
+  </div>
+
+  <p className="m-0 text-right text-[11.5px] leading-snug text-slate-500 sm:text-white sm:opacity-90">
+    {tour.days}D / {tour.nights}N
+    <br />
+    {tripTypeText(tour)}
+  </p>
+</div>
                 <div className="flex items-center gap-2 p-3">
                   <a href={whatsapp} target="_blank" rel="noreferrer" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-slate-300 text-green-600 no-underline" aria-label="Ask on WhatsApp">
                     <i className="fa-brands fa-whatsapp text-[20px]" />
                   </a>
                   <Link href={bookHref} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 text-[14px] font-semibold text-white no-underline hover:bg-red-700 hover:text-white">
-                    Select Vehicle &amp; Hotel <i className="fa-solid fa-arrow-right" />
+                   Continue Booking  <i className="fa-solid fa-arrow-right" />
                   </Link>
                 </div>
               </div>
+
+              {/* social */}
+              <section className="rounded-xl border border-slate-200 bg-white p-4 sm:rounded-2xl">
+                <SocialLinks title="Follow us & chat with us" />
+              </section>
             </div>
 
             {/* ================= booking sidebar (desktop) ================= */}
@@ -702,6 +755,7 @@ export default function TourDetailPage({ tour }: Props) {
                                 <img src={v.image || FALLBACK_IMG} alt="" loading="lazy" className="h-9 w-14 shrink-0 rounded bg-slate-50 object-contain" />
                                 <span className="min-w-0 flex-1">
                                   <span className="block text-[14px] font-semibold text-slate-900">{v.label}</span>
+                                  <span className="block text-[11px] leading-tight text-slate-500">{SIMILAR_TAXI_TEXT}</span>
                                   <span className="block truncate text-[12px] text-slate-500">{[v.seats, v.suitcases].filter(Boolean).join(" · ")}</span>
                                 </span>
                                 <span className="shrink-0 text-[14px] font-bold text-slate-900">{inr(v.price)}</span>
@@ -712,20 +766,47 @@ export default function TourDetailPage({ tour }: Props) {
                       </>
                     )}
 
-                    <Link href={bookHref} className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-[15px] font-semibold text-white no-underline hover:bg-red-700 hover:text-white">
-                      Select Vehicle &amp; Hotel <i className="fa-solid fa-arrow-right" />
-                    </Link>
-                    <a href={whatsapp} target="_blank" rel="noreferrer" className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-[14px] font-semibold text-slate-800 no-underline hover:border-green-500 hover:text-green-700">
-                      <i className="fa-brands fa-whatsapp text-[16px] text-green-600" /> Ask a question
-                    </a>
+                   <div className="space-y-2">
+  <Link
+    href={bookHref}
+    className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-[15px] font-semibold text-white no-underline hover:bg-red-700 hover:text-white"
+  >
+    <span>Continue Booking</span>
+    <i className="fa-solid fa-arrow-right" />
+  </Link>
 
-                    <ul className="m-0 mt-4 list-none space-y-2 border-t border-slate-100 p-0 pt-4 text-[13px] text-slate-600">
-                      <li><i className="fa-solid fa-check mr-2 text-green-600" />Pay only {tour.booking_charge_percent}% now to confirm</li>
-                      {hotels.length > 0 && <li><i className="fa-solid fa-check mr-2 text-green-600" />{hotels.length} hotel choices{tour.hotel_optional ? " (optional)" : ""}</li>}
-                      <li><i className="fa-solid fa-check mr-2 text-green-600" />Verified, experienced drivers</li>
-                    </ul>
+  <a
+    href={whatsapp}
+    target="_blank"
+    rel="noreferrer"
+    className="mt-2 flex items-center justify-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2.5 text-[14px] font-semibold text-green-700 no-underline hover:border-green-500 hover:bg-green-100 hover:text-green-800"
+  >
+    <i className="fa-brands fa-whatsapp text-[16px] text-green-600" />
+    Ask a question
+  </a>
+
+  <ul className="m-0 mt-4 list-none space-y-2 border-t border-slate-100 p-0 pt-4 text-[13px] text-slate-600">
+    <li>
+      <i className="fa-solid fa-check mr-2 text-green-600" />
+      Pay only {tour.booking_charge_percent}% now to confirm
+    </li>
+
+    {hotels.length > 0 && (
+      <li>
+        <i className="fa-solid fa-check mr-2 text-green-600" />
+        {hotels.length} hotel choices
+        {tour.hotel_optional ? " (optional)" : ""}
+      </li>
+    )}
+
+    <li>
+      <i className="fa-solid fa-check mr-2 text-green-600" />
+      Verified, experienced drivers
+    </li>
+  </ul>
+</div>
                   </div>
-                </div>
+                </div>  
               </div>
             </aside>
           </div>
@@ -733,6 +814,15 @@ export default function TourDetailPage({ tour }: Props) {
       </main>
  <ScrollProgress />
       {photo !== null && <Lightbox images={photos} index={photo} onClose={() => setPhoto(null)} onIndex={setPhoto} />}
+      {placePhoto !== null && placeImgs[placePhoto] && (
+        <Lightbox
+          images={placeImgs.map((p) => p.image as string)}
+          captions={placeImgs.map((p) => p.name || "")}
+          index={placePhoto}
+          onClose={() => setPlacePhoto(null)}
+          onIndex={setPlacePhoto}
+        />
+      )}
     </>
   );
 }

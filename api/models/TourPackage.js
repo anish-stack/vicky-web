@@ -174,6 +174,27 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 0,
       },
 
+      // live = visible, new = visible with "New" badge, duplicate = draft copy (hidden until finalised)
+      status: {
+        type: DataTypes.ENUM("live", "new", "duplicate"),
+        allowNull: false,
+        defaultValue: "live",
+      },
+
+      // max bookings accepted per pickup date (0 = unlimited)
+      daily_booking_limit: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: false,
+        defaultValue: 0,
+      },
+
+      // minimum hours between "now" and pickup (0 = no restriction)
+      min_advance_hours: {
+        type: DataTypes.INTEGER.UNSIGNED,
+        allowNull: false,
+        defaultValue: 0,
+      },
+
       seo: {
         type: DataTypes.JSON,
         allowNull: true,
@@ -216,6 +237,9 @@ module.exports = (sequelize, DataTypes) => {
         },
         {
           fields: ["sort_order"],
+        },
+        {
+          fields: ["status"],
         },
       ],
 

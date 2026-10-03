@@ -1,5 +1,6 @@
 // Small presentational pieces shared by the tour pages (server-safe, no hooks).
 import React from "react";
+import { SOCIAL_LINKS } from "@/lib/tourPackage";
 
 export function SectionTitle({ children, icon }: { children: React.ReactNode; icon?: string }) {
   return (
@@ -72,6 +73,33 @@ export function BottomBar({ children }: { children: React.ReactNode }) {
       >
         {children}
       </div>
+    </div>
+  );
+}
+
+
+/** Facebook / YouTube / Instagram / WhatsApp - each icon opens its own profile. */
+export function SocialLinks({ title = "Follow us", className = "" }: { title?: string; className?: string }) {
+  return (
+    <div className={`flex flex-col items-center gap-2.5 ${className}`}>
+      {title && <p className="m-0 text-[13px] font-semibold text-slate-600">{title}</p>}
+      <ul className="m-0 flex list-none items-center gap-3 p-0">
+        {SOCIAL_LINKS.map((s) => (
+          <li key={s.key}>
+            <a
+              href={s.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={s.label}
+              title={s.label}
+              className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-[18px] no-underline shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              style={{ color: s.color }}
+            >
+              <i className={s.icon} />
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

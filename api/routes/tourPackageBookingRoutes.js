@@ -5,6 +5,7 @@ const controller = require("../controllers/tourPackageBookingController");
 const adminMiddleware = require("../middlewares/adminMiddleware");
 
 // ---------------- public / customer ----------------
+router.get("/availability", controller.availability);
 router.post("/send-otp", controller.sendOtp);
 router.post("/verify-otp", controller.verifyOtp);
 router.post("/create-order", controller.createOrder);

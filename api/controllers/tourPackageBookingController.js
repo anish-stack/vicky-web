@@ -6,7 +6,9 @@ require("dotenv").config();
 
 const { TourPackageBooking, TourPackage, User, otp } = require("../models");
 const sendDltMessage = require("../utils/dlt");
-const { sendTourPackageBooking, sendTourPackageDriver } = require("../utils/sendWhatsapp");
+
+
+const { sendTourPackageBooking, sendTourPackageAdmin, sendTourPackageDriver } = require("../utils/sendWhatsapp");
 
 const SECRET_KEY = process.env.JWT_SECRET || "dev-insecure-secret";
 const isProd = process.env.NODE_ENV === "production";
@@ -18,7 +20,60 @@ const razorpay = new Razorpay({ key_id: RZP_KEY_ID, key_secret: RZP_KEY_SECRET }
 // ---------------- helpers ----------------
 const normalizePhone = (v) => String(v || "").replace("+91", "").replace(/\D/g, "").slice(-10);
 
-const genBookingRef = () => `TP${Date.now().toString().slice(-8)}${Math.floor(10 + Math.random() * 89)}`;
+// 6-digit numeric booking id (easy to read / share). Retries until unique.
+const genBookingRef = async () => {
+  for (let i = 0; i < 20; i += 1) {
+    const ref = String(Math.floor(100000 + Math.random() * 900000));
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await TourPackageBooking.findOne({ where: { booking_ref: ref }, attributes: ["id"] });
+    if (!exists) return ref;
+  }
+  throw new Error("Could not generate a booking id, please try again");
+};
+
+// ---------------- availability helpers (India time) ----------------
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const pad2 = (n) => String(n).padStart(2, "0");
+const istNow = () => new Date(Date.now() + IST_OFFSET_MS);
+const isoDate = (d) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+const isoTime = (d) => `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+const addDaysISO = (iso, n) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return isoDate(d);
+};
+const isISODate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ""));
+
+/** earliest allowed pickup { date, time } = now + min_advance_hours (IST). */
+const earliestPickup = (hours) => {
+  const t = new Date(istNow().getTime() + Math.max(Number(hours) || 0, 0) * 3600 * 1000);
+  return { date: isoDate(t), time: isoTime(t) };
+};
+
+// pending (unpaid) orders hold a slot for 15 minutes so two people can't take the last one
+const HOLD_MS = 15 * 60 * 1000;
+
+const countedWhere = (tourId, dateFilter) => ({
+  tour_package_id: tourId,
+  pickup_date: dateFilter,
+  booking_status: { [Op.ne]: "cancelled" },
+  [Op.or]: [
+    { payment_status: { [Op.in]: ["partial", "paid"] } },
+    { payment_status: "pending", created_at: { [Op.gte]: new Date(Date.now() - HOLD_MS) } },
+  ],
+});
+
+const soldOutDates = async (tour, from, to) => {
+  const limit = Number(tour.daily_booking_limit) || 0;
+  if (!limit) return [];
+  const rows = await TourPackageBooking.findAll({
+    attributes: ["pickup_date", [TourPackageBooking.sequelize.fn("COUNT", "*"), "cnt"]],
+    where: countedWhere(tour.id, { [Op.between]: [from, to] }),
+    group: ["pickup_date"],
+    raw: true,
+  });
+  return rows.filter((r) => Number(r.cnt) >= limit).map((r) => String(r.pickup_date).slice(0, 10));
+};
 
 const toNum = (v, d = 0) => {
   const n = Number(v);
@@ -36,6 +91,41 @@ const toCoord = (v, min, max) => {
 const cleanPlaceId = (v) => {
   const s = String(v || "").trim();
   return s && s.length <= 255 && /^[\w\-:]+$/.test(s) ? s : null;
+};
+
+// ============================================================
+// GET /availability?tour_package_id=1&from=YYYY-MM-DD&days=90
+// -> { limit, min_advance_hours, earliest_date, earliest_time, sold_out: [dates] }
+// ============================================================
+exports.availability = async (req, res) => {
+  try {
+    const id = Number(req.query.tour_package_id);
+    if (!id) return res.status(400).json({ status: false, message: "tour_package_id is required" });
+
+    const tour = await TourPackage.findByPk(id, {
+      attributes: ["id", "daily_booking_limit", "min_advance_hours"],
+    });
+    if (!tour) return res.status(404).json({ status: false, message: "Tour package not found" });
+
+    const earliest = earliestPickup(tour.min_advance_hours);
+    const from = isISODate(req.query.from) ? req.query.from : earliest.date;
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 90, 1), 366);
+    const to = addDaysISO(from, days);
+
+    return res.json({
+      status: true,
+      data: {
+        limit: Number(tour.daily_booking_limit) || 0,
+        min_advance_hours: Number(tour.min_advance_hours) || 0,
+        earliest_date: earliest.date,
+        earliest_time: earliest.time,
+        sold_out: await soldOutDates(tour, from, to),
+      },
+    });
+  } catch (error) {
+    console.error("❌ tourBooking availability Error:", error);
+    return res.status(500).json({ status: false, message: error.message || "Failed to load availability" });
+  }
 };
 
 // ============================================================
@@ -183,6 +273,45 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ status: false, message: "Invalid payable amount" });
     }
 
+    // ---- per-tour rules: advance booking time + daily limit ----
+    const tour = await TourPackage.findByPk(tour_package_id, {
+      attributes: ["id", "is_active", "daily_booking_limit", "min_advance_hours"],
+    });
+    if (!tour || !tour.is_active) {
+      return res.status(404).json({ status: false, message: "This tour is not available for booking" });
+    }
+
+    if (!isISODate(pickup_date)) {
+      return res.status(400).json({ status: false, message: "Pickup date is required" });
+    }
+
+    const minHours = Number(tour.min_advance_hours) || 0;
+    const earliest = earliestPickup(minHours);
+    const pickupTime = /^\d{2}:\d{2}$/.test(String(pickup_time || "")) ? pickup_time : "00:00";
+    const tooEarly =
+      pickup_date < earliest.date || (pickup_date === earliest.date && minHours > 0 && pickupTime < earliest.time);
+    if (tooEarly) {
+      return res.status(400).json({
+        status: false,
+        message:
+          minHours > 0
+            ? `This tour needs at least ${minHours} hour${minHours === 1 ? "" : "s"} advance booking. Please choose a later pickup.`
+            : "Pickup date can't be in the past",
+      });
+    }
+
+    const dayLimit = Number(tour.daily_booking_limit) || 0;
+    if (dayLimit > 0) {
+      const taken = await TourPackageBooking.count({ where: countedWhere(tour.id, pickup_date) });
+      if (taken >= dayLimit) {
+        return res.status(409).json({
+          status: false,
+          code: "SOLD_OUT",
+          message: "Sold Out for the selected date. Please choose another date.",
+        });
+      }
+    }
+
     // coords: both or none
     let lat = toCoord(pickup_lat, -90, 90);
     let lng = toCoord(pickup_lng, -180, 180);
@@ -195,7 +324,7 @@ exports.createOrder = async (req, res) => {
     const total = toNum(total_amount);
 
     const booking = await TourPackageBooking.create({
-      booking_ref: genBookingRef(),
+      booking_ref: await genBookingRef(),
       tour_package_id,
       tour_title: tour_title || null,
       tour_slug: tour_slug || null,
@@ -282,6 +411,8 @@ exports.verifyPayment = async (req, res) => {
     const advanceAmount = Number(booking.advance_amount || 0);
     const balanceAmount = Number(booking.balance_amount || 0);
 
+    const alreadyConfirmed = ["partial", "paid"].includes(booking.payment_status);
+
     let paymentStatus = "partial";
     if (totalAmount > 0 && balanceAmount <= 0) paymentStatus = "paid";
     if (advanceAmount <= 0 && balanceAmount > 0) paymentStatus = "pending";
@@ -293,9 +424,20 @@ exports.verifyPayment = async (req, res) => {
       booking_status: "confirmed",
     });
 
-    sendTourPackageBooking(booking.mobile, booking.toJSON())
-      .then((result) => console.log("✅ Tour booking WhatsApp sent:", result))
-      .catch((error) => console.error("❌ Tour booking WhatsApp error:", error));
+    // notify once (verify-payment can be retried by the browser)
+    if (!alreadyConfirmed) {
+      const plain = booking.toJSON();
+
+      // customer confirmation from the company number
+      sendTourPackageBooking(booking.mobile, plain)
+        .then((result) => console.log("✅ Tour booking WhatsApp (customer):", result ? "sent" : "skipped"))
+        .catch((error) => console.error("❌ Tour booking WhatsApp (customer) error:", error));
+
+      // admin alert: tour details + customer name + mobile
+      sendTourPackageAdmin(plain)
+        .then((result) => console.log("✅ Tour booking WhatsApp (admin):", result ? "sent" : "skipped"))
+        .catch((error) => console.error("❌ Tour booking WhatsApp (admin) error:", error));
+    }
 
     return res.status(200).json({
       status: true,
@@ -404,8 +546,8 @@ exports.adminGet = async (req, res) => {
       b.pickup_lat != null && b.pickup_lng != null
         ? `https://www.google.com/maps/search/?api=1&query=${b.pickup_lat},${b.pickup_lng}${b.pickup_place_id ? `&query_place_id=${b.pickup_place_id}` : ""}`
         : b.pickup_address
-        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.pickup_address)}`
-        : null;
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.pickup_address)}`
+          : null;
 
     return res.json({ status: true, data: { ...b, pickup_map_url, tourPackage } });
   } catch (error) {

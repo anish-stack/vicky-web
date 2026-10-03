@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpToLine, Copy, ListOrdered, Plus, Pencil, Trash2, Star } from "lucide-react";
 import useList from "../hooks/useList";
 import api from "../lib/api";
 import { dateOnly, inr, parseJSON } from "../lib/format";
-import { Badge, Button, Card, ConfirmDialog, Empty, PageHeader, Pagination, SearchInput, Select, Table, Toggle, cx } from "../components/ui";
+import { Badge, Button, Card, ConfirmDialog, Empty, Loading, PageHeader, Pagination, SearchInput, Select, Table, Toggle, cx } from "../components/ui";
 import { useToast } from "../components/Toast";
 import { TOUR_API, buildTourFormData, imgSrc, normalizeTour } from "./TourPackageForm";
 
@@ -27,16 +27,125 @@ const durationText = (d, n) => {
   return `${d} Day${Number(d) === 1 ? "" : "s"} / ${n ?? 0} Night${Number(n) === 1 ? "" : "s"}`;
 };
 
+const STATUS_TONE = { live: "brand", new: "active", duplicate: "reserved" };
+const STATUS_LABEL = { live: "Live", new: "New", duplicate: "Duplicate" };
+
+const moveItem = (list, from, to) => {
+  if (to < 0 || to >= list.length || from === to) return list;
+  const next = [...list];
+  const [it] = next.splice(from, 1);
+  next.splice(to, 0, it);
+  return next;
+};
+
+/** Arrange the website order (All / View Tours): first row = top-left on the site. */
+function ArrangeOrder({ onClose, onSaved }) {
+  const toast = useToast();
+  const [items, setItems] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    api
+      .get(TOUR_API, { params: { all: 1, sort: "sort_order" } })
+      .then((r) => alive && setItems(r.data || []))
+      .catch((e) => {
+        toast.error(e);
+        onClose();
+      });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const change = (next) => {
+    setItems(next);
+    setDirty(true);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const r = await api.post(`${TOUR_API}/reorder`, { ids: items.map((t) => t.id) });
+      toast.success(r?.message || "Order saved");
+      onSaved();
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card
+      title="Arrange tour order"
+      className="mb-6"
+      actions={
+        <>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} loading={saving} disabled={!dirty}>Save order</Button>
+        </>
+      }
+    >
+      <p className="mb-4 text-sm text-slate-500">
+        Row 1 shows first on the website (top / left in <b>All Tours</b>), row 2 next, and so on. Use the arrows or type a position number.
+        Drafts (Duplicate) stay hidden on the website even when listed here.
+      </p>
+      {!items ? (
+        <Loading />
+      ) : (
+        <ol className="space-y-2">
+          {items.map((t, i) => (
+            <li key={t.id} className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-2.5">
+              <input
+                aria-label={`Position of ${t.title}`}
+                className="tnum h-8 w-12 rounded-md border border-stone-300 text-center text-sm"
+                defaultValue={i + 1}
+                key={`${t.id}-${i}`}
+                inputMode="numeric"
+                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                onBlur={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  if (Number.isNaN(n)) return (e.target.value = i + 1);
+                  const to = Math.min(Math.max(n, 1), items.length) - 1;
+                  if (to !== i) change(moveItem(items, i, to));
+                }}
+              />
+              {t.cover_image ? (
+                <img src={imgSrc(t.cover_image)} alt="" className="h-10 w-16 shrink-0 rounded bg-stone-100 object-cover" />
+              ) : (
+                <div className="grid h-10 w-16 shrink-0 place-items-center rounded bg-stone-100 text-[10px] text-slate-400">No image</div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-900">{t.title}</p>
+                <p className="truncate text-xs text-slate-500">{durationText(t.days, t.nights)} · {t.from_city_name} → {t.to_city_name}</p>
+              </div>
+              <Badge tone={STATUS_TONE[t.status] || "neutral"}>{STATUS_LABEL[t.status] || "Live"}</Badge>
+              <div className="flex items-center gap-0.5">
+                <Button variant="ghost" size="icon" disabled={i === 0} onClick={() => change(moveItem(items, i, 0))} aria-label="Move to top"><ArrowUpToLine className="size-4" /></Button>
+                <Button variant="ghost" size="icon" disabled={i === 0} onClick={() => change(moveItem(items, i, i - 1))} aria-label="Move up"><ArrowUp className="size-4" /></Button>
+                <Button variant="ghost" size="icon" disabled={i === items.length - 1} onClick={() => change(moveItem(items, i, i + 1))} aria-label="Move down"><ArrowDown className="size-4" /></Button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Card>
+  );
+}
+
 export default function TourPackages() {
   const navigate = useNavigate();
   const toast = useToast();
-  const tours = useList(TOUR_API, { is_active: "", is_featured: "", trip_type: "" });
+  const tours = useList(TOUR_API, { is_active: "", is_featured: "", trip_type: "", status: "", sort: "sort_order" });
   const [del, setDel] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(null); // `${id}:${field}`
+  const [arrange, setArrange] = useState(false);
+  const [duping, setDuping] = useState(null);
 
   const p = tours.params;
-  const hasFilter = p.search || p.is_active !== "" || p.is_featured !== "" || p.trip_type;
+  const hasFilter = p.search || p.is_active !== "" || p.is_featured !== "" || p.trip_type || p.status;
 
   // Toggle by re-saving the full record, so no JSON field is lost even if the list row is trimmed.
   const flip = async (row, field) => {
@@ -52,6 +161,19 @@ export default function TourPackages() {
       toast.error(e);
     } finally {
       setBusy(null);
+    }
+  };
+
+  const duplicate = async (row) => {
+    setDuping(row.id);
+    try {
+      const r = await api.post(`${TOUR_API}/${row.id}/duplicate`);
+      toast.success(r?.message || "Duplicate created");
+      navigate(`/tour-packages/${r.data.id}`);
+    } catch (e) {
+      toast.error(e);
+    } finally {
+      setDuping(null);
     }
   };
 
@@ -74,16 +196,23 @@ export default function TourPackages() {
       <PageHeader
         title="Tour packages"
         subtitle="Multi-day tours with itinerary, vehicle and hotel options."
-        actions={<Link to="/tour-packages/new"><Button icon={Plus}>Add tour package</Button></Link>}
+        actions={
+          <>
+            <Button variant="outline" icon={ListOrdered} onClick={() => setArrange((v) => !v)}>Arrange order</Button>
+            <Link to="/tour-packages/new"><Button icon={Plus}>Add tour package</Button></Link>
+          </>
+        }
       />
+      {arrange && <ArrangeOrder onClose={() => setArrange(false)} onSaved={() => { setArrange(false); tours.reload(); }} />}
       <Card bodyClass="p-0">
-        <div className="grid gap-3 border-b border-stone-200 p-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 border-b border-stone-200 p-4 sm:grid-cols-2 lg:grid-cols-6">
           <SearchInput value={p.search} onChange={(v) => tours.setFilter("search", v)} placeholder="Title, city or slug" className="lg:col-span-2" />
           <Select value={p.is_active} onChange={(e) => tours.setFilter("is_active", e.target.value)} placeholder="Active and inactive" options={[{ value: "1", label: "Active" }, { value: "0", label: "Inactive" }]} />
           <Select value={p.is_featured} onChange={(e) => tours.setFilter("is_featured", e.target.value)} placeholder="Featured or not" options={[{ value: "1", label: "Featured" }, { value: "0", label: "Not featured" }]} />
           <Select value={p.trip_type} onChange={(e) => tours.setFilter("trip_type", e.target.value)} placeholder="Any trip type" options={[{ value: "roundTrip", label: "Round trip" }, { value: "oneWay", label: "One way" }]} />
+          <Select value={p.status} onChange={(e) => tours.setFilter("status", e.target.value)} placeholder="Any status" options={[{ value: "live", label: "Live" }, { value: "new", label: "New" }, { value: "duplicate", label: "Duplicate (draft)" }]} />
           {hasFilter && (
-            <Button variant="ghost" onClick={() => ["search", "is_active", "is_featured", "trip_type"].forEach((k) => tours.setFilter(k, ""))}>Clear filters</Button>
+            <Button variant="ghost" onClick={() => ["search", "is_active", "is_featured", "trip_type", "status"].forEach((k) => tours.setFilter(k, ""))}>Clear filters</Button>
           )}
         </div>
         {tours.error && (
@@ -141,9 +270,10 @@ export default function TourPackages() {
                 <Star className={cx("size-4", isOn(t.is_featured) ? "fill-amber-400 text-amber-500" : "text-slate-300")} />
               </button>
             ) },
+            { key: "st", label: "Status", render: (t) => <Badge tone={STATUS_TONE[t.status] || "neutral"}>{STATUS_LABEL[t.status] || "Live"}</Badge> },
             { key: "status", label: "Active", render: (t) => (
               <div onClick={(e) => e.stopPropagation()}>
-                <Toggle checked={isOn(t.is_active)} disabled={busy === `${t.id}:is_active`} onChange={() => flip(t, "is_active")} />
+                <Toggle checked={isOn(t.is_active)} disabled={busy === `${t.id}:is_active` || t.status === "duplicate"} onChange={() => flip(t, "is_active")} />
               </div>
             ) },
             { key: "sort", label: "Order", className: "text-center", render: (t) => <Badge>{t.sort_order ?? 0}</Badge> },
@@ -151,6 +281,7 @@ export default function TourPackages() {
             { key: "a", label: "", className: "text-right", render: (t) => (
               <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="icon" onClick={() => navigate(`/tour-packages/${t.id}`)} aria-label="Edit"><Pencil className="size-4" /></Button>
+                <Button variant="ghost" size="icon" loading={duping === t.id} onClick={() => duplicate(t)} aria-label="Duplicate" title="Duplicate"><Copy className="size-4" /></Button>
                 <Button variant="ghost" size="icon" onClick={() => setDel(t)} aria-label="Delete"><Trash2 className="size-4 text-red-600" /></Button>
               </div>
             ) },

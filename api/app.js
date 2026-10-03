@@ -21,6 +21,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const tourPackagesRoutes = require("./routes/tourPackagesRoutes");
 const tourPackageBookingRoutes = require("./routes/tourPackageBookingRoutes");
+const tourHotelRoutes = require("./routes/tourHotelRoutes");
 
 const config = require("./config/config.json");
 const cors = require("cors");
@@ -29,6 +30,9 @@ const path = require("path");
 const morgan = require("morgan");
 
 const app = express();
+
+// behind nginx / Cloudflare: real client IP + https protocol
+app.set("trust proxy", true);
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
@@ -67,6 +71,7 @@ app.use("/api/booking_limit", bookingLimitRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/tour-package", tourPackagesRoutes);
 app.use("/api/tour-booking", tourPackageBookingRoutes);
+app.use("/api/tour-hotel", tourHotelRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
 
@@ -80,7 +85,10 @@ app.use("/api", (req, res) => {
 app.use((err, req, res, next) => {
     const status = err.status || err.statusCode || (err.name === "MulterError" ? 400 : 500);
     if (status >= 500) console.error(err);
-    res.status(status).json({ status: false, message: err.message || "Internal server error" });
+    let message = err.message || "Internal server error";
+    if (err.code === "LIMIT_FILE_SIZE") message = "Image is too large. Maximum size is 10 MB per image.";
+    if (err.code === "LIMIT_UNEXPECTED_FILE" || err.code === "LIMIT_FILE_COUNT") message = "Too many images in one request.";
+    res.status(status).json({ status: false, message });
 });
 
 module.exports = app;

@@ -9639,3 +9639,19 @@ section>.container-fluid {
 .react-datepicker__time-name {
   width: 1.5em !important;
 }
+
+
+/* mobile side menu: Login / Logout sits right under the last menu item (no pinned-to-bottom gap) */
+.sidebar-inline-logout {
+  margin-top: 12px;
+}
+
+.sidebar-inline-logout .taxisafar-sidebar-logout {
+  margin: 0;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.off-canvas-wrapper .sidebar-links {
+  padding-bottom: 0;
+}

@@ -24,6 +24,8 @@ import Discounts from "./pages/Discounts";
 import Settings from "./pages/Settings";
 import TourPackages from "./pages/TourPackages";
 import TourPackageForm from "./pages/TourPackageForm";
+import TourHotels from "./pages/TourHotels";
+import TourHotelForm from "./pages/TourHotelForm";
 import TourBookings from "./pages/TourBookings";
 import TourBookingView from "./pages/TourBookingView";
 
@@ -67,6 +69,9 @@ export default function App() {
         <Route path="dham/packages/:id" element={<DhamPackageForm />} />
 
         <Route path="tour-packages" element={<TourPackages />} />
+        <Route path="tour-hotels" element={<TourHotels />} />
+        <Route path="tour-hotels/new" element={<TourHotelForm />} />
+        <Route path="tour-hotels/:id" element={<TourHotelForm />} />
         <Route path="tour-packages/bookings" element={<TourBookings />} />
         <Route path="tour-packages/bookings/:id" element={<TourBookingView />} />
         <Route path="tour-packages/new" element={<TourPackageForm />} />
