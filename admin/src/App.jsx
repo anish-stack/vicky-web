@@ -26,6 +26,7 @@ import TourPackages from "./pages/TourPackages";
 import TourPackageForm from "./pages/TourPackageForm";
 import TourHotels from "./pages/TourHotels";
 import TourHotelForm from "./pages/TourHotelForm";
+import TourTopPackages from "./pages/TourTopPackages";
 import TourCoupons from "./pages/TourCoupons";
 import TourCouponForm from "./pages/TourCouponForm";
 import TourBookings from "./pages/TourBookings";
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="tour-coupons/:id" element={<TourCouponForm />} />
         <Route path="tour-packages/bookings" element={<TourBookings />} />
         <Route path="tour-packages/bookings/:id" element={<TourBookingView />} />
+        <Route path="tour-packages/top" element={<TourTopPackages />} />
         <Route path="tour-packages/new" element={<TourPackageForm />} />
         <Route path="tour-packages/:id" element={<TourPackageForm />} />
         <Route path="discounts/one-way" element={<Discounts mode="oneWay" />} />

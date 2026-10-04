@@ -51,6 +51,7 @@ const blank = {
   is_active: true,
   sort_order: 0,
   status: "live",
+  category: "taxi",
   daily_booking_limit: 0,
   min_advance_hours: 0,
   seo: { title: "", description: "", keywords: "", canonical: "" },
@@ -83,6 +84,59 @@ const STATUS_OPTIONS = [
 
 let keySeq = 0;
 const newKey = () => `k${Date.now().toString(36)}${(keySeq++).toString(36)}`;
+
+/** Built-in defaults for every NEW tour (a "default template" tour, if set, overrides them). */
+const DEFAULT_HIGHLIGHTS = [
+  { icon: "car", title: "Commercial AC Cab", subtitle: "Comfortable AC cab with driver" },
+  { icon: "map-pin", title: "Delhi NCR Pickup & Drop", subtitle: "Free within 60 KM of India Gate" },
+  { icon: "map", title: "Planned Sightseeing", subtitle: "Major attractions as per itinerary" },
+  { icon: "route", title: "Comfortable Road Journey", subtitle: "Well-planned private tour by cab" },
+];
+
+const DEFAULT_INCLUSIONS = [
+  "Commercial AC Cab",
+  "Fuel Charges Included",
+  "Driver Allowance Included",
+  "Toll Tax Included",
+  "State Tax Included",
+  "Free Pickup within 50 KM of India Gate (Delhi NCR)",
+  "Free Drop within 50 KM of India Gate (Delhi NCR)",
+  "Local Sightseeing as per Itinerary, subject to local taxi union rules",
+  "Hotel Charges Included Only if Hotel is Selected During Booking",
+  "Dedicated Cab for the Complete Tour",
+];
+
+const DEFAULT_EXCLUSIONS = [
+  "Hotel Charges Unless Hotel is Selected During Booking",
+  "Breakfast, Meals and Beverages",
+  "Entry Fees for Any Place or Attraction",
+  "Guide Charges",
+  "Personal Expenses",
+  "Parking Charges",
+  "Airport / Railway Station Pickup Charges, if Applicable",
+  "One Pickup Location and One Drop Location Included. Additional Pickup or Drop Locations Will Be Chargeable Extra.",
+  "Any Travel Outside the Planned Tour Route or Destination Will Be Charged Extra Based on Additional Kilometres and Time, as per the Selected Vehicle Category.",
+  "Standard Drop Time is 10:00 PM. Extra Time Charges Apply After 11:00 PM \u2014 Hatchback & Sedan \u20b9250/hour; Ertiga SUV / Prime SUV \u20b9300/hour. Any Part of an Hour After 11:00 PM Will Be Charged as a Full Hour.",
+  "Tour Extension Charges: If the tour extends beyond the booked duration, each additional day will be charged separately based on the selected vehicle category and the applicable extra-day rate.",
+];
+
+const DEFAULT_FAQS = [
+  { question: "Is hotel included in this package?", answer: "Hotel charges are included only if a hotel is selected during booking." },
+  { question: "Can I add extra sightseeing?", answer: "Yes. Additional sightseeing can be added. Extra kilometres and time will be charged as per the selected vehicle category." },
+  { question: "Is pickup and drop available across Delhi NCR?", answer: "Yes. Free pickup and drop are available within 50 KM of India Gate (Delhi NCR)." },
+  { question: "Are multiple pickup and drop locations included?", answer: "One pickup location and one drop location are included. Additional pickup or drop locations will be chargeable extra." },
+  { question: "Are breakfast and meals included with the hotel?", answer: "No. Breakfast and meals are not included unless specifically mentioned." },
+  { question: "Are there any late-night extra charges?", answer: "Yes. Standard drop time is 10:00 PM. After 11:00 PM, extra time charges are \u20b9250/hour for Hatchback & Sedan and \u20b9300/hour for Ertiga SUV / Prime SUV. Any part of an hour will be charged as a full hour." },
+  { question: "What happens if the tour extends beyond the booked duration?", answer: "Each additional day will be charged separately based on the selected vehicle category and the applicable extra-day rate." },
+  { question: "What is the payment condition?", answer: "Advance payment as per Booking Charge (%), 50% payment after pickup, and the remaining payment 2 hours before drop time." },
+];
+
+const builtinDefaults = () => ({
+  highlights: DEFAULT_HIGHLIGHTS.map((h) => ({ _k: newKey(), ...h })),
+  inclusions: [...DEFAULT_INCLUSIONS],
+  exclusions: [...DEFAULT_EXCLUSIONS],
+  faqs: DEFAULT_FAQS.map((q) => ({ _k: newKey(), ...q })),
+});
 
 export const slugify = (s) =>
   String(s || "")
@@ -195,6 +249,7 @@ export const normalizeTour = (t = {}) => ({
   is_active: bool(t.is_active, true),
   sort_order: numOrEmpty(t.sort_order ?? 0),
   status: ["live", "new", "duplicate"].includes(t.status) ? t.status : "live",
+  category: t.category === "chardham" ? "chardham" : "taxi",
   daily_booking_limit: numOrEmpty(t.daily_booking_limit ?? 0),
   min_advance_hours: numOrEmpty(t.min_advance_hours ?? 0),
   seo: { ...blank.seo, ...obj(t.seo) },
@@ -272,6 +327,7 @@ export const buildTourFormData = (f, files = {}) => {
     is_active: String(!!f.is_active),
     sort_order: f.sort_order === "" ? 0 : f.sort_order,
     status: f.status || "live",
+    category: f.category === "chardham" ? "chardham" : "taxi",
     daily_booking_limit: f.daily_booking_limit === "" ? 0 : f.daily_booking_limit,
     min_advance_hours: f.min_advance_hours === "" ? 0 : f.min_advance_hours,
   };
@@ -570,10 +626,7 @@ const validate = (f, byKey) => {
     if (dayNums.indexOf(d) !== i) e[`itinerary.${i}.day`] = `Day ${d} is listed twice`;
   });
 
-  f.places_covered.forEach((p, i) => {
-    if (!clean(p.name)) e[`places.${i}.name`] = "Place name is required";
-  });
-
+  // places: name and icon are both optional
   ["inclusions", "exclusions", "important_notes"].forEach((k) =>
     f[k].forEach((s, i) => {
       if (!clean(s)) e[`${k}.${i}`] = "Empty line: fill it in or remove it";
@@ -619,7 +672,7 @@ export default function TourPackageForm() {
   const { data: cities } = useOptions("/cities");
   const { data: masterHotels } = useOptions("/tour-hotel?all=1", { fresh: true });
 
-  const [form, setForm] = useState(blank);
+  const [form, setForm] = useState(() => (id ? blank : { ...blank, ...builtinDefaults() }));
   const [slugTouched, setSlugTouched] = useState(false);
   const [durationTouched, setDurationTouched] = useState(false);
   const [coverFile, setCoverFile] = useState(null);
@@ -669,11 +722,11 @@ export default function TourPackageForm() {
         const t = normalizeTour(d);
         setForm((f) => ({
           ...f,
-          highlights: t.highlights,
-          inclusions: t.inclusions,
-          exclusions: t.exclusions,
+          highlights: t.highlights.length ? t.highlights : f.highlights,
+          inclusions: t.inclusions.length ? t.inclusions : f.inclusions,
+          exclusions: t.exclusions.length ? t.exclusions : f.exclusions,
           important_notes: t.important_notes,
-          faqs: t.faqs,
+          faqs: t.faqs.length ? t.faqs : f.faqs,
           hotel_options: t.hotel_options,
           hotel_optional: t.hotel_optional,
           booking_charge_percent: t.booking_charge_percent,
@@ -1096,7 +1149,7 @@ export default function TourPackageForm() {
                   </div>
                   <div className="grid gap-3 sm:grid-cols-[1fr_170px]">
                     <div className="space-y-3">
-                      {F({ name: `places.${i}.name`, label: "Name", required: true, children: (
+                      {F({ name: `places.${i}.name`, label: "Name", children: (
                         <Input value={p.name} onChange={(e) => setRow("places_covered", i, { name: e.target.value })} placeholder="Krishna Janmabhoomi" />
                       ) })}
                       <Field label="Icon"><Input value={p.icon} onChange={(e) => setRow("places_covered", i, { icon: e.target.value })} placeholder="temple" /></Field>
@@ -1381,6 +1434,9 @@ export default function TourPackageForm() {
               <Field label="Status" hint="Duplicate = hidden draft. Set Live or New when the copy is ready.">
                 <Select value={form.status} onChange={(e) => setStatus(e.target.value)} options={STATUS_OPTIONS} />
               </Field>
+              <Field label="Website tab" hint="Taxi tours and Char Dham tours get separate Top 3 lists on the home page.">
+                <Select value={form.category} onChange={(e) => set("category", e.target.value)} options={[{ value: "taxi", label: "Taxi" }, { value: "chardham", label: "Char Dham Yatra" }]} />
+              </Field>
               <Toggle checked={form.is_active} disabled={form.status === "duplicate"} onChange={(v) => set("is_active", v)} label="Active (visible on website)" />
               <Toggle checked={form.is_featured} onChange={(v) => set("is_featured", v)} label="Featured" />
               {id && (
@@ -1396,8 +1452,25 @@ export default function TourPackageForm() {
               {F({ name: "daily_booking_limit", label: "Bookings allowed per day", hint: "0 = unlimited. When a date is full it shows Sold Out.", children: (
                 <Input inputMode="numeric" value={form.daily_booking_limit} onChange={(e) => set("daily_booking_limit", e.target.value.replace(/\D/g, ""))} />
               ) })}
-              {F({ name: "min_advance_hours", label: "Minimum advance booking (hours)", hint: "0 = same-day booking allowed. e.g. 24 = pickup must be a day away.", children: (
-                <Input inputMode="numeric" value={form.min_advance_hours} onChange={(e) => set("min_advance_hours", e.target.value.replace(/\D/g, ""))} />
+              {F({ name: "min_advance_hours", label: "Minimum advance booking (hours)", hint: "Pickup must be at least this many hours from now. 0 = no limit. e.g. at 7:00 PM with 6 hours, earliest pickup is 1:00 AM.", children: (
+                <div className="space-y-2">
+                  <Input inputMode="numeric" value={form.min_advance_hours} onChange={(e) => set("min_advance_hours", e.target.value.replace(/\D/g, ""))} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {[0, 2, 4, 6, 12, 24, 48].map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => set("min_advance_hours", String(h))}
+                        className={cx(
+                          "rounded-full border px-2.5 py-1 text-xs font-medium transition",
+                          String(form.min_advance_hours) === String(h) ? "border-red-500 bg-red-50 text-red-700" : "border-stone-300 text-slate-600 hover:bg-stone-50"
+                        )}
+                      >
+                        {h === 0 ? "None" : `${h} hr${h === 1 ? "" : "s"}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ) })}
             </div>
           </Card>

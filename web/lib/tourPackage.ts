@@ -225,6 +225,20 @@ export const hotelTotal = (h: HotelOption | null | undefined, rooms: number) =>
  
 export type Selection = { v: number | null; h: number | "none" | null; r: number; d: string; a: number };
  
+/** How many people / bags a vehicle takes. Hatchback & Sedan: 4 / 3 / 4. Ertiga SUV & Prime SUV: 6 / 4 / 6. */
+export type PaxLimits = { adults: number; children: number; bags: number };
+export const SMALL_CAR_LIMITS: PaxLimits = { adults: 4, children: 3, bags: 4 };
+export const SUV_LIMITS: PaxLimits = { adults: 6, children: 4, bags: 6 };
+
+export const paxLimits = (v?: { label?: string; seats?: string } | null): PaxLimits => {
+  const label = String(v?.label || "").toLowerCase();
+  if (/ertiga|suv|prime|innova|crysta|xylo|marazzo|carens|muv|\bmpv\b/.test(label)) return SUV_LIMITS;
+  if (/hatch|sedan|swift|dzire|etios|aura|amaze|wagon|tiago|baleno|\bi10\b|\bi20\b|\bcar\b/.test(label)) return SMALL_CAR_LIMITS;
+  const seats = Number(String(v?.seats || "").match(/\d+/)?.[0]);
+  if (Number.isFinite(seats) && seats > 0) return seats >= 6 ? SUV_LIMITS : SMALL_CAR_LIMITS;
+  return SUV_LIMITS;
+};
+
 export const MAX_ROOMS = 5;
 export const MAX_ADULTS = 20;
  
@@ -275,6 +289,11 @@ export const faIcon = (name?: string) => {
   const map: Record<string, string> = {
     calendar: "fa-regular fa-calendar",
     car: "fa-solid fa-car",
+    "map-pin": "fa-solid fa-location-dot",
+    mappin: "fa-solid fa-location-dot",
+    pin: "fa-solid fa-location-dot",
+    route: "fa-solid fa-route",
+    road: "fa-solid fa-road",
     cab: "fa-solid fa-taxi",
     taxi: "fa-solid fa-taxi",
     hotel: "fa-solid fa-hotel",
@@ -318,6 +337,8 @@ export type TourBooking = {
   return_date: string | null;
   return_time: string | null;
   adults: number;
+  children?: number;
+  luggage?: number;
   rooms: number;
   vehicle_label: string | null;
   vehicle_price: number;
@@ -371,6 +392,8 @@ export type CreateOrderPayload = {
   return_date?: string;
   return_time?: string;
   adults: number;
+  children?: number;
+  luggage?: number;
   rooms: number;
   vehicle_label?: string;
   vehicle_price: number;

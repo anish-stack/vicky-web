@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { SocialLinks } from "@/components/tour/TourBits";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://webapi.taxisafar.com";
@@ -27,6 +28,7 @@ type TourPackage = {
     is_featured?: boolean;
     startingPrice?: number;
     vehicle_options?: VehicleOption[];
+    from_city_id?: number | string | null;
     from_city_name?: string;
     to_city_name?: string;
 };
@@ -51,7 +53,6 @@ type ApiListResponse = {
     message?: string;
 };
 
-type City = { id: number; name: string };
 
 const inr = (n: number) => "₹" + Number(n || 0).toLocaleString("en-IN");
 
@@ -87,48 +88,182 @@ function isValidTour(t: Partial<TourPackage>): t is TourPackage {
     return Boolean(t && t.id && t.slug && t.title);
 }
 
-/* ---------------- Hero / Search section ---------------- */
+/* ---------------- Hero / Filter section ---------------- */
 
 type Filters = {
-    from_city_id: string;
-    search: string;
-    trip_type: "" | "roundTrip" | "oneWay";
+    city: string; // from_city_id (or city name when no id)
+    duration: string; // "days-nights"
+    pkg: string; // tour id
 };
 
-const TRIP_TYPE_LABELS: Record<Filters["trip_type"], string> = {
-    "": "All Packages",
-    roundTrip: "Round Trip",
-    oneWay: "One Way",
+const EMPTY_FILTERS: Filters = { city: "", duration: "", pkg: "" };
+
+type Opt = { value: string; label: string };
+
+const cityKey = (t: TourPackage) => String(t.from_city_id || t.from_city_name || "").trim();
+const durKey = (t: TourPackage) => `${Number(t.days) || 1}-${Number(t.nights) || 0}`;
+const durLabel = (key: string) => {
+    const [d, n] = key.split("-").map(Number);
+    if (!n) return d <= 1 ? "Same Day" : `${d} Days`;
+    return `${n} Night${n === 1 ? "" : "s"} ${d} Day${d === 1 ? "" : "s"}`;
 };
 
-function HeroSearch({
-    cities,
-    filters,
-    onApply,
+/** Small dropdown with an optional search box (looks like the approved design). */
+function FilterSelect({
+    label,
+    value,
+    options,
+    placeholder,
+    searchPlaceholder,
+    onChange,
+    disabled,
 }: {
-    cities: City[];
-    filters: Filters;
-    onApply: (f: Filters) => void;
+    label: string;
+    value: string;
+    options: Opt[];
+    placeholder: string;
+    searchPlaceholder: string;
+    onChange: (v: string) => void;
+    disabled?: boolean;
 }) {
-    const [draft, setDraft] = useState<Filters>(filters);
-    const [tripMenuOpen, setTripMenuOpen] = useState(false);
-    const tripMenuRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => setDraft(filters), [filters]);
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState("");
+    const ref = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (tripMenuRef.current && !tripMenuRef.current.contains(e.target as Node)) {
-                setTripMenuOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        if (!open) return;
+        const off = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", off);
+        return () => document.removeEventListener("mousedown", off);
+    }, [open]);
 
-    const fieldCls = "flex min-w-0 flex-col gap-0.5 px-2 py-1.5 sm:gap-1 sm:rounded-xl sm:px-3 sm:py-2";
-    const labelCls = "truncate text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[11px]";
-    const valueCls = "w-full min-w-0 truncate bg-transparent text-[12px] font-semibold text-slate-900 outline-none focus:outline-none sm:text-sm";
+    const current = options.find((o) => o.value === value);
+    const shown = options.filter((o) => o.label.toLowerCase().includes(q.trim().toLowerCase()));
+
+    return (
+        <div ref={ref} className="relative min-w-0">
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                    setOpen((v) => !v);
+                    setQ("");
+                }}
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                className={`flex h-full w-full min-w-0 flex-col gap-0.5 rounded-xl border bg-white px-3 py-2 text-left shadow-sm outline-none transition focus-visible:ring-2 focus-visible:ring-red-300 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    open ? "border-red-400" : "border-slate-200"
+                }`}
+            >
+                <span className="truncate text-[10px] font-semibold uppercase tracking-wide text-slate-500 sm:text-[11px]">{label}</span>
+                <span className="flex min-w-0 items-center justify-between gap-1">
+                    <span className={`truncate text-[13px] font-semibold sm:text-sm ${current ? "text-slate-900" : "text-slate-500"}`}>
+                        {current ? current.label : placeholder}
+                    </span>
+                    <i className={`fa-solid fa-chevron-down shrink-0 text-[10px] text-slate-500 transition-transform ${open ? "rotate-180" : ""}`} />
+                </span>
+            </button>
+
+            {open && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+                    {options.length > 5 && (
+                        <div className="border-b border-slate-100 p-2">
+                            <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-2.5">
+                                <i className="fa-solid fa-magnifying-glass text-[12px] text-slate-400" />
+                                <input
+                                    autoFocus
+                                    value={q}
+                                    onChange={(e) => setQ(e.target.value)}
+                                    placeholder={searchPlaceholder}
+                                    className="h-9 w-full min-w-0 bg-transparent text-[13px] text-slate-900 outline-none placeholder:text-slate-400"
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <ul role="listbox" className="m-0 max-h-60 list-none overflow-y-auto p-1">
+                        <li>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onChange("");
+                                    setOpen(false);
+                                }}
+                                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13px] font-medium ${
+                                    !value ? "bg-red-50 text-red-600" : "text-slate-600 hover:bg-slate-50"
+                                }`}
+                            >
+                                {placeholder}
+                                {!value && <i className="fa-solid fa-check" />}
+                            </button>
+                        </li>
+                        {shown.map((o) => (
+                            <li key={o.value}>
+                                <button
+                                    type="button"
+                                    role="option"
+                                    aria-selected={o.value === value}
+                                    onClick={() => {
+                                        onChange(o.value);
+                                        setOpen(false);
+                                    }}
+                                    className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium ${
+                                        o.value === value ? "bg-red-50 text-red-600" : "text-slate-800 hover:bg-slate-50"
+                                    }`}
+                                >
+                                    <span className="min-w-0">{o.label}</span>
+                                    {o.value === value && <i className="fa-solid fa-check shrink-0" />}
+                                </button>
+                            </li>
+                        ))}
+                        {shown.length === 0 && <li className="px-3 py-3 text-center text-[13px] text-slate-500">No match</li>}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function HeroSearch({
+    all,
+    filters,
+    onChange,
+    heading,
+}: {
+    all: TourPackage[];
+    filters: Filters;
+    onChange: (f: Filters) => void;
+    heading: string;
+}) {
+    // Only values that really exist: city -> durations of that city -> packages of both.
+    const cityOptions = useMemo<Opt[]>(() => {
+        const seen = new Map<string, string>();
+        all.forEach((t) => {
+            const k = cityKey(t);
+            if (k && !seen.has(k)) seen.set(k, t.from_city_name || k);
+        });
+        return Array.from(seen, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+    }, [all]);
+
+    const byCity = useMemo(() => (filters.city ? all.filter((t) => cityKey(t) === filters.city) : all), [all, filters.city]);
+
+    const durationOptions = useMemo<Opt[]>(() => {
+        const seen = new Set<string>();
+        byCity.forEach((t) => seen.add(durKey(t)));
+        return Array.from(seen)
+            .sort((a, b) => {
+                const [da, na] = a.split("-").map(Number);
+                const [db, nb] = b.split("-").map(Number);
+                return da - db || na - nb;
+            })
+            .map((value) => ({ value, label: durLabel(value) }));
+    }, [byCity]);
+
+    const packageOptions = useMemo<Opt[]>(
+        () => byCity.filter((t) => !filters.duration || durKey(t) === filters.duration).map((t) => ({ value: String(t.id), label: t.title })),
+        [byCity, filters.duration]
+    );
 
     return (
         <section className="relative sm:rounded-3xl">
@@ -148,7 +283,7 @@ function HeroSearch({
                     <span className="inline-block rounded-md bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">
                         Outstation Taxi
                     </span>
-                    <h1 className="mt-3 text-4xl font-extrabold leading-tight text-white lg:text-5xl">Tour Packages</h1>
+                    <h1 className="mt-3 text-4xl font-extrabold leading-tight text-white lg:text-5xl">{heading}</h1>
                     <p className="mt-1.5 text-lg font-medium text-slate-100">Safe Journey, Happy Memories</p>
                     <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-white">
                         {[
@@ -164,88 +299,32 @@ function HeroSearch({
                     </div>
                 </div>
 
-                {/* search: single row on all sizes */}
-                <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-center divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white p-1 shadow-md sm:mt-6 sm:rounded-2xl sm:border-0 sm:p-2 sm:shadow-xl">
-                    <label className={fieldCls}>
-                        <span className={labelCls}>Pickup City</span>
-                        <select
-                            className={`${valueCls} appearance-none`}
-                            value={draft.from_city_id}
-                            onChange={(e) => setDraft((d) => ({ ...d, from_city_id: e.target.value }))}
-                        >
-                            <option value="">Select city</option>
-                            {cities.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-
-                    <label className={fieldCls}>
-                        <span className={labelCls}>Destination</span>
-                        <input
-                            type="text"
-                            placeholder="Any"
-                            className={`${valueCls} placeholder:font-medium placeholder:text-slate-400`}
-                            value={draft.search}
-                            onChange={(e) => setDraft((d) => ({ ...d, search: e.target.value }))}
-                            onKeyDown={(e) => e.key === "Enter" && onApply(draft)}
-                        />
-                    </label>
-
-                    <div ref={tripMenuRef} className={`relative ${fieldCls}`}>
-                        <span className={labelCls}>Packages</span>
-                        <button
-                            type="button"
-                            onClick={() => setTripMenuOpen((v) => !v)}
-                            className="flex min-w-0 items-center justify-between gap-1 rounded-md text-left text-[12px] font-semibold text-slate-900 outline-none focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400 sm:text-sm"
-                        >
-                            <span className="truncate">
-                                <span className="sm:hidden">{draft.trip_type ? TRIP_TYPE_LABELS[draft.trip_type] : "All"}</span>
-                                <span className="hidden sm:inline">{TRIP_TYPE_LABELS[draft.trip_type]}</span>
-                            </span>
-                            <i
-                                className={`fa-solid fa-chevron-down shrink-0 text-[9px] text-slate-400 transition-transform sm:text-[10px] ${tripMenuOpen ? "rotate-180" : ""
-                                    }`}
-                            />
-                        </button>
-
-                        {tripMenuOpen && (
-                            <div className="absolute right-0 top-full z-50 mt-2 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-2xl sm:left-0 sm:right-auto sm:w-48">
-                                {(Object.keys(TRIP_TYPE_LABELS) as Filters["trip_type"][]).map((key) => (
-                                    <button
-                                        key={key || "all"}
-                                        type="button"
-                                        onClick={() => {
-                                            setDraft((d) => ({ ...d, trip_type: key }));
-                                            setTripMenuOpen(false);
-                                        }}
-                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-[13px] font-medium text-slate-700 outline-none transition-colors hover:bg-slate-50 focus:outline-none sm:text-sm"
-                                    >
-                                        {TRIP_TYPE_LABELS[key]}
-                                        {draft.trip_type === key && <i className="fa-solid fa-check text-red-600" />}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="border-l-0 pl-1 sm:pl-0">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setTripMenuOpen(false);
-                                onApply(draft);
-                            }}
-                            aria-label="View packages"
-                            className="flex h-10 w-10 items-center justify-center gap-2 rounded-lg bg-red-600 text-sm font-bold text-white outline-none transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 sm:m-1 sm:h-auto sm:w-auto sm:rounded-xl sm:px-6 sm:py-3"
-                        >
-                            <i className="fa-solid fa-magnifying-glass sm:hidden" />
-                            <span className="hidden sm:inline">View Packages</span>
-                            <i className="fa-solid fa-arrow-right hidden sm:inline" />
-                        </button>
-                    </div>
+                {/* filters: pickup city -> duration -> package (no search button; applies instantly) */}
+                <div className="relative z-20 grid grid-cols-3 gap-1.5 sm:mt-6 sm:gap-3 sm:rounded-2xl sm:bg-white/95 sm:p-3 sm:shadow-xl">
+                    <FilterSelect
+                        label="Pickup City"
+                        value={filters.city}
+                        options={cityOptions}
+                        placeholder="All cities"
+                        searchPlaceholder="Search city"
+                        onChange={(city) => onChange({ city, duration: "", pkg: "" })}
+                    />
+                    <FilterSelect
+                        label="Tour Duration"
+                        value={filters.duration}
+                        options={durationOptions}
+                        placeholder="Any duration"
+                        searchPlaceholder="Search duration"
+                        onChange={(duration) => onChange({ ...filters, duration, pkg: "" })}
+                    />
+                    <FilterSelect
+                        label="Tour Package"
+                        value={filters.pkg}
+                        options={packageOptions}
+                        placeholder="All packages"
+                        searchPlaceholder="Search package"
+                        onChange={(pkg) => onChange({ ...filters, pkg })}
+                    />
                 </div>
             </div>
         </section>
@@ -510,25 +589,19 @@ function Pagination({ pagination, onPageChange }: { pagination: Pagination; onPa
 /* ---------------- Page ---------------- */
 
 const Tours = () => {
-    const [tours, setTours] = useState<TourPackage[]>([]);
-    const [pagination, setPagination] = useState<Pagination | null>(null);
-    const [cities, setCities] = useState<City[]>([]);
+    const router = useRouter();
+    const category = router.query.category === "chardham" ? "chardham" : router.query.category === "taxi" ? "taxi" : "";
+
+    const [all, setAll] = useState<TourPackage[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
-    const [filters, setFilters] = useState<Filters>({ from_city_id: "", search: "", trip_type: "" });
+    const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
 
+    // one request: every live tour (optionally of one tab). Filter dropdowns are built from this list,
+    // so a city / duration / package without a created tour never shows up.
     useEffect(() => {
-        fetch(`${API_URL}/api/cities?items_per_page=200`)
-            .then((r) => r.json())
-            .then((j) => {
-                const list = Array.isArray(j?.data) ? j.data : [];
-                setCities(list.map((c: any) => ({ id: c.id, name: String(c.name || "").trim() })));
-            })
-            .catch(() => setCities([]));
-    }, []);
-
-    useEffect(() => {
+        if (!router.isReady) return;
         let ignore = false;
 
         async function load() {
@@ -536,15 +609,8 @@ const Tours = () => {
                 setLoading(true);
                 setError(null);
 
-                const params = new URLSearchParams({
-                    page: String(page),
-                    items_per_page: String(PER_PAGE),
-                    sort: "sort_order",
-                    is_active: "true",
-                });
-                if (filters.search.trim()) params.set("search", filters.search.trim());
-                if (filters.trip_type) params.set("trip_type", filters.trip_type);
-                if (filters.from_city_id) params.set("from_city_id", filters.from_city_id);
+                const params = new URLSearchParams({ all: "1", sort: "sort_order", is_active: "true" });
+                if (category) params.set("category", category);
 
                 const res = await fetch(`${LIST_URL}?${params.toString()}`);
                 if (!res.ok) throw new Error(`Request failed (${res.status})`);
@@ -552,10 +618,7 @@ const Tours = () => {
                 const json: ApiListResponse = await res.json();
                 if (!json.success) throw new Error(json.message || "Failed to load tour packages");
 
-                if (!ignore) {
-                    setTours((json.data || []).filter(isValidTour));
-                    setPagination(json.pagination || null);
-                }
+                if (!ignore) setAll((json.data || []).filter(isValidTour));
             } catch (err) {
                 if (!ignore) setError(err instanceof Error ? err.message : "Something went wrong");
             } finally {
@@ -563,13 +626,45 @@ const Tours = () => {
             }
         }
 
+        setFilters(EMPTY_FILTERS);
+        setPage(1);
         load();
         return () => {
             ignore = true;
         };
-    }, [page, filters]);
+    }, [router.isReady, category]);
 
-    const handleApplyFilters = (f: Filters) => {
+    const filtered = useMemo(
+        () =>
+            all.filter(
+                (t) =>
+                    (!filters.city || cityKey(t) === filters.city) &&
+                    (!filters.duration || durKey(t) === filters.duration) &&
+                    (!filters.pkg || String(t.id) === filters.pkg)
+            ),
+        [all, filters]
+    );
+
+    const total = filtered.length;
+    const lastPage = Math.max(Math.ceil(total / PER_PAGE), 1);
+    const cur = Math.min(page, lastPage);
+    const tours = filtered.slice((cur - 1) * PER_PAGE, cur * PER_PAGE);
+    const pagination: Pagination = {
+        page: cur,
+        items_per_page: PER_PAGE,
+        total,
+        last_page: lastPage,
+        from: total ? (cur - 1) * PER_PAGE + 1 : 0,
+        to: Math.min(cur * PER_PAGE, total),
+        has_prev: cur > 1,
+        has_next: cur < lastPage,
+        prev_page: cur > 1 ? cur - 1 : null,
+        next_page: cur < lastPage ? cur + 1 : null,
+    };
+
+    const hasFilter = Boolean(filters.city || filters.duration || filters.pkg);
+
+    const handleFilters = (f: Filters) => {
         setPage(1);
         setFilters(f);
     };
@@ -579,21 +674,36 @@ const Tours = () => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    const heading = category === "chardham" ? "Char Dham Yatra Packages" : "Tour Packages";
+
     return (
         <div className="mx-auto max-w-7xl px-2 pb-10 pt-20 sm:px-6 sm:py-24 lg:px-8">
-            <HeroSearch cities={cities} filters={filters} onApply={handleApplyFilters} />
+            <HeroSearch all={all} filters={filters} onChange={handleFilters} heading={heading} />
 
-            <div className="mb-3 mt-4 flex items-end justify-between px-0.5 sm:mb-6 sm:mt-10 sm:px-0">
-                <div>
-                    <h2 className="m-0 text-xl font-bold text-slate-900 sm:text-3xl">Popular Tour Packages</h2>
+            <div className="mb-3 mt-4 flex items-end justify-between gap-3 px-0.5 sm:mb-6 sm:mt-10 sm:px-0">
+                <div className="min-w-0">
+                    <h2 className="m-0 text-xl font-bold text-slate-900 sm:text-3xl">
+                        {category === "chardham" ? "Popular Char Dham Packages" : "Popular Tour Packages"}
+                    </h2>
                     <p className="m-0 mt-1 text-[12px] text-slate-500 sm:text-sm">
                         Handpicked packages for a comfortable and memorable journey
                     </p>
                     <span className="mt-2 block h-0.5 w-10 rounded bg-red-600" />
                 </div>
-                {pagination && !loading && (
-                    <span className="hidden text-sm text-slate-500 sm:block">{pagination.total} packages found</span>
-                )}
+                <div className="flex shrink-0 items-center gap-3">
+                    {!loading && !error && (
+                        <span className="hidden text-sm text-slate-500 sm:block">{total} package{total === 1 ? "" : "s"} found</span>
+                    )}
+                    {hasFilter && (
+                        <button
+                            type="button"
+                            onClick={() => handleFilters(EMPTY_FILTERS)}
+                            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-red-600 hover:underline sm:text-sm"
+                        >
+                            <i className="fa-solid fa-rotate-right" /> Clear Filter
+                        </button>
+                    )}
+                </div>
             </div>
 
             {error && <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -614,10 +724,10 @@ const Tours = () => {
             </div>
 
             {!loading && !error && tours.length === 0 && (
-                <p className="mt-10 text-center text-slate-500">No tours match your search — try clearing a filter.</p>
+                <p className="mt-10 text-center text-slate-500">No tours match your selection — try clearing a filter.</p>
             )}
 
-            {!loading && pagination && <Pagination pagination={pagination} onPageChange={handlePageChange} />}
+            {!loading && !error && total > 0 && <Pagination pagination={pagination} onPageChange={handlePageChange} />}
 
             <div className="mt-8 border-t border-slate-200 pt-6">
                 <SocialLinks title="Follow us & chat with us" />

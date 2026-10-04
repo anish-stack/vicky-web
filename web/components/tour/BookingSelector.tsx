@@ -132,7 +132,7 @@ const submit = () => {
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6">
           <div className="min-w-0 space-y-3 sm:space-y-4">
             {/* vehicles */}
-            <Box id="sec-v" icon="fa-solid fa-car" title="Select Your Vehicle" sub="Choose your preferred vehicle for this tour">
+            <Box id="sec-v" icon="fa-solid fa-car" title="All Vehicle With luggage Carrier" sub="Choose your preferred vehicle for this tour">
               {errors.v && <p className="mb-2 mt-0 rounded-md bg-red-50 px-3 py-2 text-[13px] text-red-700">{errors.v}</p>}
               {vehicles.length === 0 ? (
                 <p className="m-0 text-[14px] text-slate-500">Vehicles for this tour will be confirmed by our team.</p>

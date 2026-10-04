@@ -354,7 +354,9 @@ export default function TourDetailPage({ tour }: Props) {
   const vehicles = activeVehicles(tour);
   const hotels = activeHotels(tour);
   const photos = [tour.cover_image || FALLBACK_IMG, ...tour.gallery].filter(Boolean) as string[];
-  const placeImgs = tour.places_covered.filter((p) => p.image);
+  // name and icon are optional in the admin: skip rows that have nothing to show
+  const places = tour.places_covered.filter((p) => (p.name || "").trim() || p.icon || p.image);
+  const placeImgs = places.filter((p) => p.image);
   const seoTitle = tour.seo.title || tour.title;
   const seoDesc = tour.seo.description || tour.short_description;
   const whatsapp = `https://wa.me/${WHATSAPP_NUMBER.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi, I'd like details for the tour: ${tour.title}`)}`;
@@ -362,7 +364,7 @@ export default function TourDetailPage({ tour }: Props) {
   const tabs = [
     { id: "overview", label: "Overview", show: true },
     { id: "itinerary", label: "Itinerary", show: tour.itinerary.length > 0 },
-    { id: "places", label: "Places", show: tour.places_covered.length > 0 },
+    { id: "places", label: "Places", show: places.length > 0 },
     { id: "inclusions", label: "Inclusions", show: tour.inclusions.length + tour.exclusions.length > 0 },
     { id: "notes", label: "Notes", show: tour.important_notes.length > 0 },
     { id: "faqs", label: "FAQs", show: tour.faqs.length > 0 },
@@ -584,11 +586,11 @@ export default function TourDetailPage({ tour }: Props) {
               )}
 
               {/* places */}
-              {tour.places_covered.length > 0 && (
+              {places.length > 0 && (
                 <Section id="places" title="Places We Cover" icon="fa-solid fa-place-of-worship">
                   <div className="-mx-3 overflow-hidden sm:mx-0 sm:overflow-visible">
                   <div className="no-sb -mb-6 flex gap-2.5 overflow-x-auto px-3 pb-6 sm:mb-0 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                    {tour.places_covered.map((p, i) => {
+                    {places.map((p, i) => {
                       const li = placeImgs.findIndex((x) => x === p);
                       return (
                         <figure key={i} className="m-0 w-28 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white sm:w-auto">
@@ -609,7 +611,9 @@ export default function TourDetailPage({ tour }: Props) {
                               <i className={`${faIcon(p.icon)} text-[22px]`} />
                             </div>
                           )}
-                          <figcaption className="px-2 py-1 text-[11.5px] font-semibold leading-tight text-slate-800 sm:text-[12px]">{p.name}</figcaption>
+                          {(p.name || "").trim() && (
+                            <figcaption className="px-2 py-1 text-[11.5px] font-semibold leading-tight text-slate-800 sm:text-[12px]">{p.name}</figcaption>
+                          )}
                         </figure>
                       );
                     })}
@@ -720,7 +724,7 @@ export default function TourDetailPage({ tour }: Props) {
 </div>
                 <div className="flex items-center gap-2 p-3">
                   <a href={whatsapp} target="_blank" rel="noreferrer" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-slate-300 text-green-600 no-underline" aria-label="Ask on WhatsApp">
-                    <i className="fa-brands fa-whatsapp text-[20px]" />
+                    <i className="fa-brands fa-whatsapp text-[20px] text-[#25d366]" />
                   </a>
                   <Link href={bookHref} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 text-[14px] font-semibold text-white no-underline hover:bg-red-700 hover:text-white">
                    Continue Booking  <i className="fa-solid fa-arrow-right" />

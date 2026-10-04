@@ -346,6 +346,7 @@ export default function Home({
         />
 
         <HomeDestination
+          category="taxi"
           title="Explore Popular Destination"
           description="Enjoy hassle-free weekends with our affordable, top-rated outstation tour packages. <br /> Explore popular destinations effortlessly!"
           destinations={destinations}

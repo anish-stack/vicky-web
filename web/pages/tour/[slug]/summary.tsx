@@ -25,6 +25,7 @@ import {
   verifyTourBookingPayment,
   TourAvailability,
   AppliedCoupon,
+  paxLimits,
   TourCouponOffer,
   couponOfferText,
   getTourCoupons,
@@ -77,6 +78,9 @@ type Traveller = {
   return_time: string;
   name: string;
   mobile: string;
+  adults: number;
+  children: number;
+  luggage: number;
   terms: boolean;
 };
 
@@ -126,6 +130,60 @@ function Card({ title, icon, action, children, id }: { title: string; icon: stri
   );
 }
 
+/** Compact dropdown with a red icon, an info tooltip and a "Max N" helper line. */
+function PaxSelect({
+  label,
+  info,
+  icon,
+  value,
+  onChange,
+  options,
+  max,
+  note,
+  error,
+}: {
+  label: string;
+  info: string;
+  icon: string;
+  value: number;
+  onChange: (n: number) => void;
+  options: { value: number; label: string }[];
+  max: number;
+  note: string;
+  error?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <span className="mb-1 flex items-center gap-1 text-[12px] font-semibold text-slate-700 sm:text-[12.5px]">
+        <span className="truncate">{label}</span>
+        <i className="fa-solid fa-circle-info shrink-0 text-[11px] text-slate-400" title={info} aria-label={info} />
+      </span>
+      <div className="relative">
+        <i className={`${icon} pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-red-600`} />
+        <select
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          aria-label={label}
+          className={`h-10 w-full appearance-none rounded-lg border bg-white pl-8 pr-6 text-[13.5px] text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-100 ${
+            error ? "border-red-500" : "border-slate-300 focus:border-red-500"
+          }`}
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <i className="fa-solid fa-caret-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-700" />
+      </div>
+      <span className="mt-1 block text-[11px] leading-tight text-slate-500">
+        <b className="font-semibold text-red-600">Max {max}</b> {note}
+      </span>
+      <Err>{error}</Err>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* page                                                               */
 /* ------------------------------------------------------------------ */
@@ -167,9 +225,23 @@ export default function TourSummaryPage({ tour, sel }: Props) {
     return_time: "20:00",
     name: "",
     mobile: "",
+    adults: Math.min(Math.max(sel.a || 1, 1), paxLimits(vehicle).adults),
+    children: 0,
+    luggage: 0,
     terms: false,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof Traveller, string>>>({});
+
+  // allowed people / bags depend on the selected vehicle
+  const limits = paxLimits(vehicle);
+  useEffect(() => {
+    setForm((f) => {
+      const adults = Math.min(Math.max(f.adults, 1), limits.adults);
+      const children = Math.min(Math.max(f.children, 0), limits.children);
+      const luggage = Math.min(Math.max(f.luggage, 0), limits.bags);
+      return adults === f.adults && children === f.children && luggage === f.luggage ? f : { ...f, adults, children, luggage };
+    });
+  }, [limits.adults, limits.children, limits.bags]);
   const [minDate, setMinDate] = useState("");
   const [avail, setAvail] = useState<TourAvailability | null>(null);
 
@@ -213,6 +285,9 @@ export default function TourSummaryPage({ tour, sel }: Props) {
           return_time: saved.return_time || f.return_time,
           name: saved.name || "",
           mobile: saved.mobile || "",
+          adults: Number.isFinite(Number(saved.adults)) && Number(saved.adults) >= 1 ? Number(saved.adults) : f.adults,
+          children: Number.isFinite(Number(saved.children)) && Number(saved.children) >= 0 ? Number(saved.children) : 0,
+          luggage: Number.isFinite(Number(saved.luggage)) && Number(saved.luggage) >= 0 ? Number(saved.luggage) : 0,
         }));
       }
     } catch {
@@ -250,7 +325,10 @@ export default function TourSummaryPage({ tour, sel }: Props) {
     }
     if (form.name.trim().length < 2) e.name = "Enter your full name";
     else if (!/^[\p{L} .'-]+$/u.test(form.name.trim())) e.name = "Use letters only";
-    if (!/^[6-9]\d{9}$/.test(cleanMobile(form.mobile))) e.mobile = "Enter a valid 10-digit mobile number";
+    if (!/^[6-9]\d{9}$/.test(cleanMobile(form.mobile))) e.mobile = "Enter a valid 10-digit WhatsApp number";
+    if (form.adults < 1 || form.adults > limits.adults) e.adults = `Adults: 1 to ${limits.adults}`;
+    if (form.children < 0 || form.children > limits.children) e.children = `Children: up to ${limits.children}`;
+    if (form.luggage < 0 || form.luggage > limits.bags) e.luggage = `Bags: up to ${limits.bags}`;
     if (!form.terms) e.terms = "Please accept the terms to continue";
     setErrors(e);
     return e;
@@ -368,7 +446,9 @@ export default function TourSummaryPage({ tour, sel }: Props) {
         pickup_time: form.pickup_time,
         return_date: isRound ? returnDate : undefined,
         return_time: isRound ? form.return_time : undefined,
-        adults: sel.a,
+        adults: form.adults,
+        children: form.children,
+        luggage: form.luggage,
         rooms: sel.r,
         vehicle_label: vehicle?.label,
         vehicle_price: vehiclePrice,
@@ -517,7 +597,7 @@ export default function TourSummaryPage({ tour, sel }: Props) {
                         <p className="m-0 text-[14px] font-bold leading-snug text-slate-900 sm:text-[15px]">{hotel.name}</p>
                         <p className="m-0 text-[12px] text-slate-600">
                           {hotel.location ? `${hotel.location} · ` : ""}
-                          {nightsTxt(hotel.nights)} · {sel.r} Room{sel.r === 1 ? "" : "s"} · {sel.a} Adult{sel.a === 1 ? "" : "s"}
+                          {nightsTxt(hotel.nights)} · {sel.r} Room{sel.r === 1 ? "" : "s"} · {form.adults} Adult{form.adults === 1 ? "" : "s"}{form.children > 0 ? ` · ${form.children} Child${form.children === 1 ? "" : "ren"}` : ""}
                         </p>
                       </div>
                       <p className="m-0 shrink-0 text-[15px] font-extrabold text-red-600">{hotelOnRequest ? "On request" : inr(stayPrice)}</p>
@@ -596,15 +676,54 @@ export default function TourSummaryPage({ tour, sel }: Props) {
               </Card>
 
               {/* traveller */}
-              <Card id="sec-traveller" title="Traveller Details" icon="fa-solid fa-user">
-                <div className="grid gap-3 sm:grid-cols-2">
+              <Card id="sec-traveller" title="Traveller in this Tour" icon="fa-solid fa-user">
+                <div className="space-y-3.5">
                   <label className="block">
                     <Label required>Full name</Label>
                     <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Enter your full name" autoComplete="name" className={inputCls(errors.name)} />
                     <Err>{errors.name}</Err>
                   </label>
+
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <PaxSelect
+                      label="Adults"
+                      info="Age 5 years and above"
+                      icon="fa-solid fa-user"
+                      value={form.adults}
+                      onChange={(n) => set("adults", n)}
+                      options={Array.from({ length: limits.adults }, (_, i) => ({ value: i + 1, label: String(i + 1) }))}
+                      max={limits.adults}
+                      note="(as per vehicle)"
+                      error={errors.adults}
+                    />
+                    <PaxSelect
+                      label="Children"
+                      info="Children below 5 years"
+                      icon="fa-solid fa-child"
+                      value={form.children}
+                      onChange={(n) => set("children", n)}
+                      options={[{ value: 0, label: "No Child" }, ...Array.from({ length: limits.children }, (_, i) => ({ value: i + 1, label: String(i + 1) }))]}
+                      max={limits.children}
+                      note="(below 5 years)"
+                      error={errors.children}
+                    />
+                    <PaxSelect
+                      label="Luggage (Bags)"
+                      info="Suitcases / bags that fit in the vehicle"
+                      icon="fa-solid fa-suitcase-rolling"
+                      value={form.luggage}
+                      onChange={(n) => set("luggage", n)}
+                      options={[{ value: 0, label: "No Bag" }, ...Array.from({ length: limits.bags }, (_, i) => ({ value: i + 1, label: String(i + 1) }))]}
+                      max={limits.bags}
+                      note="(as per vehicle)"
+                      error={errors.luggage}
+                    />
+                  </div>
+
                   <label className="block">
-                    <Label required>Mobile number</Label>
+                    <span className="mb-1 flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
+                      <i className="fa-brands fa-whatsapp text-[16px] text-[#25d366]" /> WhatsApp Number
+                    </span>
                     <div className="flex">
                       <span className="grid h-10 place-items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-50 px-2.5 text-[14px] text-slate-600">+91</span>
                       <input
@@ -613,12 +732,13 @@ export default function TourSummaryPage({ tour, sel }: Props) {
                         maxLength={14}
                         value={form.mobile}
                         onChange={(e) => set("mobile", e.target.value.replace(/[^\d+ ]/g, ""))}
-                        placeholder="Enter mobile number"
+                        placeholder="Enter WhatsApp number"
                         autoComplete="tel-national"
                         className={`${inputCls(errors.mobile)} rounded-l-none`}
                       />
                     </div>
                     <Err>{errors.mobile}</Err>
+                    <span className="mt-1 block text-[11.5px] text-slate-500">OTP and booking updates are sent on this WhatsApp number.</span>
                   </label>
                 </div>
               </Card>
@@ -780,13 +900,13 @@ export default function TourSummaryPage({ tour, sel }: Props) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl">
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="m-0 text-[16px] font-bold text-slate-900">Verify mobile number</h3>
+              <h3 className="m-0 flex items-center gap-2 text-[16px] font-bold text-slate-900"><i className="fa-brands fa-whatsapp text-[20px] text-[#25d366]" />Verify WhatsApp number</h3>
               <button type="button" onClick={() => { setOtpOpen(false); setPaying(false); }} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full text-slate-500 hover:bg-slate-100">
                 <i className="fa-solid fa-xmark" />
               </button>
             </div>
             <p className="m-0 mb-3 text-[13px] text-slate-600">
-              We've sent a 4-digit OTP to <span className="font-semibold text-slate-900">+91 {otpMobile}</span>.
+              We've sent a 4-digit OTP on WhatsApp to <span className="font-semibold text-slate-900">+91 {otpMobile}</span>.
             </p>
             <input
               type="text"

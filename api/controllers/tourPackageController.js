@@ -193,6 +193,9 @@ const toBoolFilter = (value) => {
 
 const DEFAULT_TEMPLATE_KEY = "tour_default_template_id";
 const STATUSES = ["live", "new", "duplicate"];
+const CATEGORIES = ["taxi", "chardham"];
+const TOP_KEYS = { taxi: "tour_top_taxi_ids", chardham: "tour_top_chardham_ids" };
+const TOP_LIMIT = 3;
 const UPLOAD_ROOT = path.join(__dirname, "..");
 
 const SORTS = {
@@ -941,6 +944,10 @@ const buildPackageData = (
 
         status,
 
+        category: CATEGORIES.includes(body.category)
+            ? body.category
+            : existing?.category || "taxi",
+
         daily_booking_limit:
             body.daily_booking_limit !== undefined
                 ? Math.max(parseNumber(body.daily_booking_limit, 0), 0)
@@ -1266,6 +1273,7 @@ exports.getTourPackages = async (req, res) => {
         if (isActive === true) where.status = { [Op.ne]: "duplicate" };
         const statusFilter = String(req.query.status || "");
         if (STATUSES.includes(statusFilter)) where.status = statusFilter;
+        if (CATEGORIES.includes(String(req.query.category || ""))) where.category = req.query.category;
         if (isFeatured !== undefined) where.is_featured = isFeatured;
         if (["roundTrip", "oneWay"].includes(trip_type)) where.trip_type = trip_type;
         if (from_city_id && !Number.isNaN(Number(from_city_id))) where.from_city_id = Number(from_city_id);
@@ -1649,6 +1657,7 @@ exports.duplicateTourPackage = async (req, res) => {
             is_featured: false,
             is_active: false,
             status: "duplicate",
+            category: src.category || "taxi",
             daily_booking_limit: src.daily_booking_limit || 0,
             min_advance_hours: src.min_advance_hours || 0,
             sort_order: Number(maxOrder) + 1,
@@ -1750,5 +1759,105 @@ exports.setDefaults = async (req, res) => {
             success: false,
             message: error.message,
         });
+    }
+};
+
+/* ------------------------------------------------------------------ */
+/* Top 3 tour packages per website tab (taxi / chardham)               */
+/* ------------------------------------------------------------------ */
+
+const readTopIds = async (category) => {
+    const row = await Setting.findOne({ where: { key: TOP_KEYS[category] } });
+    if (!row || !row.value) return [];
+    try {
+        const v = JSON.parse(row.value);
+        return Array.isArray(v) ? v.map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, TOP_LIMIT) : [];
+    } catch {
+        return [];
+    }
+};
+
+// GET /top?category=taxi|chardham  (public) -> up to 3 tours in the admin's order
+// Falls back to featured tours of that category when the admin has not picked any.
+exports.getTopTourPackages = async (req, res) => {
+    try {
+        const category = CATEGORIES.includes(String(req.query.category || "")) ? req.query.category : "taxi";
+        const ids = await readTopIds(category);
+
+        const visible = { is_active: true, status: { [Op.ne]: "duplicate" }, category };
+        let rows = [];
+
+        if (ids.length) {
+            const found = await TourPackage.findAll({ where: { ...visible, id: { [Op.in]: ids } } });
+            const byId = new Map(found.map((r) => [Number(r.id), r]));
+            rows = ids.map((id) => byId.get(id)).filter(Boolean);
+        }
+        if (!rows.length) {
+            rows = await TourPackage.findAll({
+                where: { ...visible, is_featured: true },
+                order: SORTS.sort_order,
+                limit: TOP_LIMIT,
+            });
+        }
+
+        const masters = await loadMasters(rows);
+        return res.json({
+            success: true,
+            category,
+            data: rows.map((item) => toResponse(item, req, masters)),
+        });
+    } catch (error) {
+        console.error("getTopTourPackages Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// GET /top-settings (admin) -> { taxi: [ids], chardham: [ids] }
+exports.getTopSettings = async (req, res) => {
+    try {
+        return res.json({
+            success: true,
+            data: { taxi: await readTopIds("taxi"), chardham: await readTopIds("chardham") },
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// PUT /top (admin)  { category, ids: [id1, id2, id3] }  - order of ids = order on the website
+exports.setTopTourPackages = async (req, res) => {
+    try {
+        const category = String(req.body?.category || "");
+        if (!CATEGORIES.includes(category)) {
+            return res.status(400).json({ success: false, message: "Category must be taxi or chardham" });
+        }
+
+        const raw = Array.isArray(req.body?.ids) ? req.body.ids : [];
+        const ids = [...new Set(raw.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+        if (ids.length > TOP_LIMIT) {
+            return res.status(400).json({ success: false, message: `Choose at most ${TOP_LIMIT} tour packages` });
+        }
+
+        if (ids.length) {
+            const found = await TourPackage.findAll({ where: { id: { [Op.in]: ids } }, attributes: ["id", "title", "category"] });
+            if (found.length !== ids.length) {
+                return res.status(404).json({ success: false, message: "One of the selected tours was not found" });
+            }
+            const wrong = found.find((t) => t.category !== category);
+            if (wrong) {
+                return res.status(400).json({
+                    success: false,
+                    message: `"${wrong.title}" belongs to the other category. Change its category first.`,
+                });
+            }
+        }
+
+        if (!ids.length) await Setting.destroy({ where: { key: TOP_KEYS[category] } });
+        else await Setting.upsert({ key: TOP_KEYS[category], value: JSON.stringify(ids) });
+
+        return res.json({ success: true, message: "Top packages saved", data: ids });
+    } catch (error) {
+        console.error("setTopTourPackages Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };

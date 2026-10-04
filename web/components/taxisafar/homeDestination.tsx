@@ -3,9 +3,8 @@ import { Container } from "react-bootstrap";
 import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://webapi.taxisafar.com";
-const LIST_URL = `${API_URL}/api/tour-package`;
 const DETAIL_PATH = (slug: string) => `/tour/${slug}`;
-const VIEW_ALL_PATH = "/tours";
+const TOP_URL = `${API_URL}/api/tour-package/top`;
 const FALLBACK_IMG = "/images/tour-placeholder.jpg";
 const HOME_LIMIT = 3; // cards on home page (use 6 for two rows)
 
@@ -157,23 +156,27 @@ function CardSkeleton() {
   );
 }
 
-const HomeDestination = () => {
+// `category` = which website tab this section is on. The Top 3 tours of each tab are chosen in the admin panel.
+// Extra props passed by the old pages (title, description, destinations) are accepted and ignored.
+type HomeDestinationProps = { category?: "taxi" | "chardham"; [key: string]: unknown };
+
+const HomeDestination = ({ category = "taxi" }: HomeDestinationProps) => {
   const [tours, setTours] = useState<TourPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const viewAllPath = `/tours?category=${category}`;
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
     axios
-      .get(LIST_URL, {
-        params: { is_active: 1, is_featured: 1, items_per_page: HOME_LIMIT, sort: "sort_order" },
-      })
-      .then((res) => alive && setTours(res.data?.data || []))
+      .get(TOP_URL, { params: { category } })
+      .then((res) => alive && setTours((res.data?.data || []).slice(0, HOME_LIMIT)))
       .catch(() => alive && setTours([]))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, []);
+  }, [category]);
 
   if (!loading && tours.length === 0) return null;
 
@@ -194,7 +197,7 @@ const HomeDestination = () => {
 
           <div className="mt-6 text-center sm:mt-8">
                 <a
-              href={VIEW_ALL_PATH}
+              href={viewAllPath}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg border-2 border-red-600 px-6 py-2.5 text-[15px] font-semibold text-red-600 no-underline transition-colors hover:bg-red-600 hover:text-white sm:w-auto"
             >
               View All Tour Packages <i className="fa-solid fa-arrow-right" />

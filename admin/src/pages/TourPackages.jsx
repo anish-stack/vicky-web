@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpToLine, Copy, ListOrdered, Plus, Pencil, Trash2, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpToLine, Copy, ListOrdered, Plus, Pencil, Trash2, Star, Trophy } from "lucide-react";
 import useList from "../hooks/useList";
 import api from "../lib/api";
 import { dateOnly, inr, parseJSON } from "../lib/format";
@@ -137,7 +137,7 @@ function ArrangeOrder({ onClose, onSaved }) {
 export default function TourPackages() {
   const navigate = useNavigate();
   const toast = useToast();
-  const tours = useList(TOUR_API, { is_active: "", is_featured: "", trip_type: "", status: "", sort: "sort_order" });
+  const tours = useList(TOUR_API, { is_active: "", is_featured: "", trip_type: "", status: "", category: "", sort: "sort_order" });
   const [del, setDel] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(null); // `${id}:${field}`
@@ -145,7 +145,7 @@ export default function TourPackages() {
   const [duping, setDuping] = useState(null);
 
   const p = tours.params;
-  const hasFilter = p.search || p.is_active !== "" || p.is_featured !== "" || p.trip_type || p.status;
+  const hasFilter = p.search || p.is_active !== "" || p.is_featured !== "" || p.trip_type || p.status || p.category;
 
   // Toggle by re-saving the full record, so no JSON field is lost even if the list row is trimmed.
   const flip = async (row, field) => {
@@ -198,6 +198,7 @@ export default function TourPackages() {
         subtitle="Multi-day tours with itinerary, vehicle and hotel options."
         actions={
           <>
+            <Link to="/tour-packages/top"><Button variant="outline" icon={Trophy}>Top 3 on home</Button></Link>
             <Button variant="outline" icon={ListOrdered} onClick={() => setArrange((v) => !v)}>Arrange order</Button>
             <Link to="/tour-packages/new"><Button icon={Plus}>Add tour package</Button></Link>
           </>
@@ -205,14 +206,15 @@ export default function TourPackages() {
       />
       {arrange && <ArrangeOrder onClose={() => setArrange(false)} onSaved={() => { setArrange(false); tours.reload(); }} />}
       <Card bodyClass="p-0">
-        <div className="grid gap-3 border-b border-stone-200 p-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-3 border-b border-stone-200 p-4 sm:grid-cols-2 lg:grid-cols-7">
           <SearchInput value={p.search} onChange={(v) => tours.setFilter("search", v)} placeholder="Title, city or slug" className="lg:col-span-2" />
           <Select value={p.is_active} onChange={(e) => tours.setFilter("is_active", e.target.value)} placeholder="Active and inactive" options={[{ value: "1", label: "Active" }, { value: "0", label: "Inactive" }]} />
           <Select value={p.is_featured} onChange={(e) => tours.setFilter("is_featured", e.target.value)} placeholder="Featured or not" options={[{ value: "1", label: "Featured" }, { value: "0", label: "Not featured" }]} />
           <Select value={p.trip_type} onChange={(e) => tours.setFilter("trip_type", e.target.value)} placeholder="Any trip type" options={[{ value: "roundTrip", label: "Round trip" }, { value: "oneWay", label: "One way" }]} />
           <Select value={p.status} onChange={(e) => tours.setFilter("status", e.target.value)} placeholder="Any status" options={[{ value: "live", label: "Live" }, { value: "new", label: "New" }, { value: "duplicate", label: "Duplicate (draft)" }]} />
+          <Select value={p.category} onChange={(e) => tours.setFilter("category", e.target.value)} placeholder="Any tab" options={[{ value: "taxi", label: "Taxi" }, { value: "chardham", label: "Char Dham Yatra" }]} />
           {hasFilter && (
-            <Button variant="ghost" onClick={() => ["search", "is_active", "is_featured", "trip_type", "status"].forEach((k) => tours.setFilter(k, ""))}>Clear filters</Button>
+            <Button variant="ghost" onClick={() => ["search", "is_active", "is_featured", "trip_type", "status", "category"].forEach((k) => tours.setFilter(k, ""))}>Clear filters</Button>
           )}
         </div>
         {tours.error && (
@@ -270,6 +272,7 @@ export default function TourPackages() {
                 <Star className={cx("size-4", isOn(t.is_featured) ? "fill-amber-400 text-amber-500" : "text-slate-300")} />
               </button>
             ) },
+            { key: "cat", label: "Tab", render: (t) => <Badge tone={t.category === "chardham" ? "reserved" : "neutral"}>{t.category === "chardham" ? "Char Dham" : "Taxi"}</Badge> },
             { key: "st", label: "Status", render: (t) => <Badge tone={STATUS_TONE[t.status] || "neutral"}>{STATUS_LABEL[t.status] || "Live"}</Badge> },
             { key: "status", label: "Active", render: (t) => (
               <div onClick={(e) => e.stopPropagation()}>

@@ -230,6 +230,7 @@ export default function Hotel() {
         />
 
         <HomeDestination
+          category="taxi"
           title="Explore Popular Dham Yatra"
           description="Enjoy hassle-free weekends with our affordable, top-rated outstation tour packages. <br /> Explore popular destinations effortlessly!"
           destinations={destinations}

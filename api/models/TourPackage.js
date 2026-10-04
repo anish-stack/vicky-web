@@ -181,6 +181,13 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "live",
       },
 
+      // which website tab the tour belongs to (Top 3 on home page is chosen per tab)
+      category: {
+        type: DataTypes.ENUM("taxi", "chardham"),
+        allowNull: false,
+        defaultValue: "taxi",
+      },
+
       // max bookings accepted per pickup date (0 = unlimited)
       daily_booking_limit: {
         type: DataTypes.INTEGER.UNSIGNED,

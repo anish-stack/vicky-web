@@ -188,7 +188,7 @@ export default function TourBookingView() {
                 </Row>
               )}
               <Row label="Travellers">
-                {b.adults} adult(s), {b.rooms} room(s)
+                {b.adults} adult(s){Number(b.children) > 0 ? `, ${b.children} child(ren)` : ""}{Number(b.luggage) > 0 ? `, ${b.luggage} bag(s)` : ""}, {b.rooms} room(s)
               </Row>
             </dl>
           </Card>
