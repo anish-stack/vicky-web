@@ -31,6 +31,7 @@ import TourCoupons from "./pages/TourCoupons";
 import TourCouponForm from "./pages/TourCouponForm";
 import TourBookings from "./pages/TourBookings";
 import TourBookingView from "./pages/TourBookingView";
+import TourDefaults from "./pages/TourDefaults";
 
 function Protected({ children }) {
   const { user, ready } = useAuth();
@@ -72,6 +73,10 @@ export default function App() {
         <Route path="dham/packages/:id" element={<DhamPackageForm />} />
 
         <Route path="tour-packages" element={<TourPackages />} />
+        <Route path="tour-packages/defaults" element={<TourDefaults />} />
+
+        
+
         <Route path="tour-hotels" element={<TourHotels />} />
         <Route path="tour-hotels/new" element={<TourHotelForm />} />
         <Route path="tour-hotels/:id" element={<TourHotelForm />} />

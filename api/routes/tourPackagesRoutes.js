@@ -14,6 +14,9 @@ router.get("/top", controller.getTopTourPackages);
 // ---------------- admin (static paths first) ----------------
 router.get("/defaults", adminMiddleware, controller.getDefaults);
 router.put("/defaults", adminMiddleware, controller.setDefaults);
+router.get("/default-master", adminMiddleware, controller.getDefaultMaster);
+router.put("/default-master", adminMiddleware, controller.setDefaultMaster);
+router.delete("/default-master", adminMiddleware, controller.resetDefaultMaster);
 router.get("/top-settings", adminMiddleware, controller.getTopSettings);
 router.put("/top", adminMiddleware, controller.setTopTourPackages);
 router.post("/reorder", adminMiddleware, controller.reorderTourPackages);

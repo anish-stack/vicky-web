@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowDown, ArrowUp, ArrowUpToLine, Copy, ListOrdered, Plus, Pencil, Trash2, Star, Trophy } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpToLine, Copy, ListChecks, ListOrdered, Plus, Pencil, Trash2, Star, Trophy } from "lucide-react";
 import useList from "../hooks/useList";
 import api from "../lib/api";
 import { dateOnly, inr, parseJSON } from "../lib/format";
@@ -198,9 +198,10 @@ export default function TourPackages() {
         subtitle="Multi-day tours with itinerary, vehicle and hotel options."
         actions={
           <>
+            <Link to="/tour-packages/defaults"><Button variant="outline" icon={ListChecks}>Default master</Button></Link>
             <Link to="/tour-packages/top"><Button variant="outline" icon={Trophy}>Top 3 on home</Button></Link>
             <Button variant="outline" icon={ListOrdered} onClick={() => setArrange((v) => !v)}>Arrange order</Button>
-            <Link to="/tour-packages/new"><Button icon={Plus}>Add tour package</Button></Link>
+            <Link to="/tour-packages/new"><Button icon={Plus}>Add New tour package</Button></Link>
           </>
         }
       />
@@ -231,7 +232,7 @@ export default function TourPackages() {
             <Empty
               title={hasFilter ? "No tour packages match" : "No tour packages yet"}
               text={hasFilter ? "Try clearing the filters." : "Create your first package with route, itinerary and vehicle prices."}
-              action={!hasFilter && <Link to="/tour-packages/new"><Button icon={Plus}>Add tour package</Button></Link>}
+              action={!hasFilter && <Link to="/tour-packages/new"><Button icon={Plus}>Add New tour package</Button></Link>}
             />
           }
           columns={[

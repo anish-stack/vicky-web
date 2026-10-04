@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import api, { API_ORIGIN } from "../lib/api";
 import useOptions from "../hooks/useOptions";
 import { parseJSON } from "../lib/format";
+import { TOUR_DEFAULTS } from "../lib/tourDefaults";
 import { IMG_SPECS, prepareImage, specText } from "../lib/imageTools";
 import { Button, Card, Field, Input, Loading, PageHeader, Select, Textarea, Toggle, cx } from "../components/ui";
 import { BackLink, SaveBar } from "../components/FormBits";
@@ -83,60 +84,7 @@ const STATUS_OPTIONS = [
 ];
 
 let keySeq = 0;
-const newKey = () => `k${Date.now().toString(36)}${(keySeq++).toString(36)}`;
-
-/** Built-in defaults for every NEW tour (a "default template" tour, if set, overrides them). */
-const DEFAULT_HIGHLIGHTS = [
-  { icon: "car", title: "Commercial AC Cab", subtitle: "Comfortable AC cab with driver" },
-  { icon: "map-pin", title: "Delhi NCR Pickup & Drop", subtitle: "Free within 60 KM of India Gate" },
-  { icon: "map", title: "Planned Sightseeing", subtitle: "Major attractions as per itinerary" },
-  { icon: "route", title: "Comfortable Road Journey", subtitle: "Well-planned private tour by cab" },
-];
-
-const DEFAULT_INCLUSIONS = [
-  "Commercial AC Cab",
-  "Fuel Charges Included",
-  "Driver Allowance Included",
-  "Toll Tax Included",
-  "State Tax Included",
-  "Free Pickup within 50 KM of India Gate (Delhi NCR)",
-  "Free Drop within 50 KM of India Gate (Delhi NCR)",
-  "Local Sightseeing as per Itinerary, subject to local taxi union rules",
-  "Hotel Charges Included Only if Hotel is Selected During Booking",
-  "Dedicated Cab for the Complete Tour",
-];
-
-const DEFAULT_EXCLUSIONS = [
-  "Hotel Charges Unless Hotel is Selected During Booking",
-  "Breakfast, Meals and Beverages",
-  "Entry Fees for Any Place or Attraction",
-  "Guide Charges",
-  "Personal Expenses",
-  "Parking Charges",
-  "Airport / Railway Station Pickup Charges, if Applicable",
-  "One Pickup Location and One Drop Location Included. Additional Pickup or Drop Locations Will Be Chargeable Extra.",
-  "Any Travel Outside the Planned Tour Route or Destination Will Be Charged Extra Based on Additional Kilometres and Time, as per the Selected Vehicle Category.",
-  "Standard Drop Time is 10:00 PM. Extra Time Charges Apply After 11:00 PM \u2014 Hatchback & Sedan \u20b9250/hour; Ertiga SUV / Prime SUV \u20b9300/hour. Any Part of an Hour After 11:00 PM Will Be Charged as a Full Hour.",
-  "Tour Extension Charges: If the tour extends beyond the booked duration, each additional day will be charged separately based on the selected vehicle category and the applicable extra-day rate.",
-];
-
-const DEFAULT_FAQS = [
-  { question: "Is hotel included in this package?", answer: "Hotel charges are included only if a hotel is selected during booking." },
-  { question: "Can I add extra sightseeing?", answer: "Yes. Additional sightseeing can be added. Extra kilometres and time will be charged as per the selected vehicle category." },
-  { question: "Is pickup and drop available across Delhi NCR?", answer: "Yes. Free pickup and drop are available within 50 KM of India Gate (Delhi NCR)." },
-  { question: "Are multiple pickup and drop locations included?", answer: "One pickup location and one drop location are included. Additional pickup or drop locations will be chargeable extra." },
-  { question: "Are breakfast and meals included with the hotel?", answer: "No. Breakfast and meals are not included unless specifically mentioned." },
-  { question: "Are there any late-night extra charges?", answer: "Yes. Standard drop time is 10:00 PM. After 11:00 PM, extra time charges are \u20b9250/hour for Hatchback & Sedan and \u20b9300/hour for Ertiga SUV / Prime SUV. Any part of an hour will be charged as a full hour." },
-  { question: "What happens if the tour extends beyond the booked duration?", answer: "Each additional day will be charged separately based on the selected vehicle category and the applicable extra-day rate." },
-  { question: "What is the payment condition?", answer: "Advance payment as per Booking Charge (%), 50% payment after pickup, and the remaining payment 2 hours before drop time." },
-];
-
-const builtinDefaults = () => ({
-  highlights: DEFAULT_HIGHLIGHTS.map((h) => ({ _k: newKey(), ...h })),
-  inclusions: [...DEFAULT_INCLUSIONS],
-  exclusions: [...DEFAULT_EXCLUSIONS],
-  faqs: DEFAULT_FAQS.map((q) => ({ _k: newKey(), ...q })),
-});
+export const newKey = () => `k${Date.now().toString(36)}${(keySeq++).toString(36)}`;
 
 export const slugify = (s) =>
   String(s || "")
@@ -173,7 +121,7 @@ const bool = (v, d) => (v === undefined || v === null || v === "" ? d : v === tr
 const numOrEmpty = (v) => (v === null || v === undefined || v === "" ? "" : v);
 const strList = (v) => arr(v).map((s) => (typeof s === "string" ? s : String(s ?? "")));
 
-const move = (list, i, dir) => {
+export const move = (list, i, dir) => {
   const j = i + dir;
   if (j < 0 || j >= list.length) return list;
   const next = [...list];
@@ -396,9 +344,9 @@ const useObjectUrl = (file) => {
   return url;
 };
 
-const Err = ({ children }) => (children ? <p className="mt-1 text-xs text-red-600">{children}</p> : null);
+export const Err = ({ children }) => (children ? <p className="mt-1 text-xs text-red-600">{children}</p> : null);
 
-function SectionCard({ n, title, count, action, open = true, onToggle, summary, thumb, children }) {
+export function SectionCard({ n, title, count, action, open = true, onToggle, summary, thumb, children }) {
   return (
     <section className="rounded-xl border border-stone-200 bg-white">
       <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
@@ -425,7 +373,7 @@ function SectionCard({ n, title, count, action, open = true, onToggle, summary, 
   );
 }
 
-function RowTools({ index, total, onMove, onRemove, removeLabel = "Remove" }) {
+export function RowTools({ index, total, onMove, onRemove, removeLabel = "Remove" }) {
   return (
     <div className="flex items-center gap-0.5">
       <Button type="button" variant="ghost" size="icon" disabled={index === 0} onClick={() => onMove(index, -1)} aria-label="Move up"><ArrowUp className="size-4" /></Button>
@@ -562,7 +510,7 @@ export function MultiImage({ paths, files, onPaths, onFiles, toast, spec, label,
   );
 }
 
-function StringList({ items, onChange, placeholder, addLabel, errors = {}, multiline }) {
+export function StringList({ items, onChange, placeholder, addLabel, errors = {}, multiline }) {
   return (
     <div className="space-y-2">
       {items.length === 0 && <p className="text-sm text-slate-500">Nothing added yet.</p>}
@@ -672,7 +620,7 @@ export default function TourPackageForm() {
   const { data: cities } = useOptions("/cities");
   const { data: masterHotels } = useOptions("/tour-hotel?all=1", { fresh: true });
 
-  const [form, setForm] = useState(() => (id ? blank : { ...blank, ...builtinDefaults() }));
+  const [form, setForm] = useState(blank);
   const [slugTouched, setSlugTouched] = useState(false);
   const [durationTouched, setDurationTouched] = useState(false);
   const [coverFile, setCoverFile] = useState(null);
@@ -682,7 +630,7 @@ export default function TourPackageForm() {
   const [rowFiles, setRowFiles] = useState({});
   const [collapsed, setCollapsed] = useState({});
   const [openSec, setOpenSec] = useState({});
-  const [defaultsFrom, setDefaultsFrom] = useState("");
+  const [defaultsFrom, setDefaultsFrom] = useState(null);
   const [busyAction, setBusyAction] = useState("");
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(!!id);
@@ -710,7 +658,8 @@ export default function TourPackageForm() {
     return () => { alive = false; };
   }, [id]);
 
-  // New tour: start from the default template (highlights, inclusions, exclusions, notes, FAQs, hotels)
+  // New tour: start from the Default master (highlights, inclusions, exclusions, notes, FAQs).
+  // If a template tour is set, the API already overlays the lists that tour has, plus its hotels and booking settings.
   useEffect(() => {
     if (id) return;
     let alive = true;
@@ -720,26 +669,40 @@ export default function TourPackageForm() {
         const d = r?.data;
         if (!alive || !d) return;
         const t = normalizeTour(d);
+        const hasTemplate = !!d.template_id;
         setForm((f) => ({
           ...f,
-          highlights: t.highlights.length ? t.highlights : f.highlights,
-          inclusions: t.inclusions.length ? t.inclusions : f.inclusions,
-          exclusions: t.exclusions.length ? t.exclusions : f.exclusions,
+          highlights: t.highlights,
+          inclusions: t.inclusions,
+          exclusions: t.exclusions,
           important_notes: t.important_notes,
-          faqs: t.faqs.length ? t.faqs : f.faqs,
-          hotel_options: t.hotel_options,
-          hotel_optional: t.hotel_optional,
-          booking_charge_percent: t.booking_charge_percent,
-          daily_booking_limit: t.daily_booking_limit,
-          min_advance_hours: t.min_advance_hours,
+          faqs: t.faqs,
+          ...(hasTemplate
+            ? {
+                hotel_options: t.hotel_options,
+                hotel_optional: t.hotel_optional,
+                booking_charge_percent: t.booking_charge_percent,
+                daily_booking_limit: t.daily_booking_limit,
+                min_advance_hours: t.min_advance_hours,
+              }
+            : {}),
         }));
-        const c = {};
-        t.hotel_options.forEach((x) => (c[x._k] = true));
-        setCollapsed((prev) => ({ ...prev, ...c }));
-        setDefaultsFrom(d.template_title || "default template");
+        if (hasTemplate) {
+          const c = {};
+          t.hotel_options.forEach((x) => (c[x._k] = true));
+          setCollapsed((prev) => ({ ...prev, ...c }));
+        }
+        setDefaultsFrom({ template: hasTemplate ? d.template_title || "default template" : "" });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!alive) return;
+        // API unreachable: fall back to the copy kept in the admin
+        const t = normalizeTour(TOUR_DEFAULTS);
+        setForm((f) => ({ ...f, highlights: t.highlights, inclusions: t.inclusions, exclusions: t.exclusions, important_notes: t.important_notes, faqs: t.faqs }));
+        toast.error("Could not load the Default master. Original defaults are filled in instead.");
+      });
     return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // New tour: hotels flagged "auto-add" in the master list are added automatically
@@ -937,7 +900,7 @@ export default function TourPackageForm() {
     <form id="tour-form" onSubmit={submit} noValidate>
       <PageHeader
         back={<BackLink to="/tour-packages">Tour packages</BackLink>}
-        title={id ? `Edit ${form.title || "tour package"}` : "Add tour package"}
+        title={id ? `Edit ${form.title || "tour package"}` : "Add New tour package"}
         subtitle={form.from_city_name && form.to_city_name ? `${form.from_city_name} → ${form.to_city_name}` : undefined}
         actions={
           id ? (
@@ -955,7 +918,9 @@ export default function TourPackageForm() {
       )}
       {!id && defaultsFrom && (
         <div className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          Highlights, inclusions, exclusions, notes, FAQs and hotels are pre-filled from <b>{defaultsFrom}</b>. Open a section to edit it for this tour.
+          Highlights, inclusions, exclusions, notes and FAQs are pre-filled from the{" "}
+          <Link to="/tour-packages/defaults" className="font-medium underline">Default master</Link>
+          {defaultsFrom.template && <> (lists and hotels set in <b>{defaultsFrom.template}</b> override it)</>}. Open a section to edit it for this tour only.
         </div>
       )}
 
@@ -1149,10 +1114,10 @@ export default function TourPackageForm() {
                   </div>
                   <div className="grid gap-3 sm:grid-cols-[1fr_170px]">
                     <div className="space-y-3">
-                      {F({ name: `places.${i}.name`, label: "Name", children: (
+                      {F({ name: `places.${i}.name`, label: "Place name (optional)", children: (
                         <Input value={p.name} onChange={(e) => setRow("places_covered", i, { name: e.target.value })} placeholder="Krishna Janmabhoomi" />
                       ) })}
-                      <Field label="Icon"><Input value={p.icon} onChange={(e) => setRow("places_covered", i, { icon: e.target.value })} placeholder="temple" /></Field>
+                      <Field label="Icon (optional)"><Input value={p.icon} onChange={(e) => setRow("places_covered", i, { icon: e.target.value })} placeholder="temple" /></Field>
                     </div>
                     <SingleImage
                       label="Place photo"
@@ -1497,7 +1462,7 @@ export default function TourPackageForm() {
         </aside>
       </div>
 
-      <SaveBar formId="tour-form" saving={saving} label={id ? "Save tour package" : "Add tour package"} onCancel={() => navigate("/tour-packages")} />
+      <SaveBar formId="tour-form" saving={saving} label={id ? "Save tour package" : "Add New tour package"} onCancel={() => navigate("/tour-packages")} />
     </form>
   );
 }

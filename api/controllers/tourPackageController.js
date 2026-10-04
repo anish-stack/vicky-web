@@ -9,6 +9,11 @@ const fs = require("fs");
 const path = require("path");
 
 const { Op } = require("sequelize");
+const {
+    builtinMaster,
+    saveMaster,
+    readMaster,
+} = require("../utils/tourDefaults");
 // ============================================
 // Helpers
 // ============================================
@@ -1682,13 +1687,20 @@ exports.duplicateTourPackage = async (req, res) => {
 
 
 // ============================================
-// DEFAULT TEMPLATE
-// One tour is marked as the template: new tours start with its
-// highlights, inclusions, exclusions, notes, FAQs and hotels.
+// DEFAULTS FOR NEW TOURS
+// 1. Default master (Admin > Tours > Default master): highlights,
+//    inclusions, exclusions, important notes and FAQs, editable by admin.
+// 2. Optional template tour: every list the template actually has
+//    overrides the same list of the master, and it also supplies hotels
+//    and booking settings.
 // ============================================
+
+const MASTER_LISTS = ["highlights", "inclusions", "exclusions", "important_notes", "faqs"];
 
 exports.getDefaults = async (req, res) => {
     try {
+        const { master } = await readMaster();
+
         const row = await Setting.findOne({
             where: { key: DEFAULT_TEMPLATE_KEY },
         });
@@ -1696,34 +1708,101 @@ exports.getDefaults = async (req, res) => {
         const id = row ? Number(row.value) : null;
         const tpl = id ? await TourPackage.findByPk(id) : null;
 
-        if (!tpl) {
-            return res.json({ success: true, data: null });
+        const data = {
+            template_id: null,
+            template_title: null,
+            ...master,
+        };
+
+        if (tpl) {
+            const t = toResponse(tpl, req, await loadMasters([tpl]));
+
+            data.template_id = t.id;
+            data.template_title = t.title;
+
+            MASTER_LISTS.forEach((key) => {
+                if (asArray(t[key]).length) data[key] = t[key];
+            });
+
+            data.hotel_options = t.hotel_options;
+            data.hotel_optional = !!t.hotel_optional;
+            data.booking_charge_percent = Number(t.booking_charge_percent);
+            data.daily_booking_limit = t.daily_booking_limit || 0;
+            data.min_advance_hours = t.min_advance_hours || 0;
         }
 
-        const t = toResponse(tpl, req, await loadMasters([tpl]));
-
-        return res.json({
-            success: true,
-            data: {
-                template_id: t.id,
-                template_title: t.title,
-                highlights: t.highlights,
-                inclusions: t.inclusions,
-                exclusions: t.exclusions,
-                important_notes: t.important_notes,
-                faqs: t.faqs,
-                hotel_options: t.hotel_options,
-                hotel_optional: !!t.hotel_optional,
-                booking_charge_percent: Number(t.booking_charge_percent),
-                daily_booking_limit: t.daily_booking_limit || 0,
-                min_advance_hours: t.min_advance_hours || 0,
-            },
-        });
+        return res.json({ success: true, data });
     } catch (error) {
         return res.status(500).json({
             success: false,
             message: error.message,
         });
+    }
+};
+
+// GET /default-master (admin)
+exports.getDefaultMaster = async (req, res) => {
+    try {
+        const { master, updated_at } = await readMaster();
+
+        const row = await Setting.findOne({ where: { key: DEFAULT_TEMPLATE_KEY } });
+        const tpl = row && Number(row.value)
+            ? await TourPackage.findByPk(Number(row.value), { attributes: ["id", "title", ...MASTER_LISTS] })
+            : null;
+
+        return res.json({
+            success: true,
+            data: {
+                ...master,
+                updated_at,
+                // lists the template tour overrides (so the admin knows why a change here may not show)
+                template: tpl
+                    ? {
+                        id: tpl.id,
+                        title: tpl.title,
+                        overrides: MASTER_LISTS.filter((key) => asArray(tpl[key]).length),
+                    }
+                    : null,
+            },
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// PUT /default-master (admin)  { highlights, inclusions, exclusions, important_notes, faqs }
+exports.setDefaultMaster = async (req, res) => {
+    try {
+        const body = req.body || {};
+        const bad = MASTER_LISTS.find((key) => body[key] !== undefined && !Array.isArray(body[key]));
+        if (bad) {
+            return res.status(400).json({ success: false, message: `${bad} must be a list` });
+        }
+
+        const master = await saveMaster(body);
+
+        return res.json({
+            success: true,
+            message: "Default master saved. New tours will start with these lists.",
+            data: master,
+        });
+    } catch (error) {
+        console.error("setDefaultMaster Error:", error);
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// DELETE /default-master (admin) -> original lists saved again
+exports.resetDefaultMaster = async (req, res) => {
+    try {
+        const master = await saveMaster(builtinMaster());
+        return res.json({
+            success: true,
+            message: "Default master reset to the original lists",
+            data: master,
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
     }
 };
 
