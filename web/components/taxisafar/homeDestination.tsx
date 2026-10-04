@@ -68,7 +68,6 @@ function TourCard({ tour }: { tour: TourPackage }) {
   const price = priceOf(tour);
   const rating = Number(tour.rating) || 0;
   const href = DETAIL_PATH(tour.slug);
-  console.log(tour)
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-lg">
       <a href={href} className="block overflow-hidden">
@@ -121,7 +120,7 @@ function TourCard({ tour }: { tour: TourPackage }) {
           </div>
           <div className="flex-1 border-l border-slate-200 pl-3 sm:pl-4">
             <div className="flex flex-wrap items-center gap-x-1.5">
-              <i className="fa-solid fa-star text-[15px] text-amber-400" />
+             
               <span className="text-[16px] font-bold text-slate-900 sm:text-[18px]">{rating.toFixed(1)}</span>
               {tour.review_count > 0 && (
                 <span className="text-[11px] text-slate-600 sm:text-[13px]">({reviewsText(tour.review_count)} Reviews)</span>
