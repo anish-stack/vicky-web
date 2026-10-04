@@ -78,12 +78,20 @@ export function BottomBar({ children }: { children: React.ReactNode }) {
 }
 
 
-/** Facebook / YouTube / Instagram / WhatsApp - each icon opens its own profile. */
+/** Brand backgrounds - the real brand colours (Instagram uses its multi-colour gradient). */
+const BRAND_BG: Record<string, string> = {
+  facebook: "linear-gradient(180deg,#2d8cff 0%,#1877f2 100%)",
+  youtube: "linear-gradient(180deg,#ff3b30 0%,#ff0000 100%)",
+  instagram: "radial-gradient(circle at 30% 107%,#fdf497 0%,#fdf497 5%,#fd5949 45%,#d6249f 60%,#285aeb 90%)",
+  whatsapp: "linear-gradient(180deg,#3be07a 0%,#25d366 100%)",
+};
+
+/** Facebook / YouTube / Instagram / WhatsApp - full-colour brand icons, each opens its own profile. */
 export function SocialLinks({ title = "Follow us", className = "" }: { title?: string; className?: string }) {
   return (
     <div className={`flex flex-col items-center gap-2.5 ${className}`}>
       {title && <p className="m-0 text-[13px] font-semibold text-slate-600">{title}</p>}
-      <ul className="m-0 flex list-none items-center gap-3 p-0">
+      <ul className="m-0 flex list-none items-center gap-3.5 p-0">
         {SOCIAL_LINKS.map((s) => (
           <li key={s.key}>
             <a
@@ -92,8 +100,8 @@ export function SocialLinks({ title = "Follow us", className = "" }: { title?: s
               rel="noopener noreferrer"
               aria-label={s.label}
               title={s.label}
-              className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-[18px] no-underline shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-              style={{ color: s.color }}
+              className="grid h-12 w-12 place-items-center rounded-full text-[22px] text-white no-underline shadow-md ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg"
+              style={{ background: BRAND_BG[s.key] || s.color, color: "#fff" }}
             >
               <i className={s.icon} />
             </a>

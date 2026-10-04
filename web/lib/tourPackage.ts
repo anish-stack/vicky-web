@@ -57,7 +57,7 @@ export type HotelOption = {
   isActive?: boolean;
 };
 export type Seo = { title?: string; description?: string; keywords?: string; canonical?: string };
-
+ 
 export type TourPackage = {
   id: number;
   title: string;
@@ -91,9 +91,9 @@ export type TourPackage = {
   status: "live" | "new" | "duplicate";
   seo: Seo;
 };
-
+ 
 /* ---------- normalizing (MariaDB may return JSON columns as strings) ---------- */
-
+ 
 const parse = (v: unknown): unknown => {
   let x = v;
   for (let i = 0; i < 2 && typeof x === "string"; i++) {
@@ -115,7 +115,7 @@ const num = (v: unknown, d = 0) => {
 };
 const bool = (v: unknown, d: boolean) =>
   v === undefined || v === null || v === "" ? d : v === true || v === 1 || v === "1" || v === "true";
-
+ 
 export function normalizeTour(raw: any): TourPackage {
   const seo = parse(raw?.seo);
   return {
@@ -168,9 +168,9 @@ export function normalizeTour(raw: any): TourPackage {
     seo: seo && typeof seo === "object" && !Array.isArray(seo) ? (seo as Seo) : {},
   };
 }
-
+ 
 /* ---------- fetching ---------- */
-
+ 
 export async function getTourBySlug(slug: string): Promise<TourPackage | null> {
   const opts = { next: { revalidate: 60 } } as RequestInit;
   try {
@@ -194,12 +194,12 @@ export async function getTourBySlug(slug: string): Promise<TourPackage | null> {
     return null;
   }
 }
-
+ 
 /* ---------- selection helpers (shared by book + summary) ---------- */
-
+ 
 export type IndexedVehicle = VehicleOption & { idx: number };
 export type IndexedHotel = HotelOption & { idx: number };
-
+ 
 /**
  * Active vehicles in EXACTLY the order the admin arranged them (array order).
  * `idx` is the position in the original JSON array (stable id for URLs).
@@ -207,27 +207,27 @@ export type IndexedHotel = HotelOption & { idx: number };
  */
 export const activeVehicles = (t: TourPackage): IndexedVehicle[] =>
   t.vehicle_options.map((v, idx) => ({ ...v, idx })).filter((v) => v.isActive !== false);
-
+ 
 export const activeHotels = (t: TourPackage): IndexedHotel[] =>
   t.hotel_options.map((h, idx) => ({ ...h, idx })).filter((h) => h.isActive !== false);
-
+ 
 /** Small subtitle shown under every vehicle name. */
 export const SIMILAR_TAXI_TEXT = "Any other similar taxi";
-
+ 
 export const startingPrice = (t: TourPackage) => {
   if (t.startingPrice > 0) return t.startingPrice;
   const p = activeVehicles(t).map((v) => v.price).filter((n) => n > 0);
   return p.length ? Math.min(...p) : 0;
 };
-
+ 
 export const hotelTotal = (h: HotelOption | null | undefined, rooms: number) =>
   h && h.priceOverride !== null ? h.priceOverride * Math.max(rooms, 1) * Math.max(h.nights, 1) : 0;
-
+ 
 export type Selection = { v: number | null; h: number | "none" | null; r: number; d: string; a: number };
-
+ 
 export const MAX_ROOMS = 5;
 export const MAX_ADULTS = 20;
-
+ 
 export function readSelection(sp: Record<string, string | string[] | undefined>): Selection {
   const one = (k: string) => (Array.isArray(sp[k]) ? (sp[k] as string[])[0] : (sp[k] as string | undefined));
   const vRaw = one("v");
@@ -241,7 +241,7 @@ export function readSelection(sp: Record<string, string | string[] | undefined>)
     a: clamp(Number(one("a")) || 2, 1, MAX_ADULTS),
   };
 }
-
+ 
 export const selectionQuery = (s: Selection) => {
   const q = new URLSearchParams();
   if (s.v !== null) q.set("v", String(s.v));
@@ -251,17 +251,17 @@ export const selectionQuery = (s: Selection) => {
   if (s.d) q.set("d", s.d);
   return q.toString();
 };
-
+ 
 /* ---------- formatting ---------- */
-
+ 
 export const inr = (n: number) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
-
+ 
 export const durationText = (t: TourPackage) =>
   t.duration_label ||
   `${t.days} Day${t.days === 1 ? "" : "s"} / ${t.nights} Night${t.nights === 1 ? "" : "s"} Tour`;
-
+ 
 export const tripTypeText = (t: TourPackage) => (t.trip_type === "oneWay" ? "One Way" : "Round Trip");
-
+ 
 export const prettyDate = (iso: string) => {
   if (!iso) return "";
   const d = new Date(`${iso}T00:00:00`);
@@ -269,7 +269,7 @@ export const prettyDate = (iso: string) => {
     ? iso
     : d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 };
-
+ 
 /** Font Awesome class for the free-text icon names used in the admin (calendar, car, temple…). */
 export const faIcon = (name?: string) => {
   const map: Record<string, string> = {
@@ -300,9 +300,9 @@ export const faIcon = (name?: string) => {
   const key = String(name || "").toLowerCase().trim();
   return map[key] || (key.startsWith("fa-") ? `fa-solid ${key}` : "fa-solid fa-location-dot");
 };
-
+ 
 /* ---------- booking: otp + payment + my-bookings ---------- */
-
+ 
 export type TourBooking = {
   id: number;
   booking_ref: string;
@@ -326,6 +326,8 @@ export type TourBooking = {
   hotel_price: number;
   notes: string | null;
   total_amount: number;
+  coupon_code?: string | null;
+  discount_amount?: number;
   booking_charge_percent: number;
   advance_amount: number;
   balance_amount: number;
@@ -333,7 +335,7 @@ export type TourBooking = {
   booking_status: "pending" | "confirmed" | "cancelled" | "completed";
   created_at: string;
 };
-
+ 
 async function postJSON(path: string, body: unknown) {
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
@@ -348,13 +350,13 @@ async function postJSON(path: string, body: unknown) {
   }
   return json;
 }
-
+ 
 export const sendTourBookingOtp = (mobile: string) =>
   postJSON("/api/tour-booking/send-otp", { mobile });
-
+ 
 export const verifyTourBookingOtp = (mobile: string, otp: string) =>
   postJSON("/api/tour-booking/verify-otp", { mobile, otp }) as Promise<{ status: true; data: { verify_token: string; name: string } }>;
-
+ 
 export type CreateOrderPayload = {
   verify_token: string;
   tour_package_id: number;
@@ -379,20 +381,28 @@ export type CreateOrderPayload = {
   total_amount: number;
   booking_charge_percent: number;
   advance_amount: number;
+  coupon_code?: string;
 };
-
+ 
 export const createTourBookingOrder = (payload: CreateOrderPayload) =>
   postJSON("/api/tour-booking/create-order", payload) as Promise<{
     status: true;
-    data: { booking_id: number; booking_ref: string; order: { id: string; amount: number; currency: string; key: string } };
+    data: {
+      booking_id: number;
+      booking_ref: string;
+      order: { id: string; amount: number; currency: string; key: string };
+      discount_amount?: number;
+      total_amount?: number;
+      advance_amount?: number;
+    };
   }>;
-
+ 
 export const verifyTourBookingPayment = (data: {
   razorpay_order_id: string;
   razorpay_payment_id: string;
   razorpay_signature: string;
 }) => postJSON("/api/tour-booking/verify-payment", data) as Promise<{ status: true; data: { booking_id: number; booking_ref: string } }>;
-
+ 
 export type TourAvailability = {
   limit: number;
   min_advance_hours: number;
@@ -400,7 +410,7 @@ export type TourAvailability = {
   earliest_time: string;
   sold_out: string[];
 };
-
+ 
 export async function getTourAvailability(tourId: number, days = 120): Promise<TourAvailability | null> {
   try {
     const res = await fetch(`${API_URL}/api/tour-booking/availability?tour_package_id=${tourId}&days=${days}`);
@@ -411,7 +421,7 @@ export async function getTourAvailability(tourId: number, days = 120): Promise<T
     return null;
   }
 }
-
+ 
 export async function getTourBookingByRef(ref: string): Promise<TourBooking | null> {
   try {
     const res = await fetch(`${API_URL}/api/tour-booking/booking-ref/${encodeURIComponent(ref)}`);
@@ -422,7 +432,7 @@ export async function getTourBookingByRef(ref: string): Promise<TourBooking | nu
     return null;
   }
 }
-
+ 
 export async function getMyTourBookings(mobile: string): Promise<TourBooking[]> {
   try {
     const res = await fetch(`${API_URL}/api/tour-booking/my?mobile=${encodeURIComponent(mobile)}`);
@@ -433,3 +443,45 @@ export async function getMyTourBookings(mobile: string): Promise<TourBooking[]> 
     return [];
   }
 }
+ 
+/* ---------- coupons ---------- */
+ 
+export type TourCouponOffer = {
+  code: string;
+  title: string | null;
+  description: string | null;
+  discount_type: "percent" | "flat";
+  discount_value: number;
+  max_discount: number | null;
+  min_order_amount: number;
+  end_date: string | null;
+};
+ 
+export type AppliedCoupon = {
+  code: string;
+  title: string | null;
+  discount_amount: number;
+};
+ 
+export const couponOfferText = (c: TourCouponOffer) =>
+  c.discount_type === "percent"
+    ? `${c.discount_value}% off${c.max_discount ? ` up to ${inr(c.max_discount)}` : ""}`
+    : `${inr(c.discount_value)} off`;
+ 
+export async function getTourCoupons(tourId: number): Promise<TourCouponOffer[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/tour-booking/coupons?tour_package_id=${tourId}`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return Array.isArray(json?.data) ? json.data : [];
+  } catch {
+    return [];
+  }
+}
+ 
+export const validateTourCoupon = (payload: { code: string; tour_package_id: number; total_amount: number; mobile?: string }) =>
+  postJSON("/api/tour-booking/coupon/validate", payload) as Promise<{
+    status: true;
+    data: { code: string; title: string | null; discount_amount: number; total_after_discount: number };
+  }>;
+ 

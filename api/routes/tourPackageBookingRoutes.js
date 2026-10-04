@@ -2,10 +2,13 @@ const express = require("express");
 const router = express.Router();
 
 const controller = require("../controllers/tourPackageBookingController");
+const couponController = require("../controllers/tourCouponController");
 const adminMiddleware = require("../middlewares/adminMiddleware");
 
 // ---------------- public / customer ----------------
 router.get("/availability", controller.availability);
+router.get("/coupons", couponController.publicList);
+router.post("/coupon/validate", couponController.validate);
 router.post("/send-otp", controller.sendOtp);
 router.post("/verify-otp", controller.verifyOtp);
 router.post("/create-order", controller.createOrder);

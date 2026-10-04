@@ -5,9 +5,8 @@ const { Op } = require("sequelize");
 require("dotenv").config();
 
 const { TourPackageBooking, TourPackage, User, otp } = require("../models");
+const { evaluateCoupon } = require("../utils/tourCoupon");
 const sendDltMessage = require("../utils/dlt");
-
-
 const { sendTourPackageBooking, sendTourPackageAdmin, sendTourPackageDriver } = require("../utils/sendWhatsapp");
 
 const SECRET_KEY = process.env.JWT_SECRET || "dev-insecure-secret";
@@ -239,6 +238,7 @@ exports.createOrder = async (req, res) => {
       total_amount,
       booking_charge_percent,
       advance_amount,
+      coupon_code,
     } = req.body;
 
     if (!verify_token) {
@@ -275,7 +275,7 @@ exports.createOrder = async (req, res) => {
 
     // ---- per-tour rules: advance booking time + daily limit ----
     const tour = await TourPackage.findByPk(tour_package_id, {
-      attributes: ["id", "is_active", "daily_booking_limit", "min_advance_hours"],
+      attributes: ["id", "is_active", "daily_booking_limit", "min_advance_hours", "booking_charge_percent"],
     });
     if (!tour || !tour.is_active) {
       return res.status(404).json({ status: false, message: "This tour is not available for booking" });
@@ -321,7 +321,22 @@ exports.createOrder = async (req, res) => {
     }
 
     const user = await User.findOne({ where: { phone_number: normMobile } });
-    const total = toNum(total_amount);
+    let total = toNum(total_amount);
+    let advanceFinal = advance;
+    let discount = 0;
+    let couponUsed = null;
+    if (coupon_code && String(coupon_code).trim()) {
+      const r = await evaluateCoupon({ code: coupon_code, tourId: tour.id, total, mobile: normMobile });
+      if (!r.ok) {
+        return res.status(400).json({ status: false, code: r.code, message: r.message });
+      }
+      discount = r.discount;
+      couponUsed = r.coupon.code;
+      total -= discount;
+      // advance is always recomputed on the server after a coupon
+      const pct = toNum(tour.booking_charge_percent, toNum(booking_charge_percent, 10));
+      advanceFinal = Math.max(Math.round((total * pct) / 100), 1);
+    }
 
     const booking = await TourPackageBooking.create({
       booking_ref: await genBookingRef(),
@@ -349,15 +364,17 @@ exports.createOrder = async (req, res) => {
       hotel_price: toNum(hotel_price),
       notes: notes || null,
       total_amount: total,
+      coupon_code: couponUsed,
+      discount_amount: discount,
       booking_charge_percent: toNum(booking_charge_percent, 10),
-      advance_amount: advance,
-      balance_amount: Math.max(total - advance, 0),
+      advance_amount: advanceFinal,
+      balance_amount: Math.max(total - advanceFinal, 0),
       payment_status: "pending",
       booking_status: "pending",
     });
 
     const order = await razorpay.orders.create({
-      amount: advance * 100,
+      amount: advanceFinal * 100,
       currency: "INR",
       payment_capture: 1,
       receipt: booking.booking_ref,
@@ -373,6 +390,9 @@ exports.createOrder = async (req, res) => {
         booking_id: booking.id,
         booking_ref: booking.booking_ref,
         order: { id: order.id, amount: order.amount, currency: order.currency, key: RZP_KEY_ID },
+        discount_amount: discount,
+        total_amount: total,
+        advance_amount: advanceFinal,
       },
     });
   } catch (error) {
@@ -546,8 +566,8 @@ exports.adminGet = async (req, res) => {
       b.pickup_lat != null && b.pickup_lng != null
         ? `https://www.google.com/maps/search/?api=1&query=${b.pickup_lat},${b.pickup_lng}${b.pickup_place_id ? `&query_place_id=${b.pickup_place_id}` : ""}`
         : b.pickup_address
-          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.pickup_address)}`
-          : null;
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.pickup_address)}`
+        : null;
 
     return res.json({ status: true, data: { ...b, pickup_map_url, tourPackage } });
   } catch (error) {

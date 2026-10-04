@@ -22,6 +22,7 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const tourPackagesRoutes = require("./routes/tourPackagesRoutes");
 const tourPackageBookingRoutes = require("./routes/tourPackageBookingRoutes");
 const tourHotelRoutes = require("./routes/tourHotelRoutes");
+const tourCouponRoutes = require("./routes/tourCouponRoutes");
 
 const config = require("./config/config.json");
 const cors = require("cors");
@@ -72,6 +73,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/tour-package", tourPackagesRoutes);
 app.use("/api/tour-booking", tourPackageBookingRoutes);
 app.use("/api/tour-hotel", tourHotelRoutes);
+app.use("/api/tour-coupon", tourCouponRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
 

@@ -262,6 +262,12 @@ export default function TourBookingView() {
 
           <Card title="Payment">
             <dl className="divide-y divide-stone-100">
+              {b.coupon_code && (
+                <Row label="Coupon">
+                  <span className="font-mono font-semibold">{b.coupon_code}</span>{" "}
+                  <span className="text-green-700">(− {inr(b.discount_amount)})</span>
+                </Row>
+              )}
               <Row label="Total">{inr(b.total_amount)}</Row>
 
               <Row label={`Advance (${Number(b.booking_charge_percent)}%)`}>

@@ -24,6 +24,11 @@ import {
   verifyTourBookingOtp,
   verifyTourBookingPayment,
   TourAvailability,
+  AppliedCoupon,
+  TourCouponOffer,
+  couponOfferText,
+  getTourCoupons,
+  validateTourCoupon,
 } from "@/lib/tourPackage";
 import TourDatePicker from "@/components/tour/TourDatePicker";
 import PlacesInput from "@/components/tour/PlacesInput";
@@ -95,7 +100,7 @@ function Label({ children, required }: { children: React.ReactNode; required?: b
 }
 
 const inputCls = (err?: string) =>
-  `h-10 w-full rounded-lg border bg-white px-3 text-[14px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-100 ${
+  `h-10 w-full rounded-lg border bg-white px-1 text-[14px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-100 ${
     err ? "border-red-500" : "border-slate-300 focus:border-red-500"
   }`;
 
@@ -138,10 +143,20 @@ export default function TourSummaryPage({ tour, sel }: Props) {
 
   const vehiclePrice = vehicle?.price || 0;
   const stayPrice = hotelTotal(hotel, sel.r);
-  const total = vehiclePrice + stayPrice;
+  const grossTotal = vehiclePrice + stayPrice;
+
+  const hotelOnRequest = !!hotel && hotel.priceOverride === null;
+
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponErr, setCouponErr] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [offers, setOffers] = useState<TourCouponOffer[]>([]);
+
+  const discount = coupon ? Math.min(coupon.discount_amount, Math.max(grossTotal - 1, 0)) : 0;
+  const total = grossTotal - discount;
   const advance = Math.round((total * tour.booking_charge_percent) / 100);
   const balance = total - advance;
-  const hotelOnRequest = !!hotel && hotel.priceOverride === null;
 
   const [form, setForm] = useState<Traveller>({
     pickup_address: "",
@@ -171,6 +186,10 @@ export default function TourSummaryPage({ tour, sel }: Props) {
   const [verifiedMobile, setVerifiedMobile] = useState("");
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState("");
+
+  useEffect(() => {
+    getTourCoupons(tour.id).then(setOffers);
+  }, [tour.id]);
 
   useEffect(() => {
     const today = todayISO();
@@ -238,6 +257,36 @@ export default function TourSummaryPage({ tour, sel }: Props) {
   };
 
   const mobileClean = cleanMobile(form.mobile);
+
+  const applyCoupon = async (raw?: string) => {
+    const code = (raw ?? couponInput).trim().toUpperCase();
+    if (!code) {
+      setCouponErr("Enter a coupon code");
+      return;
+    }
+    setCouponBusy(true);
+    setCouponErr("");
+    try {
+      const res = await validateTourCoupon({
+        code,
+        tour_package_id: tour.id,
+        total_amount: grossTotal,
+        mobile: /^[6-9]\d{9}$/.test(mobileClean) ? mobileClean : undefined,
+      });
+      setCoupon({ code: res.data.code, title: res.data.title, discount_amount: res.data.discount_amount });
+      setCouponInput("");
+    } catch (err: any) {
+      setCoupon(null);
+      setCouponErr(err?.message || "Invalid coupon code");
+    } finally {
+      setCouponBusy(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCoupon(null);
+    setCouponErr("");
+  };
 
   const confirm = () => {
     const e = validate();
@@ -326,9 +375,10 @@ export default function TourSummaryPage({ tour, sel }: Props) {
         hotel_name: hotel?.name,
         hotel_nights: hotel?.nights,
         hotel_price: hotelOnRequest ? 0 : stayPrice,
-        total_amount: total,
+        total_amount: grossTotal, // before coupon - the server applies the coupon again
         booking_charge_percent: tour.booking_charge_percent,
         advance_amount: advance,
+        coupon_code: coupon?.code,
       });
 
       const { order, booking_ref } = res.data;
@@ -366,6 +416,10 @@ export default function TourSummaryPage({ tour, sel }: Props) {
       });
       rzp.open();
     } catch (err: any) {
+      if (typeof err?.code === "string" && err.code.startsWith("COUPON_")) {
+        setCoupon(null);
+        setCouponErr(err?.message || "Coupon is no longer valid");
+      }
       if (err?.code === "SOLD_OUT") {
         setForm((f) => ({ ...f, pickup_date: "" }));
         getTourAvailability(tour.id).then((a) => a && setAvail(a));
@@ -592,11 +646,99 @@ export default function TourSummaryPage({ tour, sel }: Props) {
                         <dd className="m-0 font-medium text-slate-900">{hotelOnRequest ? "On request" : inr(stayPrice)}</dd>
                       </div>
                     )}
+                    {coupon && discount > 0 && (
+                      <div className="flex justify-between gap-3 py-1.5">
+                        <dt className="text-green-700">Coupon ({coupon.code})</dt>
+                        <dd className="m-0 font-medium text-green-700">− {inr(discount)}</dd>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-3 py-2">
                       <dt className="font-bold text-slate-900">Total Amount</dt>
                       <dd className="m-0 text-[16px] font-bold text-slate-900">{inr(total)}</dd>
                     </div>
                   </dl>
+
+                  {/* coupon */}
+                  <div className="mb-3 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2.5">
+                    {coupon ? (
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="m-0 flex min-w-0 items-center gap-2 text-[13px] font-semibold text-green-700">
+                          <i className="fa-solid fa-circle-check" />
+                          <span className="min-w-0 truncate">
+                            <span className="font-mono tracking-wide">{coupon.code}</span> applied · you save {inr(discount)}
+                          </span>
+                        </p>
+                        <button type="button" onClick={removeCoupon} className="shrink-0 text-[12.5px] font-semibold text-red-600 hover:underline">
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <label htmlFor="coupon-code" className="mb-1 flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-700">
+                          <i className="fa-solid fa-ticket text-[12px] text-red-600" /> Have a coupon?
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            id="coupon-code"
+                            value={couponInput}
+                            onChange={(e) => {
+                              setCouponInput(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""));
+                              setCouponErr("");
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                applyCoupon();
+                              }
+                            }}
+                            maxLength={40}
+                            placeholder="Enter code"
+                            autoComplete="off"
+                            className={`h-10 min-w-0 flex-1 rounded-lg border bg-white px-3 font-mono text-[14px] uppercase tracking-wide text-slate-900 placeholder:font-sans placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-100 ${
+                              couponErr ? "border-red-500" : "border-slate-300 focus:border-red-500"
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => applyCoupon()}
+                            disabled={couponBusy || !couponInput.trim()}
+                            className="h-10 shrink-0 rounded-lg bg-slate-900 px-4 text-[13.5px] font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                          >
+                            {couponBusy ? <i className="fa-solid fa-circle-notch fa-spin" /> : "Apply"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                    {couponErr && <p className="m-0 mt-1.5 text-[12px] text-red-600">{couponErr}</p>}
+                    {!coupon && offers.length > 0 && (
+                      <ul className="m-0 mt-2 list-none space-y-1.5 p-0">
+                        {offers.slice(0, 3).map((o) => {
+                          const locked = o.min_order_amount > 0 && grossTotal < o.min_order_amount;
+                          return (
+                            <li key={o.code} className="flex items-center justify-between gap-2 rounded-md bg-white px-2 py-1.5 ring-1 ring-slate-200">
+                              <div className="min-w-0">
+                                <p className="m-0 truncate text-[12.5px] font-bold text-slate-900">
+                                  <span className="font-mono tracking-wide">{o.code}</span>
+                                  <span className="ml-1.5 font-semibold text-green-700">{couponOfferText(o)}</span>
+                                </p>
+                                <p className="m-0 truncate text-[11px] text-slate-500">
+                                  {locked ? `Min. booking ${inr(o.min_order_amount)}` : o.title || o.description || ""}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                disabled={couponBusy || locked}
+                                onClick={() => applyCoupon(o.code)}
+                                className="shrink-0 text-[12.5px] font-semibold text-blue-700 hover:underline disabled:text-slate-400 disabled:no-underline"
+                              >
+                                Apply
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
 
                   <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
                     <p className="m-0 text-[13px] font-semibold text-green-800">

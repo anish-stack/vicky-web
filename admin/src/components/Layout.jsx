@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ReceiptText, PhoneCall, Users, IdCard, CarFront, Building2, Plane, Clock3,
-  Mountain, Tags, Percent, Settings, LogOut, Menu, X, Map, Hotel
+  Mountain, Tags, Percent, Settings, LogOut, Menu, X, Map, Hotel, Ticket
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { cx } from "./ui";
@@ -38,6 +38,7 @@ const NAV = [
   { title: "Tours", items: [
     { to: "/tour-packages", label: "Tour packages", icon: Map, end: true },
     { to: "/tour-hotels", label: "Hotels (master)", icon: Hotel },
+    { to: "/tour-coupons", label: "Tour coupons", icon: Ticket },
     { to: "/tour-packages/bookings", label: "Tour bookings", icon: ReceiptText },
   ] },
   {

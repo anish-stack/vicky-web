@@ -123,6 +123,16 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: 0,
       },
+      coupon_code: {
+        type: DataTypes.STRING(40),
+        allowNull: true,
+      },
+      // already deducted from total_amount
+      discount_amount: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0,
+      },
       balance_amount: {
         type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
@@ -185,6 +195,7 @@ module.exports = (sequelize, DataTypes) => {
         { fields: ["payment_status"] },
         { fields: ["booking_status"] },
         { fields: ["razorpay_order_id"] },
+        { fields: ["coupon_code"] },
       ],
     }
   );
