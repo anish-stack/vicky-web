@@ -7,9 +7,10 @@ import { useWebsite } from "@/context/WebsiteContext";
 type Props = {
   isOpen: boolean;
   onClose: () => void;
+  subject?: string;
 };
 
-const ContactPopup: React.FC<Props> = ({ isOpen, onClose }) => {
+const ContactPopup: React.FC<Props> = ({ isOpen, onClose, subject }) => {
   const { website } = useWebsite() as any;
   const basicInfo = website?.basicInfo || {};
   const companyName = basicInfo.name || basicInfo.logo_name || "Carbook";
@@ -35,7 +36,7 @@ const ContactPopup: React.FC<Props> = ({ isOpen, onClose }) => {
 
     const text = `
 New Enquiry - ${companyName}
-
+${subject ? `\nEnquiry for: ${subject}\n` : ""}
 Name: ${formData.name}
 Phone: ${formData.phone}
 Email: ${formData.email}

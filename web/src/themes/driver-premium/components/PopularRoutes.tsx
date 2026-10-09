@@ -40,7 +40,11 @@ const staticRoutes: RouteType[] = [
   },
 ];
 
-const PopularRoutes: React.FC = () => {
+type Props = {
+  onEnquiry?: (subject?: string) => void;
+};
+
+const PopularRoutes: React.FC<Props> = ({ onEnquiry }) => {
   const { website } = useWebsite() as any;
   const [showMore, setShowMore] = useState(false);
 
@@ -110,28 +114,33 @@ const PopularRoutes: React.FC = () => {
           {displayed.map((item, index) => (
             <div
               key={index}
-              className="bg-gray-50 shadow-sm border border-gray-200 rounded-2xl p-5 hover:shadow-xl transition"
+              className="bg-gray-50 shadow-sm border border-gray-200 rounded-2xl p-5 hover:shadow-xl transition flex flex-col h-full"
             >
-              <h3 className="font-semibold text-base md:text-lg text-orange-600 mb-3">
+              <h3 className="font-semibold text-base md:text-lg text-orange-600 mb-3 leading-snug">
                 {item.route}
               </h3>
 
-              <ul className="space-y-2 text-sm text-gray-700">
+              <ul className="space-y-2 text-sm text-gray-700 flex-grow">
                 {item.prices.map((p, i) => (
                   <li
                     key={i}
-                    className="flex justify-between border-b border-gray-200 pb-1.5 last:border-none"
+                    className="flex items-start justify-between gap-3 border-b border-gray-200 pb-2 last:border-none"
                   >
-                    <span>• {p.car}</span>
-                    <span className="font-semibold">
-                      ₹{p.price}{" "}
-                      <span className="text-xs text-gray-500">({p.type})</span>
+                    <span className="flex-1 min-w-0">• {p.car}</span>
+                    <span className="shrink-0 text-right leading-tight">
+                      <span className="block font-semibold">₹{p.price}</span>
+                      <span className="block text-xs text-gray-500">
+                        ({p.type})
+                      </span>
                     </span>
                   </li>
                 ))}
               </ul>
 
-              <button className="mt-4 w-full px-4 py-2.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => onEnquiry?.(item.route)}
+                className="mt-4 w-full px-4 py-2.5 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition flex items-center justify-center gap-2">
                 Enquiry <ArrowRight size={14} />
               </button>
             </div>

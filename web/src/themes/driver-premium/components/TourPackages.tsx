@@ -45,7 +45,11 @@ const staticPackages = [
   },
 ];
 
-const TourPackages: React.FC = () => {
+type Props = {
+  onEnquiry?: (subject?: string) => void;
+};
+
+const TourPackages: React.FC<Props> = ({ onEnquiry }) => {
   const { website } = useWebsite() as any;
   const [showMore, setShowMore] = useState(false);
 
@@ -119,7 +123,10 @@ const TourPackages: React.FC = () => {
 
                 <div className="flex items-center justify-between mt-auto">
                   <span className="text-xl font-bold text-orange-600">{pkg.price}</span>
-                  <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 shadow-sm transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => onEnquiry?.(pkg.title)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5 shadow-sm transition-colors">
                     Enquiry
                     <ArrowRight size={14} />
                   </button>

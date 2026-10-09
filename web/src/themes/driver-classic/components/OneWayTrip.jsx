@@ -35,6 +35,16 @@ const OneWayTrip = () => {
   const [showMore, setShowMore] = useState(false);
   const { website } = useWebsite();
 
+  const openEnquiry = (route) => {
+    const number =
+      website?.basicInfo?.whatsapp || website?.basicInfo?.phone || "9876543210";
+    const message = `Hi, I'd like to enquire about ${route}. Could you share the fare details and availability?`;
+    window.open(
+      `https://wa.me/91${number}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
+  };
+
   const transformedRoutes = (website?.popularPrices || []).map((r) => {
     const prices = [];
 
@@ -114,7 +124,10 @@ const OneWayTrip = () => {
                 ))}
               </ul>
 
-              <button className="mt-4 w-full px-4 py-2.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition">
+              <button
+                type="button"
+                onClick={() => openEnquiry(item.route)}
+                className="mt-4 w-full px-4 py-2.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition">
                 Enquiry
               </button>
             </div>

@@ -87,6 +87,16 @@ const TourPackages: React.FC = () => {
 
   const realPackages = website?.packages || [];
 
+  const openWhatsApp = (title: string) => {
+    const number =
+      website?.basicInfo?.whatsapp || website?.basicInfo?.phone || "9876543210";
+    const message = `Hi, I'd like to enquire about the "${title}" tour package. Could you share the details and availability?`;
+    window.open(
+      `https://wa.me/91${number}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
+  };
+
   const formattedRealPackages = realPackages.map((pkg: any, index: number) => ({
     id: `real-${pkg.title || index}`,
     title: pkg.title || "Package",
@@ -227,7 +237,10 @@ const TourPackages: React.FC = () => {
                   </div>
 
                   {/* Button */}
-                  <button className="shrink-0 h-11 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white text-sm font-semibold flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-200">
+                  <button
+                    type="button"
+                    onClick={() => openWhatsApp(pkg.title)}
+                    className="shrink-0 h-11 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white text-sm font-semibold flex items-center gap-2 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-200">
                     Enquire
                     <ArrowRight size={15} />
                   </button>

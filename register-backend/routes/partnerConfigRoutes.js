@@ -12,21 +12,20 @@ const partnerConfigController = require("../controllers/partnerConfigController"
 // MULTER STORAGE CONFIGURATION
 // ============================================================
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        let uploadPath = "./uploads/config/";
-        
-        if (file.fieldname === "audio") {
-            uploadPath += "audio";
-        } else if (file.fieldname === "image") {
-            uploadPath += "image";
-        } else {
-            uploadPath += "misc";
-        }
+  destination: (req, file, cb) => {
+    let uploadPath = "./uploads/config/";
 
-        // Ensure the directory exists synchronously
-        fs.mkdirSync(uploadPath, { recursive: true });
-        cb(null, uploadPath);
-    },
+    if (file.fieldname === "audio") {
+        uploadPath += "audio";
+    } else if (file.fieldname === "image" || file.fieldname === "images") {
+        uploadPath += "image";
+    } else {
+        uploadPath += "misc";
+    }
+
+    fs.mkdirSync(uploadPath, { recursive: true });
+    cb(null, uploadPath);
+},
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
         cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -39,11 +38,12 @@ const upload = multer({
 });
 
 // Middleware configuration for fields
+// Middleware configuration for fields
 const uploadConfigFields = upload.fields([
     { name: "audio", maxCount: 1 },
-    { name: "image", maxCount: 1 }
+    { name: "image", maxCount: 1 },      // OLD - single image (backward compatible)
+    { name: "images", maxCount: 10 }     // NEW - multiple images
 ]);
-
 
 // ============================================================
 // PARTNER CONFIG ROUTES

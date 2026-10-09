@@ -125,6 +125,16 @@ const containerVariants = {
 
 export default function RideSection() {
   const { website } = useWebsite();
+
+  const openEnquiry = (title) => {
+    const number =
+      website?.basicInfo?.whatsapp || website?.basicInfo?.phone || "9876543210";
+    const message = `Hi, I'd like to enquire about the "${title}" tour package. Could you share the details and availability?`;
+    window.open(
+      `https://wa.me/91${number}?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
+  };
   
   // Prepare real packages if they exist
   const realPackages = website?.packages || [];
@@ -211,6 +221,8 @@ export default function RideSection() {
                     </div>
 
                     <motion.button
+                      type="button"
+                      onClick={() => openEnquiry(tour.title)}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.97 }}
                       className="bg-red-600 text-white px-3 md:px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-md hover:bg-primary-dark transition-colors"
