@@ -1,144 +1,295 @@
 import React from "react";
-import { Car, Clock, Shield, Users, Star, Plane, Route, Check, ArrowRight } from "lucide-react";
+import {
+  Car,
+  Clock,
+  ShieldCheck,
+  Users,
+  Star,
+  Plane,
+  Route,
+  Check,
+  ArrowRight,
+  MessageCircle,
+  Sparkles,
+} from "lucide-react";
 import { useWebsite } from "@/context/WebsiteContext";
 
 const mainServices = [
   {
     icon: Car,
     title: "City Rides",
-    description: "Quick and reliable rides within the city for your daily commute and errands.",
-    features: ["Real-time confirmation", "Multiple vehicle options", "Instant booking"],
-    image: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=800&q=80",
+    subtitle: "Travel around town",
+    description:
+      "Make everyday travel effortless with comfortable rides for office commutes, shopping, appointments, and city exploration.",
+    features: [
+      "Quick booking assistance",
+      "Multiple vehicle options",
+      "Flexible pickup locations",
+    ],
+    image:
+      "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1000&q=85",
+    message:
+      "Hi, I'd like to enquire about City Rides. Please share your fares, vehicle options, and availability.",
   },
   {
     icon: Route,
     title: "Outstation Trips",
-    description: "Comfortable long-distance travel to your favorite destinations across cities.",
-    features: ["Professional drivers", "Well-maintained vehicles", "Flexible timing"],
-    image: "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
+    subtitle: "Go beyond the city",
+    description:
+      "Enjoy a relaxed journey to your favorite destinations with comfortable vehicles and experienced drivers.",
+    features: [
+      "One-way and round trips",
+      "Experienced drivers",
+      "Flexible travel schedules",
+    ],
+    image:
+      "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1000&q=85",
+    message:
+      "Hi, I'd like to enquire about an Outstation Trip. Please share your fares, available vehicles, and booking details.",
   },
   {
     icon: Plane,
     title: "Airport Transfers",
-    description: "Punctual airport pickups and drops with flight tracking and assistance.",
-    features: ["Flight tracking", "Meet & greet service", "Luggage assistance"],
-    image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=800&q=80",
+    subtitle: "Arrive without the stress",
+    description:
+      "Plan convenient airport pickups and drops with reliable transportation for business trips, holidays, and family travel.",
+    features: [
+      "Scheduled pickup and drop",
+      "Luggage-friendly vehicles",
+      "Advance booking assistance",
+    ],
+    image:
+      "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=1000&q=85",
+    message:
+      "Hi, I'd like to enquire about an Airport Transfer. Please share your fares, pickup options, and availability.",
   },
 ];
 
 const trustFeatures = [
-  { icon: Shield, title: "Safe & Secure", stat: "100% Verified" },
-  { icon: Clock, title: "24/7 Available", stat: "24/7 Service" },
-  { icon: Star, title: "Top Rated", stat: "4.8+ Rating" },
-  { icon: Users, title: "Expert Drivers", stat: "50+ Drivers" },
+  {
+    icon: ShieldCheck,
+    title: "Safety First",
+    description: "Travel with greater peace of mind",
+  },
+  {
+    icon: Clock,
+    title: "Flexible Scheduling",
+    description: "Plan journeys around your time",
+  },
+  {
+    icon: Star,
+    title: "Quality Service",
+    description: "A comfortable travel experience",
+  },
+  {
+    icon: Users,
+    title: "Experienced Drivers",
+    description: "Professional travel assistance",
+  },
 ];
 
 const Services: React.FC = () => {
   const { website } = useWebsite();
-  const companyName = website?.basicInfo?.name || "Yadav Tour & Travels";
+
+  const companyName =
+    website?.basicInfo?.name || "Yadav Tour & Travels";
+
+  const rawWhatsApp =
+    website?.basicInfo?.whatsapp ||
+    website?.basicInfo?.phone ||
+    "919876543210";
+
+  // Supports numbers with spaces, +, dashes, and country codes.
+  const whatsappNumber = String(rawWhatsApp).replace(/\D/g, "");
+
+  // Add India's country code only when a 10-digit local number is provided.
+  const formattedWhatsAppNumber =
+    whatsappNumber.length === 10
+      ? `91${whatsappNumber}`
+      : whatsappNumber;
+
+  const openWhatsApp = (message: string) => {
+    if (!formattedWhatsAppNumber) return;
+
+    const whatsappURL =
+      `https://wa.me/${formattedWhatsAppNumber}` +
+      `?text=${encodeURIComponent(message)}`;
+
+    window.open(whatsappURL, "_blank", "noopener,noreferrer");
+  };
 
   return (
-    <section id="services" className="relative py-20 md:py-28 bg-gradient-to-b from-white via-emerald-50/40 to-white overflow-hidden">
-      {/* skyline background */}
+    <section
+      id="services"
+      className="relative isolate overflow-hidden bg-gradient-to-b from-white via-emerald-50/50 to-white py-20 sm:py-24 lg:py-28"
+    >
+      {/* Soft decorative background */}
       <div
-        className="absolute top-0 left-0 w-full h-full bg-cover bg-top opacity-[0.6] pointer-events-none"
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 right-0 -z-10 h-80 w-80 rounded-full bg-emerald-200/30 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 left-0 -z-10 h-72 w-72 rounded-full bg-teal-100/40 blur-3xl"
+      />
 
-    style={{
-      backgroundImage:
-        "url('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1600&q=60')",
-      backgroundAttachment: "fixed",
-    }}      />
-
-      {/* decorative car top-right */}
-    
-
-      {/* dotted decorations */}
-      <div className="absolute top-10 left-6 grid grid-cols-6 gap-1.5 opacity-40">
-        {Array.from({ length: 24 }).map((_, i) => (
-          <span key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
-        ))}
-      </div>
-      <div className="absolute bottom-10 left-0 grid grid-cols-6 gap-1.5 opacity-30">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <span key={i} className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
-        ))}
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-bold mb-5">
-            <Car className="w-4 h-4" /> Our Services
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Section heading */}
+        <div className="mx-auto mb-14 max-w-3xl text-center sm:mb-16">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/90 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm">
+            <Sparkles className="h-4 w-4" />
+            Travel Made Simple
           </div>
-          <h2 className="text-4xl lg:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">
-            Premium Transportation <br className="hidden md:block" />
-            <span className="relative inline-block text-emerald-600">
-              Solutions
-              <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 200 10" fill="none">
-                <path d="M2 8C40 2 160 2 198 8" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
-              </svg>
+
+          <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-gray-950 sm:text-4xl lg:text-5xl">
+            Every Journey Deserves
+            <span className="mt-1 block text-emerald-600">
+              a Better Ride.
             </span>
           </h2>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-            From quick city rides to long-distance journeys, {companyName} provides reliable
-            and comfortable transportation tailored to your needs.
+
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg sm:leading-8">
+            From everyday city travel to long-distance adventures,{" "}
+            <span className="font-semibold text-gray-800">
+              {companyName}
+            </span>{" "}
+            helps you plan comfortable journeys with convenient booking
+            assistance and service tailored to your needs.
           </p>
         </div>
 
-        {/* Main Services Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          {mainServices.map((service, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden group hover:-translate-y-2"
+        {/* Service cards */}
+        <div className="grid grid-cols-1 items-stretch gap-7 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+          {mainServices.map((service) => (
+            <article
+              key={service.title}
+              className="group flex h-full flex-col overflow-hidden rounded-3xl border border-gray-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-900/10"
             >
-              {/* image area */}
-              <div className="relative h-44 overflow-hidden">
+              {/* Service image */}
+              <div className="relative h-56 overflow-hidden sm:h-60">
                 <img
                   src={service.image}
-                  alt={service.title}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  alt={`${service.title} by ${companyName}`}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-emerald-900/40 via-emerald-900/5 to-transparent" />
-                <div className="absolute top-5 left-5 w-14 h-14 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-600/40">
-                  <service.icon className="w-7 h-7 text-white" />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-950/70 via-gray-950/10 to-transparent" />
+
+                <div className="absolute left-5 top-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/30 bg-white/95 text-emerald-700 shadow-lg backdrop-blur-sm">
+                  <service.icon className="h-6 w-6" />
+                </div>
+
+                <div className="absolute bottom-5 left-5 right-5">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">
+                    {service.subtitle}
+                  </p>
+                  <h3 className="text-2xl font-bold tracking-tight text-white">
+                    {service.title}
+                  </h3>
                 </div>
               </div>
 
-              <div className="p-7">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{service.title}</h3>
-                <p className="text-gray-500 mb-5 leading-relaxed text-[15px]">{service.description}</p>
-                <ul className="space-y-2.5 mb-6">
-                  {service.features.map((feature, fi) => (
-                    <li key={fi} className="flex items-center text-sm text-gray-600">
-                      <span className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center mr-3 flex-shrink-0">
-                        <Check className="w-3 h-3 text-emerald-600" strokeWidth={3} />
+              {/* Service details */}
+              <div className="flex flex-1 flex-col p-6 sm:p-7">
+                <p className="text-[15px] leading-7 text-gray-600">
+                  {service.description}
+                </p>
+
+                <div className="my-6 h-px bg-gray-100" />
+
+                <ul className="mb-7 space-y-3">
+                  {service.features.map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex items-start gap-3 text-sm leading-6 text-gray-700"
+                    >
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                        <Check
+                          className="h-3.5 w-3.5"
+                          strokeWidth={2.5}
+                        />
                       </span>
-                      {feature}
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
-                <button className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700 border-2 border-emerald-200 hover:border-emerald-600 hover:bg-emerald-600 hover:text-white px-5 py-2.5 rounded-full transition-all duration-300">
-                  Book Now <ArrowRight className="w-4 h-4" />
+
+                <button
+                  type="button"
+                  onClick={() => openWhatsApp(service.message)}
+                  disabled={!formattedWhatsAppNumber}
+                  className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition-all duration-300 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-600/20 focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label={`Enquire about ${service.title} on WhatsApp`}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Enquire on WhatsApp
+                  <ArrowRight className="ml-auto h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
 
-        {/* Trust Features Strip */}
-        <div className="bg-white rounded-3xl shadow-lg shadow-gray-100 border border-gray-100 p-8">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
-            {trustFeatures.map((feature, index) => (
-              <div key={index} className="text-center px-4 py-6 lg:py-0 group">
-                <div className="bg-emerald-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:bg-emerald-600 transition-colors duration-300">
-                  <feature.icon className="w-7 h-7 text-emerald-600 group-hover:text-white transition-colors duration-300" />
+        {/* Trust section */}
+        <div className="mt-16 overflow-hidden rounded-3xl border border-gray-200/80 bg-white shadow-sm sm:mt-20">
+          <div className="border-b border-gray-100 px-6 py-7 text-center sm:px-8">
+            <h3 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+              Your Comfort Is Our Priority
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-gray-500 sm:text-base">
+              Thoughtful service at every step of your journey.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+            {trustFeatures.map((feature) => (
+              <div
+                key={feature.title}
+                className="group flex items-center gap-4 px-6 py-6 transition-colors hover:bg-emerald-50/50 sm:px-7 lg:flex-col lg:items-center lg:py-8 lg:text-center"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 transition-colors duration-300 group-hover:bg-emerald-600 group-hover:text-white">
+                  <feature.icon className="h-6 w-6" />
                 </div>
-                <h4 className="text-base font-bold text-gray-900 mb-1">{feature.title}</h4>
-                <div className="text-emerald-600 font-bold text-sm">{feature.stat}</div>
+
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900 sm:text-base">
+                    {feature.title}
+                  </h4>
+                  <p className="mt-1 text-sm leading-5 text-gray-500">
+                    {feature.description}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Closing call to action */}
+        <div className="mt-10 flex flex-col items-center justify-between gap-5 rounded-3xl bg-gray-950 px-6 py-8 text-center sm:px-10 md:flex-row md:text-left">
+          <div>
+            <h3 className="text-xl font-bold text-white sm:text-2xl">
+              Planning your next trip?
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-gray-300 sm:text-base">
+              Tell us where you want to go. We’ll help you explore your
+              travel options.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              openWhatsApp(
+                `Hi, I'd like to enquire about travel services from ${companyName}. Please help me plan my trip.`
+              )
+            }
+            disabled={!formattedWhatsAppNumber}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-gray-950 transition-colors hover:bg-emerald-50 focus:outline-none focus:ring-4 focus:ring-white/30 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Plan Your Journey
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </section>
