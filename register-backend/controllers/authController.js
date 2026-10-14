@@ -92,7 +92,7 @@ exports.sendWhatsappShareMessage = async (req, res) => {
             AppLink,
             code_to_copy
         } = req.body;
-
+        console.log(req.body)
         if (!customerNumber || !videoUrl || !AppLink || !code_to_copy) {
             return res.status(400).json({
                 success: false,
