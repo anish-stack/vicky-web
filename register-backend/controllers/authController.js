@@ -6,6 +6,7 @@ const { extractUploadedFiles, cleanupUploadedFiles } = require("../middleware/Up
 const {
     sendRegistrationSuccess,
     sendPaymentLink,
+    sendPartnerListingRequest,
     sendPaymentSuccess,
     sendPartnerRegister,
 } = require("../utils/sendWhatsapp");
@@ -80,6 +81,53 @@ exports.createUserKycOrder = async (req, res) => {
     } catch (err) {
         console.error("createUserKycOrder error:", err);
         res.status(500).json({ success: false, message: err.message || "Failed to create order." });
+    }
+};
+
+exports.sendWhatsappShareMessage = async (req, res) => {
+    try {
+        const {
+            customerNumber,
+            videoUrl,
+            AppLink,
+            code_to_copy
+        } = req.body;
+
+        if (!customerNumber || !videoUrl || !AppLink || !code_to_copy) {
+            return res.status(400).json({
+                success: false,
+                message: "Mobile number and all three links are required."
+            });
+        }
+
+        const response = await sendPartnerListingRequest(
+            customerNumber,
+            code_to_copy, // Partner Listing / Registration Link
+            videoUrl,     // Instagram Video Tutorial Link
+            AppLink       // Driver App Download Link
+        );
+
+        if (!response) {
+            return res.status(502).json({
+                success: false,
+                message: "Failed to send WhatsApp message."
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Partner listing request sent successfully.",
+            data: response
+        });
+
+    } catch (error) {
+        console.error("sendWhatsappShareMessage error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error.",
+            error: error.message
+        });
     }
 };
 

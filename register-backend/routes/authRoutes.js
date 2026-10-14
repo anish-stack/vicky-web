@@ -19,7 +19,8 @@ const {
     createUserKycOrder,
     verifyUserKycPayment,
     sendUserAadhaarOtp,
-    verifyUserAadhaarOtp
+    verifyUserAadhaarOtp,
+    sendWhatsappShareMessage
 } = require("../controllers/authController");
 
 const { protect, adminOnly } = require("../middleware/authMiddleware");
@@ -44,6 +45,11 @@ router.post(
     validate,
     registerUser
 );
+router.post(
+    "/send-whatsapp",
+    sendWhatsappShareMessage
+);
+
 
 router.post("/:userId/kyc/create-order", createUserKycOrder);
 router.post("/:userId/kyc/verify-payment", verifyUserKycPayment);
@@ -97,7 +103,7 @@ router.get(
 router.get(
     "/users/:userId",
     (req, res, next) => {
-   
+
         if (req.headers.authorization) {
             return protect(req, res, next);
         }
@@ -125,7 +131,7 @@ router.post(
 // Admin: activate profile after payment
 router.post(
     "/admin/activate-profile/:userId",
-   
+
     activateProfile
 );
 
@@ -135,29 +141,29 @@ router.patch("/admin/partner/:userId/deactivate", deactivateProfile);
 router.patch("/admin/partner/:userId/reactivate", reactivateProfile);
 
 // update partner
-router.put("/admin/partner/:userId",uploadUserImages, adminUpdatePartner);
+router.put("/admin/partner/:userId", uploadUserImages, adminUpdatePartner);
 
 // delete partner
 router.delete("/admin/partner/:userId", deletePartner);
 
 router.get(
-  "/webhook/razorpay",
-  express.raw({ type: "application/json" }),
-  (req, res, next) => {
-    try {
-      // Razorpay sends raw buffer
-      if (Buffer.isBuffer(req.body)) {
-        req.rawBody = req.body.toString("utf8");
-        req.body = JSON.parse(req.rawBody);
-      }
+    "/webhook/razorpay",
+    express.raw({ type: "application/json" }),
+    (req, res, next) => {
+        try {
+            // Razorpay sends raw buffer
+            if (Buffer.isBuffer(req.body)) {
+                req.rawBody = req.body.toString("utf8");
+                req.body = JSON.parse(req.rawBody);
+            }
 
-      next();
-    } catch (err) {
-      console.error("Webhook body parse error:", err);
-      return res.status(400).json({ success: false, message: "Invalid JSON" });
-    }
-  },
-  paymentSuccessRedirect
+            next();
+        } catch (err) {
+            console.error("Webhook body parse error:", err);
+            return res.status(400).json({ success: false, message: "Invalid JSON" });
+        }
+    },
+    paymentSuccessRedirect
 );
 
 module.exports = router;

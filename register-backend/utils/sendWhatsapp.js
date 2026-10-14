@@ -102,7 +102,12 @@ function getTemplateBody(templateName, data = {}) {
         case "partner_register":
             return {};
 
-
+        case "partner_listing_request":
+            return {
+                1: String(data.partnerListingLink || ""),
+                2: String(data.instagramTutorialLink || ""),
+                3: String(data.driverAppLink || "")
+            };
 
 
 
@@ -217,6 +222,22 @@ exports.sendPaymentSuccess = (customerNumber, name, userId) =>
         id: userId
     });
 
+
+exports.sendPartnerListingRequest = (
+    customerNumber,
+    partnerListingLink,
+    instagramTutorialLink,
+    driverAppLink,
+    userId
+) =>
+    exports.sendWhatsappTemplateForContactForm({
+        templateName: "partner_listing_request",
+        customerNumber,
+        partnerListingLink,
+        instagramTutorialLink,
+        driverAppLink,
+        id: userId
+    });
 exports.sendTourGuideRequest = (customerNumber, name, number, security_deposit, userId) =>
     exports.sendWhatsappTemplateForContactForm({
         templateName: "tour_guide",
