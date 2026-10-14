@@ -20,7 +20,16 @@ const partnerConfigSchema = new mongoose.Schema(
             trim: true,
             default: null
         },
-
+        videoUrl:{
+               type: String,
+            trim: true,
+            default: null
+        },
+        AppLink:{
+            type: String,
+            trim: true,
+            default: null  
+        },
         // NEW FIELD - multiple images with position
         images: [
             {

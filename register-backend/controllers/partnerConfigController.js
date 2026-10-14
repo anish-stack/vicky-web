@@ -84,7 +84,7 @@ const cleanupUploadedFiles = (files) => {
     Object.values(files)
         .flat()
         .forEach((file) => {
-            if (file?.path) fs.unlink(file.path, () => {});
+            if (file?.path) fs.unlink(file.path, () => { });
         });
 };
 
@@ -107,7 +107,7 @@ const buildNewImages = (files, positionsRaw, startPosition) => {
 // ============================================================
 exports.createPartnerConfig = async (req, res) => {
     try {
-        const { partner_screen_name, code_to_copy } = req.body;
+        const { partner_screen_name, code_to_copy, videoUrl, AppLink } = req.body;
 
         if (!partner_screen_name || !partner_screen_name.trim()) {
             cleanupUploadedFiles(req.files);
@@ -119,6 +119,8 @@ exports.createPartnerConfig = async (req, res) => {
 
         const data = {
             partner_screen_name: partner_screen_name.trim(),
+            videoUrl,
+            AppLink,
             code_to_copy: code_to_copy || null
         };
 
@@ -241,7 +243,7 @@ exports.updatePartnerConfig = async (req, res) => {
             });
         }
 
-        const { partner_screen_name, code_to_copy } = req.body;
+        const { partner_screen_name, code_to_copy, videoUrl, AppLink } = req.body;
 
         if (partner_screen_name !== undefined && partner_screen_name.trim()) {
             config.partner_screen_name = partner_screen_name.trim();
@@ -250,7 +252,13 @@ exports.updatePartnerConfig = async (req, res) => {
         if (code_to_copy !== undefined) {
             config.code_to_copy = code_to_copy || null;
         }
+        if (videoUrl !== undefined) {
+            config.videoUrl = videoUrl || null;
+        }
 
+        if (AppLink !== undefined) {
+            config.AppLink = AppLink || null;
+        }
         // Audio replace (purani file disk se hatao)
         if (req.files?.audio?.[0]) {
             deleteFileByUrl(config.audioUrl);
