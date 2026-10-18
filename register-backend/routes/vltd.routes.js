@@ -1,28 +1,11 @@
 const express = require("express");
-const fs = require("fs");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
+const { memoryUpload, withImgCloud } = require("../middleware/imgcloudUpload");
 const ctrl = require("../controllers/VltdController"); // Adjust path to your controller file
 
-// Configure Multer storage for payment proofs and uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, "..", "uploads", "mechanics");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB limit
+// Memory upload -> ImgCloud (payment proofs)
+const upload = memoryUpload({
+  fileSize: 5 * 1024 * 1024, // Max 5MB limit
   fileFilter: (req, file, cb) => {
     if (
       file.mimetype.startsWith("image/") ||
@@ -35,9 +18,10 @@ const upload = multer({
   },
 });
 
-const uploadPaymentProof = upload.fields([
-  { name: "paymentProof", maxCount: 1 },
-]);
+const uploadPaymentProof = withImgCloud(
+  upload.fields([{ name: "paymentProof", maxCount: 1 }]),
+  "payment-proofs"
+);
 
 /* ======================================================
    PUBLIC / USER ROUTES

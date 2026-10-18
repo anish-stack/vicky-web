@@ -4,7 +4,9 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev":"nodemon server.js"
+    "dev": "nodemon server.js",
+    "migrate:imgcloud": "node scripts/migrateToImgCloud.js",
+    "migrate:imgcloud:dry": "node scripts/migrateToImgCloud.js --dry-run"
   },
   "author": "",
   "license": "ISC",
@@ -19,6 +21,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "express-validator": "^7.3.1",
+    "form-data": "^4.0.4",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.3",
     "multer": "^2.1.0",

@@ -1,7 +1,7 @@
 "use strict";
 
-const fs = require("fs");
-const path = require("path");
+const { deleteImageByUrl } = require("../utils/imgCloud");
+const { cleanupCloudFiles } = require("../middleware/imgcloudUpload");
 const mongoose = require("mongoose");
 
 const PartnerConfig = require("../models/PartnerConfig"); // path apne project ke hisaab se adjust karein
@@ -10,10 +10,9 @@ const PartnerConfig = require("../models/PartnerConfig"); // path apne project k
 // HELPERS
 // ============================================================
 
-const UPLOAD_ROOT = path.resolve(process.cwd(), "uploads", "config");
 
-// DB mein hamesha relative path store hota hai: /uploads/config/<type>/<filename>
-const storedPath = (file, type) => `/uploads/config/${type}/${file.filename}`;
+// Files live on ImgCloud; multer middleware already set file.url
+const storedPath = (file) => file.url;
 
 // Relative path ko full URL banata hai. Pehle se full URL ho toh waisa hi chhod deta hai.
 // Agar aapke project mein fileUrl pehle se hai, toh yeh function hata kar apna import kar sakte hain.
@@ -53,39 +52,13 @@ const parseJSON = (value, fallback) => {
     }
 };
 
-// URL / relative path se disk ki file delete karta hai (sirf uploads/config ke andar)
-const deleteFileByUrl = (url) => {
-    if (!url) return;
-
-    try {
-        let pathname = url;
-        if (/^(https?:)?\/\//i.test(url)) {
-            pathname = new URL(url, "http://localhost").pathname;
-        }
-
-        const absolute = path.resolve(process.cwd(), "." + decodeURIComponent(pathname));
-
-        // Safety: uploads/config ke bahar ki file kabhi delete nahi hogi
-        if (!absolute.startsWith(UPLOAD_ROOT + path.sep)) return;
-
-        fs.unlink(absolute, (err) => {
-            if (err && err.code !== "ENOENT") {
-                console.error("File delete error:", absolute, err.message);
-            }
-        });
-    } catch (err) {
-        console.error("deleteFileByUrl error:", err.message);
-    }
-};
+// URL se ImgCloud file delete (old local /uploads paths are ignored)
+const deleteFileByUrl = (url) => { deleteImageByUrl(url); };
 
 // Request fail ho jaye toh upload hui files disk se hata deta hai
 const cleanupUploadedFiles = (files) => {
     if (!files) return;
-    Object.values(files)
-        .flat()
-        .forEach((file) => {
-            if (file?.path) fs.unlink(file.path, () => { });
-        });
+    cleanupCloudFiles(files).catch(() => { });
 };
 
 const buildNewImages = (files, positionsRaw, startPosition) => {

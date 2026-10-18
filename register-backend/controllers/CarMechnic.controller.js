@@ -9,29 +9,24 @@ const sendDltMessage = require("../utils/DltMessage");
 const base_url = "https://partners.taxisafar.com";
 const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
 const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
+const { uploadFileCloud, deleteImageByUrl } = require("../utils/imgCloud");
 const { sendPartnerRegister } = require("../utils/sendWhatsapp");
 
-const fileUrl = (req, filename) => {
-  if (!filename) return null;
-
-  return `${base_url}/uploads/mechanics/${filename}`;
-};
+// files already live on ImgCloud; filename holds the full url
+const fileUrl = (req, filename) => filename || null;
 
 
-const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "mechanics");
 
-const saveAadhaarPhoto = (base64, id) => {
+const saveAadhaarPhoto = async (base64, id) => {
   if (!base64) return null;
   try {
     const clean = String(base64).replace(/^data:image\/\w+;base64,/, "");
-    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    const filename = `aadhaar_${id}_${Date.now()}.jpg`;
-    fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(clean, "base64"));
-    return `${base_url}/uploads/mechanics/${filename}`;
+    const out = await uploadFileCloud(Buffer.from(clean, "base64"), "mechanics", {
+      filename: `aadhaar_${id}_${Date.now()}.jpg`,
+      mimetype: "image/jpeg",
+    });
+    return out.url;
   } catch (e) { console.error("aadhaar photo save err:", e.message); return null; }
-};
-const safeUnlink = (filePath) => {
-  fs.unlink(filePath, (err) => { if (err && err.code !== "ENOENT") console.error("unlink err:", err); });
 };
 
 exports.getMechanicOptions = async (req, res) => {
@@ -211,7 +206,7 @@ exports.verifyMechanicAadhaarOtp = async (req, res) => {
     }
 
     const photo = result.data.profile_image || result.data.photo || result.data.image || null;
-    const photoUrl = saveAadhaarPhoto(photo, mechanic._id);
+    const photoUrl = await saveAadhaarPhoto(photo, mechanic._id);
     if (photoUrl) {
       mechanic.aadharData.verifiedData.profile_image = photoUrl;
       if (!mechanic.profileImage) mechanic.profileImage = photoUrl;   // auto profile pic
@@ -378,11 +373,11 @@ exports.updateMechanic = async (req, res) => {
     }
 
     if (req.files?.profileImage?.[0]) {
-      if (existing.profileImage) safeUnlink(path.join(__dirname, "..", "uploads", "mechanics", path.basename(existing.profileImage)));
+      if (existing.profileImage) deleteImageByUrl(existing.profileImage);
       body.profileImage = fileUrl(req, req.files.profileImage[0].filename);
     }
     if (req.files?.coverImage?.[0]) {
-      if (existing.coverImage) safeUnlink(path.join(__dirname, "..", "uploads", "mechanics", path.basename(existing.coverImage)));
+      if (existing.coverImage) deleteImageByUrl(existing.coverImage);
       body.coverImage = fileUrl(req, req.files.coverImage[0].filename);
     }
     if (req.files?.galleryImages?.length) {
@@ -414,10 +409,9 @@ exports.deleteMechanic = async (req, res) => {
     const mechanic = await CarMechanicUser.findById(id);
     if (!mechanic) return res.status(404).json({ success: false, data: null, message: "Mechanic not found" });
 
-    const dir = path.join(__dirname, "..", "uploads", "mechanics");
-    if (mechanic.profileImage) safeUnlink(path.join(dir, path.basename(mechanic.profileImage)));
-    if (mechanic.coverImage) safeUnlink(path.join(dir, path.basename(mechanic.coverImage)));
-    (mechanic.galleryImages || []).forEach(img => safeUnlink(path.join(dir, path.basename(img))));
+    if (mechanic.profileImage) deleteImageByUrl(mechanic.profileImage);
+    if (mechanic.coverImage) deleteImageByUrl(mechanic.coverImage);
+    (mechanic.galleryImages || []).forEach(img => deleteImageByUrl(img));
 
     await mechanic.deleteOne();
     await MechanicContactLog.deleteMany({ mechanicId: id });

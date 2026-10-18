@@ -1,18 +1,12 @@
 // controllers/DriverWashroom.controller.js
-const fs = require("fs");
-const path = require("path");
+const { deleteImagesByUrls } = require("../utils/imgCloud");
 const DriverWashroom = require("../models/DriverWashroom.model");
 
 const base_url = "https://partners.taxisafar.com"; // adjust to your actual base
 
-const fileUrl = (filename) =>
-  filename ? `${base_url}/uploads/washrooms/${filename}` : null;
+// files already live on ImgCloud; filename holds the full url
+const fileUrl = (filename) => filename || null;
 
-const safeUnlink = (filePath) => {
-  fs.unlink(filePath, (err) => {
-    if (err && err.code !== "ENOENT") console.error("unlink err:", err);
-  });
-};
 
 // ── DRIVER: create listing (goes to pending) ──
 exports.createWashroom = async (req, res) => {
@@ -196,10 +190,7 @@ exports.updateWashroom = async (req, res) => {
     }
 
     if (req.files?.photos?.length) {
-      existing.photos.forEach((url) => {
-        const filename = path.basename(url);
-        safeUnlink(path.join(__dirname, "..", "uploads", "washrooms", filename));
-      });
+      deleteImagesByUrls(existing.photos);
       body.photos = req.files.photos.map((f) => fileUrl(f.filename));
     }
 
@@ -274,10 +265,7 @@ exports.deleteWashroom = async (req, res) => {
       return res.status(403).json({ success: false, data: null, message: "Not allowed" });
     }
 
-    washroom.photos.forEach((url) => {
-      const filename = path.basename(url);
-      safeUnlink(path.join(__dirname, "..", "uploads", "washrooms", filename));
-    });
+    deleteImagesByUrls(washroom.photos);
 
     await washroom.deleteOne();
 
@@ -370,10 +358,7 @@ exports.adminDeleteWashroom = async (req, res) => {
     const washroom = await DriverWashroom.findById(id);
     if (!washroom) return res.status(404).json({ success: false, data: null, message: "Listing not found" });
 
-    washroom.photos.forEach((url) => {
-      const filename = path.basename(url);
-      safeUnlink(path.join(__dirname, "..", "uploads", "washrooms", filename));
-    });
+    deleteImagesByUrls(washroom.photos);
 
     await washroom.deleteOne();
 

@@ -8,14 +8,7 @@ const { sendVtldOrderPlaced } = require("../utils/sendWhatsapp");
 
 const base_url = "https://partners.taxisafar.com";
 
-const fileUrl = (req, filename) => {
-    if (!filename) return null;
-
-    return `${base_url}/uploads/mechanics/${filename}`;
-};
-const safeUnlink = (filePath) => {
-    fs.unlink(filePath, (err) => { if (err && err.code !== "ENOENT") console.error("unlink err:", err); });
-};
+const fileUrl = (req, filename) => filename || null;
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 

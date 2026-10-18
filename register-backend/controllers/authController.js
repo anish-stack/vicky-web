@@ -14,24 +14,20 @@ const { createPaymentLink, verifyWebhookSignature } = require("../utils/Razorpay
 const sendDltMessage = require("../utils/DltMessage");
 const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
 const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
-const fs = require("fs");
-const path = require("path");
+const { uploadFileCloud } = require("../utils/imgCloud");
 
-const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "other");
 const base_url = process.env.BASE_URL || "https://partners.taxisafar.com";
 
-const saveAadhaarPhoto = (base64, id) => {
-    if (!base64) return null;
-    try {
-        const clean = String(base64).replace(/^data:image\/\w+;base64,/, "");
-        if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-        const filename = `aadhaar_${id}_${Date.now()}.jpg`;
-        fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(clean, "base64"));
-        return `${base_url}/uploads/other/${filename}`; // matches UPLOAD_DIR now
-    } catch (e) {
-        console.error("aadhaar photo save err:", e.message);
-        return null;
-    }
+const saveAadhaarPhoto = async (base64, id) => {
+  if (!base64) return null;
+  try {
+    const clean = String(base64).replace(/^data:image\/\w+;base64,/, "");
+    const out = await uploadFileCloud(Buffer.from(clean, "base64"), "other", {
+      filename: `aadhaar_${id}_${Date.now()}.jpg`,
+      mimetype: "image/jpeg",
+    });
+    return out.url;
+  } catch (e) { console.error("aadhaar photo save err:", e.message); return null; }
 };
 
 
@@ -254,7 +250,7 @@ exports.verifyUserAadhaarOtp = async (req, res) => {
 
         const aadhaarPhotoBase64 = result.data?.profile_image || result.data?.zip_data;
         if (aadhaarPhotoBase64) {
-            const photoUrl = saveAadhaarPhoto(aadhaarPhotoBase64, userId);
+            const photoUrl = await saveAadhaarPhoto(aadhaarPhotoBase64, userId);
             if (photoUrl) user.profileImage = photoUrl;
         }
 

@@ -2,48 +2,23 @@
 
 const express = require("express");
 const router = express.Router();
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const { memoryUpload, withImgCloud } = require("../middleware/imgcloudUpload");
 
 const partnerConfigController = require("../controllers/partnerConfigController"); 
 
 // ============================================================
-// MULTER STORAGE CONFIGURATION
+// MULTER (memory) + IMGCLOUD
 // ============================================================
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let uploadPath = "./uploads/config/";
+const upload = memoryUpload({ fileSize: 15 * 1024 * 1024 }); // 15MB
 
-    if (file.fieldname === "audio") {
-        uploadPath += "audio";
-    } else if (file.fieldname === "image" || file.fieldname === "images") {
-        uploadPath += "image";
-    } else {
-        uploadPath += "misc";
-    }
-
-    fs.mkdirSync(uploadPath, { recursive: true });
-    cb(null, uploadPath);
-},
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 15 * 1024 * 1024 } // 15MB file size limit
-});
-
-// Middleware configuration for fields
-// Middleware configuration for fields
-const uploadConfigFields = upload.fields([
+const uploadConfigFields = withImgCloud(
+  upload.fields([
     { name: "audio", maxCount: 1 },
     { name: "image", maxCount: 1 },      // OLD - single image (backward compatible)
     { name: "images", maxCount: 10 }     // NEW - multiple images
-]);
+  ]),
+  (file) => (file.fieldname === "audio" ? "config-audio" : "config-image")
+);
 
 // ============================================================
 // PARTNER CONFIG ROUTES

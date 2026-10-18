@@ -9,31 +9,26 @@ const sendDltMessage = require("../utils/DltMessage");
 const { createKycOrder, verifyRazorpaySignature } = require("../utils/razorpay");
 const { sendAadhaarOtp, verifyAadhaarOtp } = require("../utils/aadhaarKyc");
 const feeModel = require("../models/fee.model");
+const { uploadFileCloud, deleteImageByUrl } = require("../utils/imgCloud");
 const { sendPartnerRegister } = require("../utils/sendWhatsapp");
 
 const base_url = "https://partners.taxisafar.com";
 
-const fileUrl = (req, filename) => {
-  if (!filename) return null;
-
-  return `${base_url}/uploads/mechanics/${filename}`;
-};
-const safeUnlink = (filePath) => {
-  fs.unlink(filePath, (err) => { if (err && err.code !== "ENOENT") console.error("unlink err:", err); });
-};
+// files already live on ImgCloud; filename holds the full url
+const fileUrl = (req, filename) => filename || null;
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-const UPLOAD_DIR = path.join(__dirname, "..", "uploads", "recovery");
 
-const saveAadhaarPhoto = (base64, id) => {
+const saveAadhaarPhoto = async (base64, id) => {
   if (!base64) return null;
   try {
     const clean = String(base64).replace(/^data:image\/\w+;base64,/, "");
-    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    const filename = `aadhaar_${id}_${Date.now()}.jpg`;
-    fs.writeFileSync(path.join(UPLOAD_DIR, filename), Buffer.from(clean, "base64"));
-    return `${base_url}/uploads/recovery/${filename}`;
+    const out = await uploadFileCloud(Buffer.from(clean, "base64"), "recovery", {
+      filename: `aadhaar_${id}_${Date.now()}.jpg`,
+      mimetype: "image/jpeg",
+    });
+    return out.url;
   } catch (e) { console.error("aadhaar photo save err:", e.message); return null; }
 };
 /* ======================================================
@@ -220,7 +215,7 @@ exports.verifyRecoveryPersonAadhaarOtp = async (req, res) => {
       });
     }
     const photo = result.data.profile_image || result.data.photo || result.data.image || null;
-    const photoUrl = saveAadhaarPhoto(photo, RecoveryPerson._id);
+    const photoUrl = await saveAadhaarPhoto(photo, RecoveryPerson._id);
     if (photoUrl) {
       RecoveryPerson.aadharData.verifiedData.profile_image = photoUrl;
       if (!RecoveryPerson.profileImage) RecoveryPerson.profileImage = photoUrl;   // auto profile pic
@@ -417,8 +412,7 @@ exports.updateMyProfile = async (req, res) => {
 
     if (req.files && req.files.profileImage && req.files.profileImage[0]) {
       if (provider.profileImage) {
-        const oldPath = path.join(__dirname, "..", "uploads", "mechanics", path.basename(provider.profileImage));
-        safeUnlink(oldPath);
+        deleteImageByUrl(provider.profileImage);
       }
       provider.profileImage = fileUrl(req, req.files.profileImage[0].filename);
     }
@@ -469,8 +463,7 @@ exports.removeGalleryImage = async (req, res) => {
     provider.galleryImages = (provider.galleryImages || []).filter((img) => img !== imageUrl);
     await provider.save();
 
-    const localPath = path.join(__dirname, "..", "uploads", "mechanics", path.basename(imageUrl));
-    safeUnlink(localPath);
+    deleteImageByUrl(imageUrl);
 
     return res.json({ success: true, data: provider, message: "Image removed successfully" });
   } catch (err) {
@@ -675,8 +668,7 @@ exports.adminUpdateRecoveryVehicle = async (req, res) => {
 
     if (req.files && req.files.profileImage && req.files.profileImage[0]) {
       if (provider.profileImage) {
-        const oldPath = path.join(__dirname, "..", "uploads", "mechanics", path.basename(provider.profileImage));
-        safeUnlink(oldPath);
+        deleteImageByUrl(provider.profileImage);
       }
       provider.profileImage = fileUrl(req, req.files.profileImage[0].filename);
     }
@@ -745,10 +737,10 @@ exports.adminDeleteRecoveryVehicle = async (req, res) => {
     if (!provider) return res.status(404).json({ success: false, message: "Provider not found." });
 
     if (provider.profileImage) {
-      safeUnlink(path.join(__dirname, "..", "uploads", "mechanics", path.basename(provider.profileImage)));
+      deleteImageByUrl(provider.profileImage);
     }
     (provider.galleryImages || []).forEach((img) => {
-      safeUnlink(path.join(__dirname, "..", "uploads", "mechanics", path.basename(img)));
+      deleteImageByUrl(img);
     });
 
     await Promise.all([
