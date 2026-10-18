@@ -12,7 +12,11 @@ const FACILITY_LIST = [
   "Card Payment",
   "UPI Accepted",
 ];
-
+const contactSchema = new mongoose.Schema({
+  role: { type: String, required: true, trim: true, maxlength: 40 }, // Manager / Supervisor / Waiter / Employee
+  name: { type: String, trim: true, default: "", maxlength: 60 }, // actual person name (optional)
+  number: { type: String, required: true, trim: true },
+});
 const driverRestaurantSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -38,11 +42,34 @@ const driverRestaurantSchema = new mongoose.Schema(
     },
 
     description: { type: String, required: true, trim: true, maxlength: 500 },
-    contactNumber: { type: String, required: true, trim: true },
+    contactNumber: { type: String, trim: true, default: "" }, // mirror of contacts[0].number
+    contacts: {
+      type: [contactSchema],
+      default: [],
+      validate: {
+        validator: (a) => a.length <= 4,
+        message: "Max 4 contacts allowed",
+      },
+    },
 
     timings: {
-      openTime: { type: String, required: true }, // "06:00"
-      closeTime: { type: String, required: true }, // "23:00"
+      openTime: {
+        type: String,
+        required: function () {
+          return !this.is24Hours;
+        },
+      },
+      closeTime: {
+        type: String,
+        required: function () {
+          return !this.is24Hours;
+        },
+      },
+    },
+
+    is24Hours: {
+      type: Boolean,
+      default: false,
     },
 
     facilities: {
@@ -85,7 +112,7 @@ const driverRestaurantSchema = new mongoose.Schema(
     rating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 driverRestaurantSchema.index({ location: "2dsphere" });
@@ -94,7 +121,11 @@ driverRestaurantSchema.index({ name: "text", address: "text" });
 driverRestaurantSchema.pre("save", function () {
   this.isLive = this.status === "approved" && this.isVisibleToggle;
 });
-
+driverRestaurantSchema.pre("validate", function () {
+  if (this.contacts?.length) this.contactNumber = this.contacts[0].number;
+  if (!this.contactNumber)
+    this.invalidate("contacts", "At least one contact is required");
+});
 driverRestaurantSchema.statics.FACILITY_LIST = FACILITY_LIST;
 
 module.exports = mongoose.model("DriverRestaurant", driverRestaurantSchema);
